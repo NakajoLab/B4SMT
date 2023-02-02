@@ -4,6 +4,7 @@ import b4processor.Parameters
 import b4processor.connections.{Fetch2FetchBuffer, FetchBuffer2Uncompresser}
 import chisel3._
 import chisel3.stage.ChiselStage
+import chisel3.util._
 
 import scala.math.pow
 
@@ -12,6 +13,33 @@ class FetchBuffer(implicit params: Parameters) extends Module {
     val output = Vec(params.decoderPerThread, new FetchBuffer2Uncompresser)
     val input = Flipped(new Fetch2FetchBuffer)
   })
+
+  /**
+    * Fetchからの入力の数と同じ数の同期バッファを作成する
+    * 命令デコードはインオーダであるため，先頭がどのバッファかわかっている必要がある
+    */
+  val sync_buffer = Seq.fill(io.input.toBuffer.length)(SyncReadMem(pow(2, params.decoderPerThread).toInt, new BufferEntry))
+
+  val heads = Seq.fill(io.input.toBuffer.length)(RegInit(0.U((params.decoderPerThread + 1).W)))
+  val tails = Seq.fill(io.input.toBuffer.length)(RegInit(0.U((params.decoderPerThread + 1).W)))
+  val all_indexOk = heads.indices.map(i => (heads(i) + 1.U =/= tails(i))).reduce(_ && _)
+
+  val headbuffer = RegInit(0.U(log2Up(io.input.toBuffer.length)))
+
+  val bufferEntry_inputs = Wire(Vec(io.input.toBuffer.length, Valid(new BufferEntry)))
+  for (i <- io.input.toBuffer.indices) {
+    /*
+    bufferEntry_inputs(i).valid := io.input.toBuffer(i).valid
+    bufferEntry_inputs(i).bits.instruction := io.input.toBuffer(i).bits.instruction
+    bufferEntry_inputs(i).bits.programCounter := io.input.toBuffer(i).bits.programCounter
+     */
+    bufferEntry_inputs(i) <> io.input.toBuffer(i)
+    io.input.toBuffer(i).ready
+  }
+
+  for(d <- io.input.toBuffer) {
+
+  }
 
   val buffer = Reg(
     Vec(pow(2, params.decoderPerThread + 1).toInt, new BufferEntry)
