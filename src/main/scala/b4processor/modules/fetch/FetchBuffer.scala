@@ -33,7 +33,6 @@ class FetchBuffer(implicit params: Parameters) extends Module {
 
   // Fetchから入力される最初のインデックス
   val buffer_in_ptr = RegInit(0.U(log2Up(fetchInputLen).W))
-  val buffer_in_next = Wire(0.U(log2Up(fetchInputLen).W))
 
   // Fetchからの入力をsync_bufferに入れる
   val bufferEntry_inputs = Wire(Vec(fetchInputLen, Valid(new BufferEntry)))
@@ -53,6 +52,8 @@ class FetchBuffer(implicit params: Parameters) extends Module {
       }
     }
   }
+
+  buffer_in_ptr := sync_buffer_select_index
 
   // TODO: implement output logic
 
