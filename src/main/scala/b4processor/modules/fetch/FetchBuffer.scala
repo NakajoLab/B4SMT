@@ -10,36 +10,51 @@ import scala.math.pow
 
 class FetchBuffer(implicit params: Parameters) extends Module {
   val io = IO(new Bundle {
+    // output(i): Output ReadyValidIO(instruction, programCounter)
     val output = Vec(params.decoderPerThread, new FetchBuffer2Uncompresser)
+    // input.toBuffer: Input Vec(params.decoderPerThread, Decoupled(instruction, programCounter))
+    // input.empty: Output Bool
     val input = Flipped(new Fetch2FetchBuffer)
   })
 
-  /**
-    * Fetchからの入力の数と同じ数の同期バッファを作成する
-    * 命令デコードはインオーダであるため，先頭がどのバッファかわかっている必要がある
-    */
-  val sync_buffer = Seq.fill(io.input.toBuffer.length)(SyncReadMem(pow(2, params.decoderPerThread).toInt, new BufferEntry))
+  val fetchInputLen = io.input.toBuffer.length
 
-  val heads = Seq.fill(io.input.toBuffer.length)(RegInit(0.U((params.decoderPerThread + 1).W)))
-  val tails = Seq.fill(io.input.toBuffer.length)(RegInit(0.U((params.decoderPerThread + 1).W)))
-  val all_indexOk = heads.indices.map(i => (heads(i) + 1.U =/= tails(i))).reduce(_ && _)
+  require(isPow2(fetchInputLen), "number of decoders per thread must be power of 2")
 
-  val headbuffer = RegInit(0.U(log2Up(io.input.toBuffer.length)))
+  // Fetchからの入力の数と同じ数の同期バッファを作成する
 
-  val bufferEntry_inputs = Wire(Vec(io.input.toBuffer.length, Valid(new BufferEntry)))
-  for (i <- io.input.toBuffer.indices) {
-    /*
-    bufferEntry_inputs(i).valid := io.input.toBuffer(i).valid
-    bufferEntry_inputs(i).bits.instruction := io.input.toBuffer(i).bits.instruction
-    bufferEntry_inputs(i).bits.programCounter := io.input.toBuffer(i).bits.programCounter
-     */
-    bufferEntry_inputs(i) <> io.input.toBuffer(i)
-    io.input.toBuffer(i).ready
+  val sync_buffer = Seq.fill(fetchInputLen)(new b4processor.utils.FIFO(log2Up(fetchInputLen))(new BufferEntry))
+  val sync_buffer_input = Vec(fetchInputLen, Flipped(Irrevocable(new BufferEntry)))
+  for ((d,i) <- sync_buffer.zipWithIndex) {
+    d.input <> sync_buffer_input
+  }
+  val all_bufferValid = sync_buffer.map(i => !(i.full)).reduce(_ && _)
+  io.input.empty := sync_buffer.map(i => i.empty).reduce(_ && _)
+
+  // Fetchから入力される最初のインデックス
+  val buffer_in_ptr = RegInit(0.U(log2Up(fetchInputLen).W))
+  val buffer_in_next = Wire(0.U(log2Up(fetchInputLen).W))
+
+  // Fetchからの入力をsync_bufferに入れる
+  val bufferEntry_inputs = Wire(Vec(fetchInputLen, Valid(new BufferEntry)))
+  for ((d,i) <- io.input.toBuffer.zipWithIndex) {
+    bufferEntry_inputs(i.U) <> d
+    d.ready := all_bufferValid
   }
 
-  for(d <- io.input.toBuffer) {
+  val sync_buffer_select_index = Wire(0.U(log2Up(fetchInputLen).W))
+  val input_validList: Seq[Bool] = io.input.toBuffer.map(i => i.valid)
 
+  when(all_bufferValid) {
+    for ((d, i) <- sync_buffer.zipWithIndex) {
+      sync_buffer_select_index := buffer_in_ptr + PopCount(input_validList.slice(0, i+1))
+      when(input_validList(i)) {
+         sync_buffer_input(sync_buffer_select_index) := bufferEntry_inputs(i)
+      }
+    }
   }
+
+  // TODO: implement output logic
 
   val buffer = Reg(
     Vec(pow(2, params.decoderPerThread + 1).toInt, new BufferEntry)
