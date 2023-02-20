@@ -2,7 +2,7 @@ package b4processor.modules.fetch
 
 import b4processor.Parameters
 import b4processor.connections.{Fetch2FetchBuffer, FetchBuffer2Uncompresser}
-import chisel3._
+import chisel3.{util, _}
 import chisel3.stage.ChiselStage
 import chisel3.util._
 
@@ -30,46 +30,72 @@ class FetchBuffer(implicit params: Parameters) extends Module {
     d.input.valid := sync_buffer_input(i).valid
   }
   val all_bufferValid = sync_buffer.map(i => !(i.full)).reduce(_ && _)
-  io.input.empty := sync_buffer.map(i => i.empty).reduce(_ && _)
+  io.input.empty := sync_buffer.map(_.empty).reduce(_ && _)
 
   // Fetchから入力される最初のインデックス
   val buffer_in_ptr = RegInit(0.U(log2Up(fetchInputLen).W))
 
   // Fetchからの入力をsync_bufferに入れる
   // val bufferEntry_inputs = Wire(Vec(fetchInputLen, Valid(new BufferEntry)))
-  for ((d,i) <- io.input.toBuffer.zipWithIndex) {
+  for (d <- io.input.toBuffer) {
     // bufferEntry_inputs(i.U) <> d
     d.ready := all_bufferValid
   }
 
   val sync_buffer_select_index = WireInit(0.U(log2Up(fetchInputLen).W))
-  val input_validList: Seq[Bool] = io.input.toBuffer.map(i => i.valid)
+  val sync_buffer_write_valid = WireInit(false.B)
+  val input_validList: Seq[Bool] = io.input.toBuffer.map(_.valid)
 
   // sync_buffer io initialisation
   for(d <- sync_buffer) {
     d.input := DontCare
-    d.output.ready := DontCare
-    d.flush := DontCare
+    d.output.ready := false.B
+    d.flush := false.B
   }
   // sync_buffer_input initialisation
   for(d <- sync_buffer_input) {
     d := DontCare
   }
 
+  // 先頭n個が1ならばそのn個のみを入力する
   when(all_bufferValid) {
-    for ((d, i) <- sync_buffer.zipWithIndex) {
-      sync_buffer_select_index := buffer_in_ptr + PopCount(input_validList.slice(0, i+1))
-      when(input_validList(i)) {
-        sync_buffer_input(sync_buffer_select_index).bits.instruction := io.input.toBuffer(i).bits.instruction
-        sync_buffer_input(sync_buffer_select_index).bits.programCounter := io.input.toBuffer(i).bits.programCounter
-        sync_buffer_input(sync_buffer_select_index).valid := io.input.toBuffer(i).valid
-      }
+    for ((d, i) <- io.input.toBuffer.zipWithIndex) {
+      // sync_buffer_select_index := buffer_in_ptr + PopCount(input_validList.slice(0, i+1))
+      sync_buffer_write_valid := input_validList.slice(0,i+1).reduce(_ && _)
+      sync_buffer_input(buffer_in_ptr + i.U).bits.instruction := d.bits.instruction
+      sync_buffer_input(buffer_in_ptr + i.U).bits.programCounter := d.bits.programCounter
+      sync_buffer_input(buffer_in_ptr + i.U).valid := sync_buffer_write_valid
     }
   }
 
-  buffer_in_ptr := sync_buffer_select_index
+  private def count_continued_true(num: UInt, ls: Seq[Bool]): UInt = {
+    ls.length match {
+      case 0 => num
+      case _ => Mux(ls.head === true.B, count_continued_true(num+1.U, ls.tail), num)
+    }
+  }
+
+  buffer_in_ptr := buffer_in_ptr + count_continued_true(0.U(log2Up(fetchInputLen).W), input_validList)
 
   // TODO: implement output logic
+
+  val buffer_out_ptr = RegInit(0.U(log2Up(fetchInputLen).W))
+  val sync_buffer_out_select_index = WireInit(0.U(log2Up(fetchInputLen).W))
+  val output_validList: Seq[Bool] = sync_buffer.map(i => i.output.valid)
+  val all_decoderValid = io.output.map(_.ready).reduce(_ && _)
+
+  // output initialisation
+  io.output := DontCare
+
+  when(all_decoderValid) {
+    for((d,i) <- sync_buffer.zipWithIndex) {
+      sync_buffer_out_select_index := buffer_out_ptr + PopCount(output_validList.slice(0, i+1))
+      io.output(i).bits.instruction := d.output.bits.instruction
+      io.output(i).bits.programCounter := d.output.bits.programCounter
+      io.output(i).valid := d.output.valid
+      d.output.ready := true.B
+    }
+  }
 
   /*
   val buffer = Reg(
@@ -123,7 +149,7 @@ sealed class BufferEntry extends Bundle {
 }
 
 object BufferEntry extends App {
-  implicit val params = Parameters(tagWidth = 2, decoderPerThread = 1)
+  implicit val params = Parameters(tagWidth = 2, decoderPerThread = 2)
   (new ChiselStage).emitVerilog(
     new FetchBuffer(),
     args = Array(
