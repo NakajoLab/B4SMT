@@ -2,10 +2,12 @@ package b4processor.modules.fetch
 
 import b4processor.Parameters
 import b4processor.connections.{Fetch2FetchBuffer, FetchBuffer2Uncompresser}
+import b4processor.utils.FIFO
 import chisel3.{util, _}
 import chisel3.stage.ChiselStage
 import chisel3.util._
 
+import scala.annotation.tailrec
 import scala.math.pow
 
 class FetchBuffer(implicit params: Parameters) extends Module {
@@ -75,72 +77,67 @@ class FetchBuffer(implicit params: Parameters) extends Module {
     }
   }
 
+  @tailrec
+  private def rotate_by_vec[T <: Data](rotate_val: Int, ls: Vec[T]): Vec[T] = {
+    rotate_val match {
+      case 0 => ls
+      case _ => rotate_by_vec(rotate_val-1, VecInit(ls.tail :+ ls.head))
+    }
+  }
+
+
   buffer_in_ptr := buffer_in_ptr + count_continued_true(0.U(log2Up(fetchInputLen).W), input_validList)
 
   // TODO: implement output logic
 
+  val sync_buffer_output = Wire(Vec(fetchInputLen, Irrevocable(new BufferEntry)))
+
+  for(d <- sync_buffer_output) {
+    d.ready := false.B
+  }
+
+  for((d,i) <- sync_buffer.zipWithIndex) {
+    sync_buffer_output(i.U) <> d.output
+  }
+
   val buffer_out_ptr = RegInit(0.U(log2Up(fetchInputLen).W))
+  // val rotated_sync_buffer_index: Vec[UInt] = rotate_vec(buffer_out_ptr, VecInit(sync_buffer.indices.map(_.U(log2Up(fetchInputLen).W))))
+  // val rotated_sync_buffer_index = VecInit(sync_buffer.indices.map(_.U(log2Up(fetchInputLen).W)))
+  val rotated_sync_buffer_index = Wire(Vec(sync_buffer.length, UInt(log2Up(fetchInputLen).W)))
+  for((d,i) <- rotated_sync_buffer_index.zipWithIndex) {
+    d := i.U
+  }
+  for(i <- 0 until fetchInputLen) {
+    when(buffer_out_ptr === i.U) {
+      val indexes = rotate_by_vec(i, VecInit(sync_buffer.indices.map(_.U(log2Up(fetchInputLen).W))))
+      for((d,j) <- rotated_sync_buffer_index.zipWithIndex) {
+        d := indexes(j)
+      }
+    }
+  }
+
+  val rotated_sync_buffer: Seq[IrrevocableIO[BufferEntry]] = sync_buffer_output.indices.map(i => sync_buffer_output(rotated_sync_buffer_index(i)))
   val sync_buffer_out_select_index = WireInit(0.U(log2Up(fetchInputLen).W))
-  val output_validList: Seq[Bool] = sync_buffer.map(i => i.output.valid)
+  val output_validList = rotated_sync_buffer.map(_.valid)
   val all_decoderValid = io.output.map(_.ready).reduce(_ && _)
+  val sync_buffer_read_ready = Wire(Bool())
+  sync_buffer_read_ready := false.B
 
   // output initialisation
   io.output := DontCare
 
   when(all_decoderValid) {
-    for((d,i) <- sync_buffer.zipWithIndex) {
-      sync_buffer_out_select_index := buffer_out_ptr + PopCount(output_validList.slice(0, i+1))
-      io.output(i).bits.instruction := d.output.bits.instruction
-      io.output(i).bits.programCounter := d.output.bits.programCounter
-      io.output(i).valid := d.output.valid
-      d.output.ready := true.B
+    for((d,i) <- rotated_sync_buffer.zipWithIndex) {
+      sync_buffer_read_ready := output_validList.slice(0, i+1).reduce(_ && _)
+      d.ready := sync_buffer_read_ready
+      // sync_buffer_out_select_index := buffer_out_ptr + PopCount(output_validList.slice(0, i+1))
+      io.output(i).bits.instruction := d.bits.instruction
+      io.output(i).bits.programCounter := d.bits.programCounter
+      io.output(i).valid := d.valid && sync_buffer_read_ready
     }
   }
 
-  /*
-  val buffer = Reg(
-    Vec(pow(2, params.decoderPerThread + 1).toInt, new BufferEntry)
-  )
-
-  val head = RegInit(0.U((params.decoderPerThread + 1).W))
-  val tail = RegInit(0.U((params.decoderPerThread + 1).W))
-  io.input.empty := head === tail
-
-  {
-    var nextHead = head
-    for (d <- io.input.toBuffer) {
-      val indexOk = nextHead + 1.U =/= tail
-      d.ready := indexOk
-      val valid = d.valid && indexOk
-      when(valid) {
-        buffer(nextHead) := BufferEntry.validEntry(
-          d.bits.instruction,
-          d.bits.programCounter
-        )
-      }
-      nextHead = Mux(valid, nextHead + 1.U, nextHead)
-    }
-    head := nextHead
-  }
-
-  {
-    var nextTail = tail
-    for (d <- io.output) {
-      val indexOk = nextTail =/= head
-      d.valid := indexOk
-      val valid = d.ready && indexOk
-      d.bits.instruction := 0.U
-      d.bits.programCounter := 0.U
-      when(valid) {
-        d.bits.instruction := buffer(nextTail).instruction
-        d.bits.programCounter := buffer(nextTail).programCounter
-      }
-      nextTail = Mux(valid, nextTail + 1.U, nextTail)
-    }
-    tail := nextTail
-  }
-   */
-  io.output := DontCare
+  buffer_out_ptr := buffer_out_ptr + count_continued_true(0.U(log2Up(fetchInputLen).W), output_validList)
 }
 
 sealed class BufferEntry extends Bundle {
