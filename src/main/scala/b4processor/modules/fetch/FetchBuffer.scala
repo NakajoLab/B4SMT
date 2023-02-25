@@ -26,10 +26,29 @@ class FetchBuffer(implicit params: Parameters) extends Module {
   // Fetchからの入力の数と同じ数の同期バッファを作成する
 
   val sync_buffer = Seq.fill(fetchInputLen)(Module(new b4processor.utils.FIFO(log2Up(fetchInputLen))(new BufferEntry)))
-  val sync_buffer_input = Wire(Vec(fetchInputLen, Valid(new BufferEntry)))
+  // sync_bufferの入力インタフェース
+  val sync_buffer_input = Wire(Vec(fetchInputLen, Irrevocable(new BufferEntry)))
   for ((d,i) <- sync_buffer.zipWithIndex) {
     d.input.bits := sync_buffer_input(i).bits
     d.input.valid := sync_buffer_input(i).valid
+    sync_buffer_input(i).ready := d.input.ready
+    d.flush := false.B
+  }
+  // sync_buffer_inputの初期化
+  for(d <- sync_buffer_input) {
+    d.bits.instruction := 0.U
+    d.bits.programCounter := 0.U
+    d.valid := false.B
+  }
+  val sync_buffer_output = Wire(Vec(fetchInputLen, Irrevocable(new BufferEntry)))
+  for((d,i) <- sync_buffer.zipWithIndex) {
+    sync_buffer_output(i).bits := d.output.bits
+    sync_buffer_output(i).valid := d.output.valid
+    d.output.ready := sync_buffer_output(i).ready
+  }
+  // sync_buffer_outputの初期化
+  for(d <- sync_buffer_output) {
+    d.ready := false.B
   }
   val all_bufferValid = sync_buffer.map(i => !(i.full)).reduce(_ && _)
   io.input.empty := sync_buffer.map(_.empty).reduce(_ && _)
@@ -37,37 +56,16 @@ class FetchBuffer(implicit params: Parameters) extends Module {
   // Fetchから入力される最初のインデックス
   val buffer_in_ptr = RegInit(0.U(log2Up(fetchInputLen).W))
 
-  // Fetchからの入力をsync_bufferに入れる
+  // Fetchからの入力をsync_buffer_inputに入れる
   // val bufferEntry_inputs = Wire(Vec(fetchInputLen, Valid(new BufferEntry)))
-  for (d <- io.input.toBuffer) {
-    // bufferEntry_inputs(i.U) <> d
+
+  val input_validList = io.input.toBuffer.map(_.valid)
+
+  for ((d,i) <- io.input.toBuffer.zipWithIndex) {
+    val sync_buffer_write_valid = input_validList.slice(0,i+1).reduce(_ && _)
+    sync_buffer_input(buffer_in_ptr+i.U).bits := d.bits
+    sync_buffer_input(buffer_in_ptr+i.U).valid := sync_buffer_write_valid && all_bufferValid
     d.ready := all_bufferValid
-  }
-
-  val sync_buffer_select_index = WireInit(0.U(log2Up(fetchInputLen).W))
-  val sync_buffer_write_valid = WireInit(false.B)
-  val input_validList: Seq[Bool] = io.input.toBuffer.map(_.valid)
-
-  // sync_buffer io initialisation
-  for(d <- sync_buffer) {
-    d.input := DontCare
-    d.output.ready := false.B
-    d.flush := false.B
-  }
-  // sync_buffer_input initialisation
-  for(d <- sync_buffer_input) {
-    d := DontCare
-  }
-
-  // 先頭n個が1ならばそのn個のみを入力する
-  when(all_bufferValid) {
-    for ((d, i) <- io.input.toBuffer.zipWithIndex) {
-      // sync_buffer_select_index := buffer_in_ptr + PopCount(input_validList.slice(0, i+1))
-      sync_buffer_write_valid := input_validList.slice(0,i+1).reduce(_ && _)
-      sync_buffer_input(buffer_in_ptr + i.U).bits.instruction := d.bits.instruction
-      sync_buffer_input(buffer_in_ptr + i.U).bits.programCounter := d.bits.programCounter
-      sync_buffer_input(buffer_in_ptr + i.U).valid := sync_buffer_write_valid
-    }
   }
 
   private def count_continued_true(num: UInt, ls: Seq[Bool]): UInt = {
@@ -89,12 +87,6 @@ class FetchBuffer(implicit params: Parameters) extends Module {
   buffer_in_ptr := buffer_in_ptr + count_continued_true(0.U(log2Up(fetchInputLen).W), input_validList)
 
   // TODO: implement output logic
-
-  val sync_buffer_output = Wire(Vec(fetchInputLen, Irrevocable(new BufferEntry)))
-
-  for(d <- sync_buffer_output) {
-    d.ready := false.B
-  }
 
   for((d,i) <- sync_buffer.zipWithIndex) {
     sync_buffer_output(i.U) <> d.output

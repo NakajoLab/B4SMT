@@ -19,11 +19,23 @@ class FetchBufferTester extends AnyFlatSpec with ChiselScalatestTester {
   it should "not act sussy" in {
     test(new FetchBuffer).withAnnotations(Seq(WriteVcdAnnotation)) { c =>
       // TODO: write some tests to fuck
-      def inputValue(instruction: UInt, programCounter: UInt, index: Int): Unit = {
+      def inputValue(instruction: UInt, programCounter: UInt, valid: Bool, index: Int): Unit = {
         c.io.input.toBuffer(index).bits.instruction.poke(instruction)
         c.io.input.toBuffer(index).bits.programCounter.poke(programCounter)
-        c.io.input.toBuffer(index).valid.poke(true.B)
+        c.io.input.toBuffer(index).valid.poke(valid)
+        c.io.output(index).ready.poke(false.B)
       }
+      def initialise(): Unit = {
+        for(i <- 0 until defaultParams.decoderPerThread) {
+          inputValue(0.U, 0.U, false.B, i)
+        }
+      }
+
+      initialise()
+      inputValue("h00114514".U, "h80000000".U, true.B, 0)
+      inputValue("h00114514".U, "h80000004".U, true.B, 1)
+      c.clock.step()
+      c.clock.step()
     }
   }
 }
