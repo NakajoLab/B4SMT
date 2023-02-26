@@ -26,5 +26,12 @@ class ReorderBufferEntry extends Bundle {
 
 object ReorderBufferEntry {
   def default: ReorderBufferEntry =
-    (new ReorderBufferEntry).Lit(_.valueReady -> false.B)
+    (new ReorderBufferEntry).Lit(
+      _.valueReady -> false.B,
+      _.destinationRegister -> 0.U,
+      _.isError -> false.B,
+      _.value -> 0.U,
+      _.programCounter -> 0.U,
+      _.storeSign -> false.B
+    )
 }

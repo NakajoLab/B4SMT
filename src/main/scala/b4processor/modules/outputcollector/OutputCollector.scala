@@ -16,21 +16,33 @@ class OutputCollector(implicit params: Parameters) extends Module {
     val isError = Input(Vec(params.threads, Bool()))
   })
 
-  val threadsOutputQueue =
-    Seq.fill(params.threads)(Module(new FIFO(3)(new OutputValue)))
+  val executorQueue =
+    Seq.fill(params.executors)(Module(new FIFO(2)(new OutputValue)))
   val threadsArbiter =
     Seq.fill(params.threads)(
-      Module(new Arbiter(new OutputValue, params.executors + 2))
+      Module(new B4RRArbiter(new OutputValue, params.executors + 2))
     )
+
+  for (i <- 0 until params.executors) {
+    executorQueue(i).input <> io.executor(i)
+    executorQueue(i).flush := false.B
+
+    val out = io.executor(i).bits
+    val outValid = io.executor(i).valid
+    val outReady = io.executor(i).ready
+    // No Same input
+    if (params.debug)
+    when(outValid && RegNext(outValid)) {
+      assert(outReady && RegNext(outReady) && !(out === RegNext(out)))
+    }
+  }
 
   for (tid <- 0 until params.threads) {
     for (i <- 0 until params.executors) {
-      threadsArbiter(tid).io.in(i) <> io.executor(i)
-      threadsArbiter(tid).io
-        .in(i)
-        .valid := io
-        .executor(i)
-        .valid && io.executor(i).bits.tag.threadId === tid.U
+      threadsArbiter(tid).io.in(i) <> executorQueue(i).output
+      threadsArbiter(tid).io.in(i).valid :=
+        executorQueue(i).output.valid &&
+          executorQueue(i).output.bits.tag.threadId === tid.U
     }
     threadsArbiter(tid).io.in(params.executors) <> io.dataMemory
     threadsArbiter(tid).io
@@ -38,16 +50,26 @@ class OutputCollector(implicit params: Parameters) extends Module {
       .valid := io.dataMemory.valid && io.dataMemory.bits.tag.threadId === tid.U
     threadsArbiter(tid).io.in(params.executors + 1) <> io.csr(tid)
 
-    threadsOutputQueue(tid).input <> threadsArbiter(tid).io.out
-    threadsOutputQueue(tid).flush := io.isError(tid)
+    io.outputs(tid).outputs.bits := threadsArbiter(tid).io.out.bits
+    io.outputs(tid).outputs.valid := threadsArbiter(tid).io.out.valid
+    threadsArbiter(tid).io.out.ready := true.B
+
+    val out = threadsArbiter(tid).io.out.bits
+    val outValid = threadsArbiter(tid).io.out.valid
+    val outReady = threadsArbiter(tid).io.out.ready
+    // No Same input
+    if (params.debug)
+      when(outValid && RegNext(outValid)) {
+        assert(outReady && RegNext(outReady) && !(out === RegNext(out)))
+      }
   }
 
   for (i <- 0 until params.executors) {
-    io.executor(i).ready := (0 until params.threads)
+    executorQueue(i).output.ready := (0 until params.threads)
       .map(tid =>
         threadsArbiter(tid).io
           .in(i)
-          .ready && io.executor(i).bits.tag.threadId === tid.U
+          .ready && executorQueue(i).output.bits.tag.threadId === tid.U
       )
       .reduce(_ || _)
   }
@@ -58,12 +80,6 @@ class OutputCollector(implicit params: Parameters) extends Module {
         .ready && io.dataMemory.bits.tag.threadId === tid.U
     )
     .reduce(_ || _)
-
-  for (i <- 0 until params.threads) {
-    io.outputs(i).outputs.valid := threadsOutputQueue(i).output.valid
-    io.outputs(i).outputs.bits := threadsOutputQueue(i).output.bits
-    threadsOutputQueue(i).output.ready := true.B
-  }
 }
 
 object OutputCollector extends App {

@@ -13,6 +13,13 @@ object InstructionUtil {
     output
   }
 
+  def fromFile64bit(filename: String): Seq[UInt] = {
+    val file = Source.fromFile(filename)
+    val output = fromStringSeq64bit(file.getLines().filter(_.nonEmpty).toSeq)
+    file.close()
+    output
+  }
+
   def fromStringSeq32bit(seq: Seq[String]): Seq[UInt] = {
     var bytes = Seq[String]()
     for (s <- seq) {
@@ -20,6 +27,18 @@ object InstructionUtil {
       if (s.startsWith("x"))
         offset = 1
       for (i <- (0 until 4).reverse)
+        bytes = bytes :+ s.slice(i * 2 + offset, i * 2 + 2 + offset)
+    }
+    fromStringSeq8bit(bytes)
+  }
+
+  def fromStringSeq64bit(seq: Seq[String]): Seq[UInt] = {
+    var bytes = Seq[String]()
+    for (s <- seq) {
+      var offset = 0
+      if (s.startsWith("x"))
+        offset = 1
+      for (i <- (0 until 8).reverse)
         bytes = bytes :+ s.slice(i * 2 + offset, i * 2 + 2 + offset)
     }
     fromStringSeq8bit(bytes)

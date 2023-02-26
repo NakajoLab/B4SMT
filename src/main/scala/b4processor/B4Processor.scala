@@ -14,7 +14,6 @@ import b4processor.modules.reorderbuffer.ReorderBuffer
 import b4processor.modules.reservationstation.ReservationStation
 import b4processor.utils.AXI
 import chisel3._
-import chisel3.experimental.FlatIO
 import chisel3.stage.ChiselStage
 
 class B4Processor(implicit params: Parameters) extends Module {
@@ -42,7 +41,7 @@ class B4Processor(implicit params: Parameters) extends Module {
     Seq.fill(params.threads)(Module(new LoadStoreQueue))
   private val dataMemoryBuffer = Module(new DataMemoryBuffer)
 
-  val outputCollector = Module(new OutputCollector)
+  private val outputCollector = Module(new OutputCollector)
   private val branchAddressCollector = Module(new BranchOutputCollector())
 
   private val uncompresser = Seq.fill(params.threads)(
@@ -175,12 +174,10 @@ class B4Processor(implicit params: Parameters) extends Module {
     reorderBuffer(tid).io.loadStoreQueue <> loadStoreQueue(tid).io.reorderBuffer
 
     /** 命令メモリと命令キャッシュを接続 */
-    externalMemoryInterface.io.instructionFetchRequest(tid) <> instructionCache(
-      tid
-    ).io.memory.request
-    externalMemoryInterface.io.instructionOut(tid) <> instructionCache(
-      tid
-    ).io.memory.response
+    externalMemoryInterface.io.instructionFetchRequest(tid) <>
+      instructionCache(tid).io.memory.request
+    externalMemoryInterface.io.instructionOut(tid) <>
+      instructionCache(tid).io.memory.response
 
     /** フェッチと分岐予測 TODO */
     fetch(tid).io.prediction <> DontCare
@@ -196,13 +193,10 @@ object B4Processor extends App {
     threads = 2,
     executors = 2,
     decoderPerThread = 1,
+    maxRegisterFileCommitCount = 1,
     tagWidth = 4,
     instructionStart = 0x2000_0000L
   )
-  (new ChiselStage).emitVerilog(
-    new B4Processor(),
-    args = Array(
-      "--emission-options=disableMemRandomization,disableRegisterRandomization"
-    )
-  )
+//  ChiselStage.emitSystemVerilogFile(new B4Processor())
+  (new ChiselStage).emitSystemVerilog(new B4Processor)
 }

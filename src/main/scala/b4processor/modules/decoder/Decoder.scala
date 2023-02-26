@@ -176,12 +176,12 @@ class Decoder(implicit params: Parameters)
   rs.destinationTag := io.reorderBuffer.destination.destinationTag
   rs.sourceTag1 := Mux(
     valueSelector1.io.value.valid,
-    Tag.fromWires(io.threadId, 0.U),
+    Tag(io.threadId, 0.U),
     sourceTag1.tag
   )
   rs.sourceTag2 := Mux(
     valueSelector2.io.value.valid,
-    Tag.fromWires(io.threadId, 0.U),
+    Tag(io.threadId, 0.U),
     sourceTag2.tag
   )
   rs.ready1 := valueSelector1.io.value.valid
@@ -211,7 +211,7 @@ class Decoder(implicit params: Parameters)
       io.loadStoreQueue.bits.storeData := valueSelector2.io.value.bits
       io.loadStoreQueue.bits.storeDataValid := valueSelector2.io.value.valid
     }.otherwise {
-      io.loadStoreQueue.bits.storeDataTag := Tag.fromWires(io.threadId, 0.U)
+      io.loadStoreQueue.bits.storeDataTag := Tag(io.threadId, 0.U)
       io.loadStoreQueue.bits.storeData := 0.U
       io.loadStoreQueue.bits.storeDataValid := true.B
     }

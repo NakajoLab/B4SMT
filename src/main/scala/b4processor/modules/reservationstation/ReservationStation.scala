@@ -50,7 +50,7 @@ class ReservationStation(implicit params: Parameters) extends Module {
       a.bits.function3 := r.function3
       a.bits.immediateOrFunction7 := r.immediateOrFunction7
       a.bits.wasCompressed := r.wasCompressed
-      a.valid := r.ready1 && r.ready2
+      a.valid := r.valid && r.ready1 && r.ready2
       when(a.valid && a.ready) {
         r := ReservationStationEntry.default
       }
@@ -62,18 +62,16 @@ class ReservationStation(implicit params: Parameters) extends Module {
   private val head = RegInit(0.U(rsWidth.W))
   private var nextHead = head
   for (i <- 0 until (params.decoderPerThread * params.threads)) {
-    io.decoder(i).ready := false.B
-    when(!reservation(nextHead).valid) {
-      io.decoder(i).ready := true.B
-      when(io.decoder(i).entry.valid) {
-        reservation(nextHead) := io.decoder(i).entry
+    val decoder = io.decoder(i)
+    val resNext = reservation(nextHead)
+    decoder.ready := false.B
+    when(!resNext.valid) {
+      decoder.ready := true.B
+      when(decoder.entry.valid) {
+        resNext := decoder.entry
       }
     }
-    nextHead = Mux(
-      !reservation(nextHead).valid && io.decoder(i).entry.valid,
-      nextHead + 1.U,
-      nextHead
-    )
+    nextHead = nextHead + Mux(!resNext.valid && decoder.entry.valid, 1.U, 0.U)
   }
   head := nextHead
 

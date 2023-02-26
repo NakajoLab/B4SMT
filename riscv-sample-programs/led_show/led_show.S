@@ -1,6 +1,9 @@
+#include "../common.h"
+
 .section .text.init
 .global _start
 _start:
+    init_all_regs
     li a0,0
     li a1, 0x30000000
     li a2, 0x10000

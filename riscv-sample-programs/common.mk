@@ -24,7 +24,7 @@ $(PROGRAMNAME).64.hex: $(PROGRAMNAME).text.binary
 	od -An -t x8 $< -w8 -v | tr -d " " > $@
 
 $(PROGRAMNAME).dump: $(PROGRAMNAME).o
-	$(OBJDUMP) -D $< -M no-aliases -M numeric > $@
+	$(OBJDUMP) -d -j .text -j .data -j .rodata -j .bss  $< -M no-aliases -M numeric > $@
 
 clean:
 	$(RM) *.hex *.binary *.o *.dump

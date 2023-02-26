@@ -18,7 +18,7 @@ class CSRWrapper(implicit params: Parameters) extends CSR {
     this.io.decoderInput.bits.destinationTag.poke(destinationTag)
   }
 
-  def setThreadId(threadId:Int): Unit = {
+  def setThreadId(threadId: Int): Unit = {
     this.io.threadId.poke(threadId)
   }
 
@@ -46,7 +46,7 @@ class CSRTest extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   it should "return retire count" in {
-    test(new CSRWrapper) { c =>
+    test(new CSRWrapper()(params.copy(maxRegisterFileCommitCount = 10))) { c =>
       c.clock.step()
       c.setReorderBuffer(1)
       c.clock.step()

@@ -1,4 +1,7 @@
+#include "../common.h"
+
 _start:
+init_all_regs
 li x1,1
 li x2,1
 li x3,1

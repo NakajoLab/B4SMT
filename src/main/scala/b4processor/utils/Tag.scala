@@ -17,7 +17,7 @@ object Tag {
   def apply(threadId: Int, id: Int)(implicit params: Parameters): Tag =
     new Tag().Lit(_.threadId -> threadId.U, _.id -> id.U)
 
-  def fromWires(threadId: UInt, id: UInt)(implicit params: Parameters): Tag = {
+  def apply(threadId: UInt, id: UInt)(implicit params: Parameters): Tag = {
     val w = Wire(new Tag)
     w.threadId := threadId
     w.id := id

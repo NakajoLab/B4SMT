@@ -16,7 +16,7 @@ processor:
 
 ip: processor
 	mkdir -p ip/B4Processor_1_0/src
-	cp -f processor/B4Processor.v ip/B4Processor_1_0/src
+	cp -f processor/B4Processor.sv ip/B4Processor_1_0/src
 
 #B4Processor.v:
 #	sbt "runMain b4processor.B4Processor"

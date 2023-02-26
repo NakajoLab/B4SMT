@@ -1,6 +1,9 @@
+#include "../common.h"
+
 .section .text.init
 .global _start
 _start:
+    init_all_regs
     csrrs tp,mhartid,zero
     bnez tp,_start
     rdcycle a0

@@ -11,4 +11,5 @@ class ExecutionRegisterBypassForTest(implicit val params: Parameters)
   val value = Output(SInt(64.W))
   val valid = Output(Bool())
   val resultType = new ResultType.Type()
+  val ready = Input(Bool())
 }

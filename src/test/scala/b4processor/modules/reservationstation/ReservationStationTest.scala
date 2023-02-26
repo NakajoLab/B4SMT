@@ -23,7 +23,7 @@ class ReservationStationWrapper(implicit params: Parameters)
     value1: Option[Int] = None,
     value2: Option[Int] = None
   ): Unit = {
-    this.io.decoder(0).entry.poke(ReservationStationEntry.default)
+    this.io.decoder(0).entry.poke(ReservationStationEntry.zero)
     this.io.decoder(0).entry.valid.poke(programCounter.isDefined)
     if (value1.isDefined) {
       this.io.decoder(0).entry.value1.poke(value1.get)

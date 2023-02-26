@@ -1,4 +1,7 @@
+#include "../common.h"
+
 _start:
+    init_all_regs
     la x1, scratchpad
     addi x2, x0, 10
 

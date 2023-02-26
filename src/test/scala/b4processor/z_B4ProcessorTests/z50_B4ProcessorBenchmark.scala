@@ -6,7 +6,7 @@ import chiseltest._
 import chiseltest.internal.CachingAnnotation
 import org.scalatest.flatspec.AnyFlatSpec
 
-class B4ProcessorBenchmark extends AnyFlatSpec with ChiselScalatestTester {
+class z50_B4ProcessorBenchmark extends AnyFlatSpec with ChiselScalatestTester {
   // デバッグに時間がかかりすぎるのでパラメータを少し下げる。
   implicit val defaultParams = {
     Parameters(

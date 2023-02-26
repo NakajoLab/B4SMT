@@ -56,6 +56,27 @@ class B4ProcessorWithMemory()(implicit params: Parameters) extends Module {
     this.clock.step()
   }
 
+  def initialize64(instructions: String, binary: Boolean = false): Unit = {
+    val memoryInit =
+      if (binary)
+        InstructionUtil.fromBinaryFile(instructions)
+      else
+        InstructionUtil.fromFile64bit(instructions + ".64.hex")
+    this.io.simulation.valid.poke(true)
+    this.io.simulation.bits.poke(memoryInit.length)
+    for (i <- memoryInit.indices) {
+      this.clock.step()
+      this.io.simulation.bits.poke(memoryInit(i))
+    }
+    for (i <- Seq.fill(20)(0)) {
+      this.clock.step()
+      this.io.simulation.bits.poke(i)
+    }
+    this.clock.step()
+    this.io.simulation.valid.poke(false)
+    this.clock.step()
+  }
+
   def checkForWrite(address: UInt, value: UInt, timeout: Int = 500): Unit = {
     this.clock.setTimeout(timeout)
     while (

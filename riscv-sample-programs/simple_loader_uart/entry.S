@@ -1,8 +1,11 @@
+#include "../common.h"
+
 .extern __STACK_START_
 
 .section .text.init
 .global _start
 _start:
+    init_all_regs
     li a0,1
     call _show_led
 

@@ -15,6 +15,7 @@ project/plugins/project/
 /test_run_dir
 **/*.fir
 **/*.v
+**/*.sv
 **/*.anno.json
 
 /result

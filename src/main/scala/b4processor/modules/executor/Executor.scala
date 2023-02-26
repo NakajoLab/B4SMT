@@ -31,8 +31,8 @@ class Executor(implicit params: Parameters) extends Module {
 
   instructionChecker.input.opcode := io.reservationStation.bits.opcode
   instructionChecker.input.function3bits := io.reservationStation.bits.function3
-  instructionChecker.input.function7bits := io.reservationStation.bits
-    .immediateOrFunction7(11, 5)
+  instructionChecker.input.function7bits :=
+    io.reservationStation.bits.immediateOrFunction7(11, 5)
 
   val executionResult64bit = Wire(UInt(64.W))
   val immediateOrFunction7Extended =
@@ -48,7 +48,7 @@ class Executor(implicit params: Parameters) extends Module {
   executionResult64bit := 0.U
 
   when(io.reservationStation.valid) {
-    io.out.valid := true.B
+    io.out.valid := io.reservationStation.ready
     //    printf("pc=%x, immediate=%d\n", io.reservationStation.bits.programCounter, immediateOrFunction7Extended.asSInt)
     //    printf("a = %d b = %d\n", io.reservationStation.bits.value1, io.reservationStation.bits.value2)
     val a = io.reservationStation.bits.value1
@@ -120,8 +120,8 @@ class Executor(implicit params: Parameters) extends Module {
       )
     )
 
-    io.fetch.valid := (instructionChecker.output.instruction === Instructions.Branch) ||
-      (instructionChecker.output.instruction === Instructions.jalr)
+    io.fetch.valid := ((instructionChecker.output.instruction === Instructions.Branch) ||
+      (instructionChecker.output.instruction === Instructions.jalr)) && io.reservationStation.ready
     when(io.fetch.valid) {
       io.fetch.bits.threadId := io.reservationStation.bits.destinationTag.threadId
       io.fetch.bits.programCounterOffset := MuxCase(

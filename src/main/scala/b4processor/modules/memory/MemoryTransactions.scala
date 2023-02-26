@@ -47,7 +47,7 @@ object MemoryReadTransaction {
     w.burstLength := (length - 1).U
     w.size := MemoryAccessWidth.DoubleWord
     w.signed := false.B
-    w.outputTag := Tag.fromWires(threadId, 0.U)
+    w.outputTag := Tag(threadId, 0.U)
     w
   }
 }

@@ -1,4 +1,7 @@
+#include "../common.h"
+
 main:
+  init_all_regs
   li x2,10              # int n=10;
   li x3,1
   blt x3,x2,L1          # if (1<n) goto L1;

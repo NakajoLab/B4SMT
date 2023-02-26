@@ -36,15 +36,10 @@ class RegisterFile(implicit params: Parameters) extends Module {
 
   /** レジスタx1~x31 tpのみthreadIdで初期化
     */
-  val registers = RegInit(
-    VecInit(
-      (0 until 32)
-        .map(n => if (n == 4 /* tp */ ) io.threadId else 0.U(64.W))
-    )
-  )
+  val registers = RegInit(VecInit(Seq.fill(32)(0.U(64.W))))
 
   for (rb <- io.reorderBuffer) {
-    when(rb.valid) {
+    when(rb.valid && rb.bits.destinationRegister =/= 0.U) {
       registers(rb.bits.destinationRegister) := rb.bits.value
     }
   }
@@ -52,16 +47,8 @@ class RegisterFile(implicit params: Parameters) extends Module {
   // それぞれのデコーダへの信号
   for (dec <- io.decoders) {
     // ソースレジスタが0ならば0それ以外ならばレジスタから
-    dec.value1 := Mux(
-      dec.sourceRegister1 === 0.U,
-      0.U,
-      registers(dec.sourceRegister1)
-    )
-    dec.value2 := Mux(
-      dec.sourceRegister2 === 0.U,
-      0.U,
-      registers(dec.sourceRegister2)
-    )
+    dec.value1 := registers(dec.sourceRegister1)
+    dec.value2 := registers(dec.sourceRegister2)
   }
 
   registers(0) := 0.U

@@ -15,7 +15,7 @@ class CSRReservationStationEntry(implicit params: Parameters) extends Bundle {
 }
 
 object CSRReservationStationEntry {
-  def default()(implicit params: Parameters): CSRReservationStationEntry = {
+  def default(implicit params: Parameters): CSRReservationStationEntry = {
     val w = Wire(new CSRReservationStationEntry)
     w := DontCare
     w.valid := false.B

@@ -29,9 +29,7 @@ class CSRReservationStation(implicit params: Parameters) extends Module {
 
   private val head = RegInit(0.U(2.W))
   private val tail = RegInit(0.U(2.W))
-  private val buf = RegInit(
-    VecInit(Seq.fill(4)(CSRReservationStationEntry.default()))
-  )
+  private val buf = RegInit(VecInit(Seq.fill(4)(CSRReservationStationEntry.default)))
   io.empty := head === tail
 
   var insertIndex = head
@@ -54,15 +52,16 @@ class CSRReservationStation(implicit params: Parameters) extends Module {
   }
   head := insertIndex
 
-  when(tail =/= head && buf(tail).ready) {
+  val bufTail = buf(tail)
+  when(tail =/= head && bufTail.ready) {
     io.toCSR.valid := true.B
-    io.toCSR.bits.value := buf(tail).value
-    io.toCSR.bits.address := buf(tail).address
-    io.toCSR.bits.destinationTag := buf(tail).destinationTag
-    io.toCSR.bits.csrAccessType := buf(tail).csrAccessType
+    io.toCSR.bits.value := bufTail.value
+    io.toCSR.bits.address := bufTail.address
+    io.toCSR.bits.destinationTag := bufTail.destinationTag
+    io.toCSR.bits.csrAccessType := bufTail.csrAccessType
     when(io.toCSR.ready) {
       tail := tail + 1.U
-      buf(tail).valid := false.B
+      bufTail.valid := false.B
     }
   }
 

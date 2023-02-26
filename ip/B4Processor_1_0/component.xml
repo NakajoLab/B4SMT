@@ -431,7 +431,7 @@
         <spirit:parameters>
           <spirit:parameter>
             <spirit:name>viewChecksum</spirit:name>
-            <spirit:value>61449f46</spirit:value>
+            <spirit:value>c354bc6d</spirit:value>
           </spirit:parameter>
         </spirit:parameters>
       </spirit:view>
@@ -447,7 +447,7 @@
         <spirit:parameters>
           <spirit:parameter>
             <spirit:name>viewChecksum</spirit:name>
-            <spirit:value>61449f46</spirit:value>
+            <spirit:value>c354bc6d</spirit:value>
           </spirit:parameter>
         </spirit:parameters>
       </spirit:view>
@@ -1345,8 +1345,8 @@
     <spirit:fileSet>
       <spirit:name>xilinx_verilogsynthesis_view_fileset</spirit:name>
       <spirit:file>
-        <spirit:name>src/B4Processor.v</spirit:name>
-        <spirit:fileType>verilogSource</spirit:fileType>
+        <spirit:name>src/B4Processor.sv</spirit:name>
+        <spirit:fileType>systemVerilogSource</spirit:fileType>
       </spirit:file>
       <spirit:file>
         <spirit:name>hdl/B4Processor_v1_0.v</spirit:name>
@@ -1357,8 +1357,8 @@
     <spirit:fileSet>
       <spirit:name>xilinx_verilogbehavioralsimulation_view_fileset</spirit:name>
       <spirit:file>
-        <spirit:name>src/B4Processor.v</spirit:name>
-        <spirit:fileType>verilogSource</spirit:fileType>
+        <spirit:name>src/B4Processor.sv</spirit:name>
+        <spirit:fileType>systemVerilogSource</spirit:fileType>
       </spirit:file>
       <spirit:file>
         <spirit:name>hdl/B4Processor_v1_0.v</spirit:name>
@@ -1466,14 +1466,14 @@
         <xilinx:taxonomy>AXI_Peripheral</xilinx:taxonomy>
       </xilinx:taxonomies>
       <xilinx:displayName>B4Processor_v1.0</xilinx:displayName>
-      <xilinx:coreRevision>8</xilinx:coreRevision>
-      <xilinx:coreCreationDateTime>2023-01-24T10:41:16Z</xilinx:coreCreationDateTime>
+      <xilinx:coreRevision>9</xilinx:coreRevision>
+      <xilinx:coreCreationDateTime>2023-02-06T10:43:28Z</xilinx:coreCreationDateTime>
     </xilinx:coreExtensions>
     <xilinx:packagingInfo>
       <xilinx:xilinxVersion>2022.2</xilinx:xilinxVersion>
       <xilinx:checksum xilinx:scope="busInterfaces" xilinx:value="372f74e8"/>
       <xilinx:checksum xilinx:scope="addressSpaces" xilinx:value="1327679e"/>
-      <xilinx:checksum xilinx:scope="fileGroups" xilinx:value="05cf8ca5"/>
+      <xilinx:checksum xilinx:scope="fileGroups" xilinx:value="06490f66"/>
       <xilinx:checksum xilinx:scope="ports" xilinx:value="8aae815e"/>
       <xilinx:checksum xilinx:scope="hdlParameters" xilinx:value="c370c47c"/>
       <xilinx:checksum xilinx:scope="parameters" xilinx:value="86d1ecce"/>

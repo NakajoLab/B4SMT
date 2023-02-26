@@ -1,4 +1,7 @@
+#include "../common.h"
+
 _start:
+    init_all_regs
     addi x1, x0, 1
     slli x1, x1, 31
 

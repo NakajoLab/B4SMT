@@ -1,4 +1,7 @@
+#include "../common.h"
+
 _start:
+    init_all_regs
     la x1, __var_place
 
     addi x2, x0, 10

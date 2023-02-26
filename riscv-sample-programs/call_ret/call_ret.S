@@ -1,5 +1,8 @@
+#include "../common.h"
+
 .global _start
 _start:
+    init_all_regs
     li x5,1
     call foo
     li x7,3

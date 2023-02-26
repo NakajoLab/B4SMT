@@ -31,7 +31,7 @@ class ExecutorWrapper(implicit params: Parameters) extends Module {
   executor.io.reservationStation.bits.opcode := io.reservationStation.bits.opcode
   executor.io.reservationStation.bits.wasCompressed := io.reservationStation.bits.wasCompressed
   executor.io.reservationStation.valid := io.reservationStation.valid
-  executor.io.out.ready := true.B
+  executor.io.out.ready := io.out.ready
   io.reservationStation.ready := executor.io.reservationStation.ready
 
   io.out.value := executor.io.out.bits.value.asSInt
@@ -95,6 +95,8 @@ class ExecutorTest
 
   it should "be compatible with I extension" in {
     test(new ExecutorWrapper) { c =>
+      c.io.fetch.ready.poke(true)
+      c.io.out.ready.poke(true)
       When("lui")
       // rs1 = 40, rs2 = fffff
       c.setALU(
@@ -954,6 +956,9 @@ class ExecutorTest
 
   it should "be compatible with C extension" in {
     test(new ExecutorWrapper()) { c =>
+      c.io.fetch.ready.poke(true)
+      c.io.out.ready.poke(true)
+
       When("beq -- NG")
       // rs1 = 40, rs = 30, offset = 200
       c.setALU(values =

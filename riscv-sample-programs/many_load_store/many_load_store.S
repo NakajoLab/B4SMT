@@ -1,4 +1,7 @@
+#include "../common.h"
+
 _start:
+    init_all_regs
     la x1, __BINARY_END_
 
     li x2, 10
