@@ -111,6 +111,7 @@ class FetchBuffer(implicit params: Parameters) extends Module {
   val rotated_sync_buffer: Seq[IrrevocableIO[BufferEntry]] = sync_buffer_output.indices.map(i => sync_buffer_output(rotated_sync_buffer_index(i)))
   val sync_buffer_out_select_index = WireInit(0.U(log2Up(fetchInputLen).W))
   val output_validList = rotated_sync_buffer.map(_.valid)
+  output_validList.foreach(e => printf(p"valid: $e\n"))
   val all_decoderValid = io.output.map(_.ready).reduce(_ && _)
   val sync_buffer_read_ready = Wire(Bool())
   sync_buffer_read_ready := false.B

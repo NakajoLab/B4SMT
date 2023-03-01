@@ -23,17 +23,24 @@ class FetchBufferTester extends AnyFlatSpec with ChiselScalatestTester {
         c.io.input.toBuffer(index).bits.instruction.poke(instruction)
         c.io.input.toBuffer(index).bits.programCounter.poke(programCounter)
         c.io.input.toBuffer(index).valid.poke(valid)
-        c.io.output(index).ready.poke(false.B)
       }
       def initialise(): Unit = {
         for(i <- 0 until defaultParams.decoderPerThread) {
           inputValue(0.U, 0.U, false.B, i)
         }
+        readValue(defaultParams.decoderPerThread)
+      }
+      def readValue(readnum: Int): Unit = {
+        for(i <- 0 until readnum) {
+          c.io.output(i).ready.poke(true.B)
+        }
       }
 
       initialise()
       inputValue("h00114514".U, "h80000000".U, true.B, 0)
-      inputValue("h00114514".U, "h80000004".U, true.B, 1)
+      // inputValue("h00114514".U, "h80000004".U, true.B, 1)
+      c.clock.step()
+      initialise()
       c.clock.step()
       c.clock.step()
     }
