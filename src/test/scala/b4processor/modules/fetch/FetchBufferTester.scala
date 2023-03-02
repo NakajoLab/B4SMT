@@ -38,10 +38,14 @@ class FetchBufferTester extends AnyFlatSpec with ChiselScalatestTester {
 
       initialise()
       inputValue("h00114514".U, "h80000000".U, true.B, 0)
+      inputValue("h01919810".U, "h80000004".U, true.B, 1)
       // inputValue("h00114514".U, "h80000004".U, true.B, 1)
       c.clock.step()
       initialise()
+      inputValue("h01234567".U, "h80000008".U, true.B, 0)
       c.clock.step()
+      initialise()
+      inputValue("h00801074".U, "h8000000C".U, true.B, 0)
       c.clock.step()
     }
   }

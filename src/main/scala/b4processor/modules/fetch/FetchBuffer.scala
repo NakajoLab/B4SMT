@@ -2,13 +2,9 @@ package b4processor.modules.fetch
 
 import b4processor.Parameters
 import b4processor.connections.{Fetch2FetchBuffer, FetchBuffer2Uncompresser}
-import b4processor.utils.FIFO
-import chisel3.{util, _}
+import chisel3._
 import chisel3.stage.ChiselStage
 import chisel3.util._
-
-import scala.annotation.tailrec
-import scala.math.pow
 
 class FetchBuffer(implicit params: Parameters) extends Module {
   val io = IO(new Bundle {
@@ -24,8 +20,9 @@ class FetchBuffer(implicit params: Parameters) extends Module {
   require(isPow2(fetchInputLen), "number of decoders per thread must be power of 2")
 
   // Fetchからの入力の数と同じ数の同期バッファを作成する
+  val fifo_length = fetchInputLen
 
-  val sync_buffer = Seq.fill(fetchInputLen)(Module(new b4processor.utils.FIFO(log2Up(fetchInputLen))(new BufferEntry)))
+  val sync_buffer = Seq.fill(fetchInputLen)(Module(new b4processor.utils.FIFO(fifo_length)(new BufferEntry)))
   // sync_bufferの入力インタフェース
   val sync_buffer_input = Wire(Vec(fetchInputLen, Irrevocable(new BufferEntry)))
   for ((d,i) <- sync_buffer.zipWithIndex) {
@@ -44,11 +41,8 @@ class FetchBuffer(implicit params: Parameters) extends Module {
   for((d,i) <- sync_buffer.zipWithIndex) {
     sync_buffer_output(i).bits := d.output.bits
     sync_buffer_output(i).valid := d.output.valid
+    sync_buffer_output(i).ready := false.B
     d.output.ready := sync_buffer_output(i).ready
-  }
-  // sync_buffer_outputの初期化
-  for(d <- sync_buffer_output) {
-    d.ready := false.B
   }
   val all_bufferValid = sync_buffer.map(i => !(i.full)).reduce(_ && _)
   io.input.empty := sync_buffer.map(_.empty).reduce(_ && _)
@@ -75,59 +69,35 @@ class FetchBuffer(implicit params: Parameters) extends Module {
     }
   }
 
-  @tailrec
-  private def rotate_by_vec[T <: Data](rotate_val: Int, ls: Vec[T]): Vec[T] = {
-    rotate_val match {
-      case 0 => ls
-      case _ => rotate_by_vec(rotate_val-1, VecInit(ls.tail :+ ls.head))
-    }
-  }
-
-
   buffer_in_ptr := buffer_in_ptr + count_continued_true(0.U(log2Up(fetchInputLen).W), input_validList)
 
   // TODO: implement output logic
 
-  for((d,i) <- sync_buffer.zipWithIndex) {
-    sync_buffer_output(i.U) <> d.output
-  }
-
   val buffer_out_ptr = RegInit(0.U(log2Up(fetchInputLen).W))
-  // val rotated_sync_buffer_index: Vec[UInt] = rotate_vec(buffer_out_ptr, VecInit(sync_buffer.indices.map(_.U(log2Up(fetchInputLen).W))))
-  // val rotated_sync_buffer_index = VecInit(sync_buffer.indices.map(_.U(log2Up(fetchInputLen).W)))
-  val rotated_sync_buffer_index = Wire(Vec(sync_buffer.length, UInt(log2Up(fetchInputLen).W)))
-  for((d,i) <- rotated_sync_buffer_index.zipWithIndex) {
-    d := i.U
-  }
-  for(i <- 0 until fetchInputLen) {
-    when(buffer_out_ptr === i.U) {
-      val indexes = rotate_by_vec(i, VecInit(sync_buffer.indices.map(_.U(log2Up(fetchInputLen).W))))
-      for((d,j) <- rotated_sync_buffer_index.zipWithIndex) {
-        d := indexes(j)
-      }
+  val rotated_sync_buffer_indexes = {
+    for(i <- (0 until fetchInputLen)) yield {
+      buffer_out_ptr + i.U(log2Up(fetchInputLen).W)
     }
   }
+  if(params.debug) {
+    printf("current output indexes:\n")
+    rotated_sync_buffer_indexes.foreach(e => printf(p"$e\n"))
+    printf("\n")
+  }
 
-  val rotated_sync_buffer: Seq[IrrevocableIO[BufferEntry]] = sync_buffer_output.indices.map(i => sync_buffer_output(rotated_sync_buffer_index(i)))
-  val sync_buffer_out_select_index = WireInit(0.U(log2Up(fetchInputLen).W))
+  val rotated_sync_buffer: Seq[IrrevocableIO[BufferEntry]] = sync_buffer_output.indices.map(i => sync_buffer_output(rotated_sync_buffer_indexes(i)))
+  if(params.debug) {
+    printf("rotated_sync_buffers:\n")
+    rotated_sync_buffer.foreach(e => printf(p"$e\n"))
+    printf("\n")
+  }
+
   val output_validList = rotated_sync_buffer.map(_.valid)
-  output_validList.foreach(e => printf(p"valid: $e\n"))
-  val all_decoderValid = io.output.map(_.ready).reduce(_ && _)
-  val sync_buffer_read_ready = Wire(Bool())
-  sync_buffer_read_ready := false.B
 
-  // output initialisation
-  io.output := DontCare
-
-  when(all_decoderValid) {
-    for((d,i) <- rotated_sync_buffer.zipWithIndex) {
-      sync_buffer_read_ready := output_validList.slice(0, i+1).reduce(_ && _)
-      d.ready := sync_buffer_read_ready
-      // sync_buffer_out_select_index := buffer_out_ptr + PopCount(output_validList.slice(0, i+1))
-      io.output(i).bits.instruction := d.bits.instruction
-      io.output(i).bits.programCounter := d.bits.programCounter
-      io.output(i).valid := d.valid && sync_buffer_read_ready
-    }
+  for((d,i) <- io.output.zipWithIndex) {
+    d.bits := rotated_sync_buffer(i).bits
+    d.valid := rotated_sync_buffer(i).valid
+    rotated_sync_buffer(i).ready := d.ready
   }
 
   buffer_out_ptr := buffer_out_ptr + count_continued_true(0.U(log2Up(fetchInputLen).W), output_validList)
@@ -139,7 +109,7 @@ sealed class BufferEntry extends Bundle {
 }
 
 object BufferEntry extends App {
-  implicit val params = Parameters(tagWidth = 2, decoderPerThread = 2)
+  implicit val params = Parameters(tagWidth = 2, decoderPerThread = 2, debug = true)
   (new ChiselStage).emitVerilog(
     new FetchBuffer(),
     args = Array(
