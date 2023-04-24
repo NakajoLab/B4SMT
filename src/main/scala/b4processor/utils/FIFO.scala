@@ -1,6 +1,6 @@
 package b4processor.utils
 
-import circt.stage.ChiselStage
+import chisel3.stage._
 import chisel3._
 import chisel3.util._
 
@@ -36,7 +36,7 @@ class FIFO[T <: Data](width: Int)(t: T, flow: Boolean = false) extends Module {
 }
 
 object FIFO extends App {
-  ChiselStage.emitSystemVerilogFile(new FIFO(8)(new Bundle {
+  (new ChiselStage).emitSystemVerilog(new FIFO(8)(new Bundle {
     val a = UInt(32.W)
   }))
 }
