@@ -29,7 +29,9 @@ class CSRReservationStation(implicit params: Parameters) extends Module {
 
   private val head = RegInit(0.U(2.W))
   private val tail = RegInit(0.U(2.W))
-  private val buf = RegInit(VecInit(Seq.fill(4)(CSRReservationStationEntry.default)))
+  private val buf = RegInit(
+    VecInit(Seq.fill(4)(CSRReservationStationEntry.default))
+  )
   io.empty := head === tail
 
   var insertIndex = head

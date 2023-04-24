@@ -3,7 +3,6 @@ package b4processor.connections
 import b4processor.Parameters
 import b4processor.utils.Tag
 import chisel3._
-import chisel3.experimental.ChiselEnum
 
 object ResultType extends ChiselEnum {
   val Result, LoadStoreAddress = Value

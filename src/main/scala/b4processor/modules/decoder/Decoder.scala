@@ -23,8 +23,7 @@ import chisel3.util._
   * @param params
   *   パラメータ
   */
-class Decoder(implicit params: Parameters)
-    extends Module {
+class Decoder(implicit params: Parameters) extends Module {
   val io = IO(new Bundle {
     val instructionFetch = Flipped(new Uncompresser2Decoder())
     val reorderBuffer = new Decoder2ReorderBuffer

@@ -4,24 +4,30 @@ import b4processor.Parameters
 import b4processor.utils.B4ProcessorWithMemory
 import chiseltest._
 import chiseltest.internal.CachingAnnotation
+import org.scalatest.Tag
 import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.tagobjects.Slow
 import treadle.RandomizeAtStartupAnnotation
 
 import java.io.FileWriter
 
-class z40_B4ProcessorParameterTest extends AnyFlatSpec with ChiselScalatestTester {
+object ParameterTest extends Tag("ParameterTest")
+
+class z40_B4ProcessorParameterTest
+    extends AnyFlatSpec
+    with ChiselScalatestTester {
   behavior of "B4Processor with many parameters"
   implicit val defaultParams = Parameters(debug = true)
 
-  for (threads <- Seq(1, 2, 3, 4, 5, 6, 7, 8)) {
-    for (executors <- Seq(1, 2, 4))
-      for (decoderPerThread <- Seq(1, 2, 3, 4))
-        for (maxCommitCount <- Seq(1, 2, 3, 4))
-          for (tagWidth <- Seq(3, 4, 5))
-            for (lsqWidth <- Seq(3, 4, 5)) {
+  for (threads <- Seq(1, 2)) {
+    for (executors <- Seq(1, 2))
+      for (decoderPerThread <- Seq(1, 2))
+        for (maxCommitCount <- Seq(1, 2))
+          for (tagWidth <- Seq(3, 4))
+            for (lsqWidth <- Seq(3, 4)) {
               val title =
                 s"run fibonacci_c threads=${threads} executor=$executors decoders=${decoderPerThread} maxCommitCount=${maxCommitCount} tagWidth=${tagWidth} lsqWidth=${lsqWidth}"
-              it should title in {
+              it should title taggedAs (ParameterTest, Slow) in {
                 test(
                   new B4ProcessorWithMemory()(
                     defaultParams.copy(

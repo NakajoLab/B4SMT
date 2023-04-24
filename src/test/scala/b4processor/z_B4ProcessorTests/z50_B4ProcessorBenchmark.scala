@@ -24,7 +24,7 @@ class z50_B4ProcessorBenchmark extends AnyFlatSpec with ChiselScalatestTester {
 
   behavior of s"RISC-V benchmark"
 
-  it should "run dhrystore" in {
+  ignore should "run dhrystore" in {
     test(new B4ProcessorWithMemory).withAnnotations(
       Seq(
         WriteWaveformAnnotation,

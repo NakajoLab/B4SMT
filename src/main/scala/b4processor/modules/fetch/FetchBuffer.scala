@@ -5,6 +5,7 @@ import b4processor.connections.{Fetch2FetchBuffer, FetchBuffer2Uncompresser}
 import chisel3._
 import chisel3.stage.ChiselStage
 import chisel3.util._
+import scala.math.pow
 
 class FetchBuffer(implicit params: Parameters) extends Module {
   val io = IO(new Bundle {
@@ -109,7 +110,7 @@ sealed class BufferEntry extends Bundle {
 }
 
 object BufferEntry extends App {
-  implicit val params = Parameters(tagWidth = 2, decoderPerThread = 2, debug = true)
+  implicit val params = Parameters(tagWidth = 2, decoderPerThread = 1)
   (new ChiselStage).emitVerilog(
     new FetchBuffer(),
     args = Array(

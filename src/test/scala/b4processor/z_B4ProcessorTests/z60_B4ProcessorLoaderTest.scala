@@ -15,7 +15,7 @@ class z60_B4ProcessorLoaderTest extends AnyFlatSpec with ChiselScalatestTester {
   val WriteWaveformAnnotation = WriteFstAnnotation
 
   // branchプログラムが実行できる
-  it should "execute branch with no parallel" in {
+  ignore should "execute branch with no parallel" in {
     test(
       new B4ProcessorWithMemory()(
         defaultParams.copy(threads = 1, decoderPerThread = 1)

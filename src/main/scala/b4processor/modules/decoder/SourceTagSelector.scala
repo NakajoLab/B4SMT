@@ -3,7 +3,6 @@ package b4processor.modules.decoder
 import b4processor.Parameters
 import b4processor.utils.Tag
 import chisel3._
-import chisel3.experimental.ChiselEnum
 import chisel3.util._
 
 /** sourceTag選択回路
@@ -13,8 +12,7 @@ import chisel3.util._
   * @param params
   *   パラメータ
   */
-class SourceTagSelector(implicit params: Parameters)
-    extends Module {
+class SourceTagSelector(implicit params: Parameters) extends Module {
   val io = IO(new Bundle {
     val reorderBufferDestinationTag =
       Flipped(Valid(new Tag))

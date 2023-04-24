@@ -4,7 +4,9 @@ import b4processor.Parameters
 import b4processor.utils.B4ProcessorWithMemory
 import chiseltest._
 import chiseltest.internal.CachingAnnotation
+import org.scalatest.Tag
 import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.tagobjects.Slow
 
 class B4ProcessorRISCVTestWrapper()(implicit params: Parameters)
     extends B4ProcessorWithMemory() {
@@ -40,7 +42,7 @@ class B4ProcessorRISCVTest extends AnyFlatSpec with ChiselScalatestTester {
 
   def riscv_test_i(test_name: String, timeout: Int = 2000): Unit = {
 
-    it should s"run risc-v test ${test_name}" in {
+    it should s"run risc-v test ${test_name}" taggedAs (RISCVTest, Slow) in {
       test( // FIXME fromFile8bit
         new B4ProcessorRISCVTestWrapper(
         )
@@ -110,9 +112,11 @@ class B4ProcessorRISCVTest extends AnyFlatSpec with ChiselScalatestTester {
 
   behavior of s"RISC-V tests rv64c"
 
+  object RISCVTest extends Tag("RISCVTests")
+
   def riscv_test_c(test_name: String, timeout: Int = 2000): Unit = {
 
-    it should s"run risc-v test ${test_name}" in {
+    it should s"run risc-v test ${test_name}" taggedAs (RISCVTest, Slow) in {
       test( // FIXME fromFile8bit
         new B4ProcessorRISCVTestWrapper(
         )

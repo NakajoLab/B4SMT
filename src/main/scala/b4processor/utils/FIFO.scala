@@ -1,8 +1,8 @@
 package b4processor.utils
 
+import circt.stage.ChiselStage
 import chisel3._
 import chisel3.util._
-import circt.stage.ChiselStage
 
 import scala.math.pow
 

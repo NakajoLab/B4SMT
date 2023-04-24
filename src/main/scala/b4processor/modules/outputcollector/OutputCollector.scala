@@ -32,9 +32,9 @@ class OutputCollector(implicit params: Parameters) extends Module {
     val outReady = io.executor(i).ready
     // No Same input
     if (params.debug)
-    when(outValid && RegNext(outValid)) {
-      assert(outReady && RegNext(outReady) && !(out === RegNext(out)))
-    }
+      when(outValid && RegNext(outValid)) {
+        assert(outReady && RegNext(outReady) && !(out === RegNext(out)))
+      }
   }
 
   for (tid <- 0 until params.threads) {

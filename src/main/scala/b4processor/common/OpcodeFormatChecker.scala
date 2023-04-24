@@ -1,7 +1,6 @@
 package b4processor.common
 
 import chisel3._
-import chisel3.experimental.ChiselEnum
 import chisel3.util._
 
 object OpcodeFormat extends ChiselEnum {

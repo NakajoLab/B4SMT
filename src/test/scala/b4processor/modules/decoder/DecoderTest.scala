@@ -13,8 +13,7 @@ import org.scalatest.flatspec.AnyFlatSpec
   * @param params
   *   パラメータ
   */
-class DecoderWrapper(implicit params: Parameters)
-    extends Decoder {
+class DecoderWrapper(implicit params: Parameters) extends Decoder {
 
   def initialize(instruction: UInt, programCounter: Int = 1000): Unit = {
     this.setImem(instruction, programCounter)

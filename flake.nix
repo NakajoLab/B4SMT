@@ -3,6 +3,7 @@
 
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-unstable";
+    #    nixpkgs-stable.url = "nixpkgs/nixos-22.11";
     flake-utils.url = "github:numtide/flake-utils";
     nix-filter.url = "github:numtide/nix-filter";
     riscv-test-src = {
@@ -36,7 +37,7 @@
             ];
           };
           buildInputs = with pkgs; [ circt ];
-          depsSha256 = "sha256-dzN0PazPY2QVoxatO4nBo7swJ2oWnoRrvwHL2/tM+/g=";
+          depsSha256 = "sha256-W1Kgoc58kruhLW0CDzvuUgAjuRZbT4QqStJLAAnPuhc=";
           buildPhase = ''
             sbt "runMain b4processor.B4Processor"
           '';
@@ -49,6 +50,18 @@
 
           fixupPhase = "true";
         } // attrs);
+        sbtTest = testCommand: B4ProcessorDerivation {
+          pname = "B4Processor-tests";
+          buildInputs = with pkgs; [ verilog verilator stdenv.cc zlib circt ];
+          buildPhase = ''
+            ln -s ${self.packages.${system}.default} programs
+            ${testCommand}
+          '';
+          installPhase = ''
+            mkdir $out
+            [ -d test_run_dir ] && cp -r test_run_dir $out || true
+          '';
+        };
       in
       {
         packages = rec {
@@ -59,34 +72,24 @@
             { name = "riscv-tests"; path = riscv-tests; }
             { name = "riscv-sample-programs"; path = riscv-sample-programs; }
           ];
+          slowChecks = sbtTest ''sbt "testOnly * -- -n org.scalatest.tags.Slow"'';
         };
         checks =
           {
-            all = B4ProcessorDerivation {
-              pname = "B4Processor-tests";
-              buildInputs = with pkgs; [ verilog verilator stdenv.cc zlib circt ];
-              buildPhase = ''
-                ln -s ${self.packages.${system}.default} programs
-                sbt test
-              '';
-              installPhase = ''
-                mkdir $out
-                [ -d test_run_dir ] && cp -r test_run_dir $out || true
-              '';
-            };
+            quick = sbtTest ''sbt "testOnly * -- -l org.scalatest.tags.Slow"'';
           };
         formatter = pkgs.nixpkgs-fmt;
-        devShell = pkgs.mkShell {
+        devShells.default = pkgs.mkShell {
           name = "processor-shell";
           buildInputs = with pkgs;[
             circt
             rustfilt
             pkgsCross.riscv64-embedded.stdenv.cc
             (pkgs.sbt.override {
-              jre = pkgs.jdk17;
+              jre = pkgs.jdk19;
             })
           ];
-          JAVA_17_HOME = "${pkgs.jdk17}/lib/openjdk";
+          JAVA_19_HOME = "${pkgs.jdk19}/lib/openjdk";
         };
       });
 }
