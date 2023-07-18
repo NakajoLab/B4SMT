@@ -1,6 +1,7 @@
 package b4processor.modules.csr
 
 import b4processor.Parameters
+import b4processor.riscv.CSRs
 import b4processor.utils.Tag
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -8,7 +9,7 @@ import chisel3._
 
 class CSRWrapper(implicit params: Parameters) extends CSR {
   def setDecoderInput(
-    address: UInt = 0.U,
+    address: Int = 0,
     destinationTag: Tag = Tag(0, 0),
     value: UInt = 0.U
   ): Unit = {
@@ -40,7 +41,7 @@ class CSRTest extends AnyFlatSpec with ChiselScalatestTester {
   it should "return clock cycles" in {
     test(new CSRWrapper) { c =>
       c.clock.step(100)
-      c.setDecoderInput(CSRName.cycle)
+      c.setDecoderInput(CSRs.cycle)
       c.expectOutput(100.U)
     }
   }
@@ -55,14 +56,14 @@ class CSRTest extends AnyFlatSpec with ChiselScalatestTester {
       c.setReorderBuffer()
       c.clock.step()
 
-      c.setDecoderInput(CSRName.instret)
+      c.setDecoderInput(CSRs.instret)
       c.expectOutput(3.U)
     }
   }
 
   it should "return mhartid" in {
     test(new CSRWrapper()(params.copy(threads = 10))) { c =>
-      c.setDecoderInput(CSRName.mhartid)
+      c.setDecoderInput(CSRs.mhartid)
       c.setThreadId(5)
       c.expectOutput(5.U)
     }
@@ -70,7 +71,7 @@ class CSRTest extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "error on time" in {
     test(new CSRWrapper) { c =>
-      c.setDecoderInput(CSRName.time)
+      c.setDecoderInput(CSRs.time)
       c.expectOutput(isError = true)
     }
   }

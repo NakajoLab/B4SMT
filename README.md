@@ -20,9 +20,15 @@ Nixについては[Nix]の公式サイトや[Zero to Nix]を参考にしてみ�
 * [intellij IDEA][intellij]
 * java
 * [sbt]
+* [LLVM circt] (System Verilog生成用のfirtoolコマンドラインツール)
 
 [intellij]: https://www.jetbrains.com/idea/
 [sbt]: https://www.scala-sbt.org/
+[LLVM circt]: https://circt.llvm.org/
+
+テスト
+* Verilator
+* Ivarus Verilog
 
 ## プロセッサの生成
 次のコマンドで`./processor`にSystem Verilogのソースが出力されます。

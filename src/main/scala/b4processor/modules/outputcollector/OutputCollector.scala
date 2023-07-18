@@ -4,8 +4,8 @@ import b4processor.Parameters
 import b4processor.connections.{CollectedOutput, OutputValue}
 import b4processor.utils.{B4RRArbiter, FIFO}
 import chisel3._
-import chisel3.stage.ChiselStage
 import chisel3.util._
+import _root_.circt.stage.ChiselStage
 
 class OutputCollector(implicit params: Parameters) extends Module {
   val io = IO(new Bundle {
@@ -50,9 +50,14 @@ class OutputCollector(implicit params: Parameters) extends Module {
       .valid := io.dataMemory.valid && io.dataMemory.bits.tag.threadId === tid.U
     threadsArbiter(tid).io.in(params.executors + 1) <> io.csr(tid)
 
-    io.outputs(tid).outputs.bits := threadsArbiter(tid).io.out.bits
-    io.outputs(tid).outputs.valid := threadsArbiter(tid).io.out.valid
+    io.outputs(tid).outputs(0).bits := threadsArbiter(tid).io.out.bits
+    io.outputs(tid).outputs(0).valid := threadsArbiter(tid).io.out.valid
     threadsArbiter(tid).io.out.ready := true.B
+
+    for (i <- 1 until params.parallelOutput) {
+      io.outputs(tid).outputs(i).valid := false.B
+      io.outputs(tid).outputs(i).bits := 0.U
+    }
 
     val out = threadsArbiter(tid).io.out.bits
     val outValid = threadsArbiter(tid).io.out.valid
@@ -84,5 +89,5 @@ class OutputCollector(implicit params: Parameters) extends Module {
 
 object OutputCollector extends App {
   implicit val params = Parameters()
-  (new ChiselStage).emitSystemVerilog(new OutputCollector)
+  ChiselStage.emitSystemVerilogFile(new OutputCollector)
 }

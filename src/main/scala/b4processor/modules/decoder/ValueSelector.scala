@@ -1,9 +1,8 @@
 package b4processor.modules.decoder
 
 import b4processor.Parameters
-import b4processor.common.OpcodeFormat
-import b4processor.common.OpcodeFormat._
-import b4processor.connections.{CollectedOutput, ResultType}
+import b4processor.connections.CollectedOutput
+import b4processor.utils.Tag
 import chisel3._
 import chisel3.util._
 
@@ -12,28 +11,24 @@ import chisel3.util._
   * @param params
   *   パラメータ
   */
-class ValueSelector1(implicit params: Parameters) extends Module {
+class ValueSelector(implicit params: Parameters) extends Module {
   val io = IO(new Bundle {
     val reorderBufferValue = Flipped(Valid(UInt(64.W)))
     val registerFileValue = Input(UInt(64.W))
     val outputCollector = Flipped(new CollectedOutput)
-    val immediateValue = Input(SInt(64.W))
-    val opcodeFormat = Input(OpcodeFormat())
-    val sourceTag = Input(new SourceTagInfo)
+    val sourceTag = Input(Valid(new Tag))
     val value = Valid(UInt(64.W))
   })
 
   // ALUからバイパスされた値のうち、destination tagと一致するsource tagを持っている
-  private val o = io.outputCollector.outputs
-  val outputMatchingTagExists =
-    o.valid && o.bits.resultType === ResultType.Result && o.bits.tag === io.sourceTag.tag
+  private val outputMatchingTagExists = io.outputCollector.outputs
+    .map(o => o.valid && o.bits.tag === io.sourceTag.bits)
+    .fold(false.B)(_ || _)
 
   // 値があるか
   io.value.valid := MuxCase(
     false.B,
     Seq(
-      (io.opcodeFormat === U || io.opcodeFormat === J) -> true.B,
-      (io.sourceTag.from === SourceTagFrom.BeforeDecoder) -> false.B,
       (io.sourceTag.valid && io.reorderBufferValue.valid) -> true.B,
       (io.sourceTag.valid && outputMatchingTagExists) -> true.B,
       (!io.sourceTag.valid) -> true.B
@@ -43,12 +38,29 @@ class ValueSelector1(implicit params: Parameters) extends Module {
   io.value.bits := MuxCase(
     0.U,
     Seq(
-      (io.opcodeFormat === U) -> io.immediateValue.asUInt,
-      (io.opcodeFormat === J) -> io.immediateValue.asUInt,
-      (io.sourceTag.from === SourceTagFrom.BeforeDecoder) -> 0.U,
       (io.sourceTag.valid && io.reorderBufferValue.valid) -> io.reorderBufferValue.bits,
-      (io.sourceTag.valid && outputMatchingTagExists) -> o.bits.value,
+      (io.sourceTag.valid && outputMatchingTagExists) -> Mux1H(
+        io.outputCollector.outputs.map(o =>
+          (o.valid && o.bits.tag === io.sourceTag.bits) -> o.bits.value
+        )
+      ),
       (!io.sourceTag.valid) -> io.registerFileValue
     )
   )
+}
+
+object ValueSelector {
+  def getValue(
+    reorderBufferValue: Valid[UInt],
+    registerFileValue: UInt,
+    outputCollector: CollectedOutput,
+    sourceTag: Valid[Tag]
+  )(implicit params: Parameters): Valid[UInt] = {
+    val m = Module(new ValueSelector)
+    m.io.reorderBufferValue := reorderBufferValue
+    m.io.registerFileValue := registerFileValue
+    m.io.outputCollector := outputCollector
+    m.io.sourceTag := sourceTag
+    m.io.value
+  }
 }

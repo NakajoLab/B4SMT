@@ -7,6 +7,7 @@ import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import b4processor.structures.memoryAccess.MemoryAccessType._
 import b4processor.structures.memoryAccess.MemoryAccessWidth
+import b4processor.utils.operations.{LoadStoreOperation, LoadStoreWidth}
 import b4processor.utils.Tag
 
 class DataMemoryBufferTestWrapper(implicit params: Parameters)
@@ -24,7 +25,8 @@ class DataMemoryBufferTest extends AnyFlatSpec with ChiselScalatestTester {
         c.io.dataIn(0).bits.address.poke(4)
         c.io.dataIn(0).bits.tag.poke(Tag(0, 10))
         c.io.dataIn(0).bits.data.poke(123)
-        c.io.dataIn(0).bits.accessInfo.accessType.poke(Load)
+        c.io.dataIn(0).bits.operation.poke(LoadStoreOperation.Load)
+        c.io.dataIn(0).bits.operationWidth.poke(LoadStoreWidth.Byte)
         c.io.dataReadRequest.ready.poke(true)
         c.io.dataWriteRequest.ready.poke(true)
 
@@ -32,8 +34,8 @@ class DataMemoryBufferTest extends AnyFlatSpec with ChiselScalatestTester {
         c.io.dataIn(1).bits.address.poke(8)
         c.io.dataIn(1).bits.tag.poke(Tag(0, 11))
         c.io.dataIn(1).bits.data.poke(1234)
-        c.io.dataIn(1).bits.accessInfo.accessType.poke(Store)
-        c.io.dataIn(1).bits.accessInfo.accessWidth.poke(MemoryAccessWidth.Word)
+        c.io.dataIn(1).bits.operation.poke(LoadStoreOperation.Store)
+        c.io.dataIn(1).bits.operationWidth.poke(LoadStoreWidth.Word)
 
         c.io.dataReadRequest.ready.poke(true.B)
         c.io.dataWriteRequest.ready.poke(true.B)

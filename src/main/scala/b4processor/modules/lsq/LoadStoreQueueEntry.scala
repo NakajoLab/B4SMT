@@ -2,6 +2,7 @@ package b4processor.modules.lsq
 
 import b4processor.Parameters
 import b4processor.structures.memoryAccess.MemoryAccessInfo
+import b4processor.utils.operations.{LoadStoreOperation, LoadStoreWidth}
 import b4processor.utils.Tag
 import chisel3._
 
@@ -19,16 +20,21 @@ class LoadStoreQueueEntry(implicit params: Parameters) extends Bundle {
   val readyReorderSign = Bool()
 
   /** メモリアクセスの情報 */
-  val info = new MemoryAccessInfo
+  val operation = LoadStoreOperation()
+  val operationWidth = LoadStoreWidth()
 
   /** 命令自体を識別するためのタグ(Destination Tag) */
-  val addressAndLoadResultTag = new Tag
+  val destinationTag = new Tag
 
   /** アドレス値 */
   val address = UInt(64.W)
 
+  val addressOffset = SInt(12.W)
+
   /** アドレス値が有効である */
   val addressValid = Bool()
+
+  val addressTag = new Tag
 
   /** ストアに使用するデータが格納されるタグ(SourceRegister2 Tag) */
   val storeDataTag = new Tag
@@ -42,10 +48,13 @@ class LoadStoreQueueEntry(implicit params: Parameters) extends Bundle {
 
 object LoadStoreQueueEntry {
   def validEntry(
-    accessInfo: MemoryAccessInfo,
-    addressAndStoreResultTag: Tag,
+    operation: LoadStoreOperation.Type,
+    operationWidth: LoadStoreWidth.Type,
+    destinationTag: Tag,
     address: UInt,
     addressValid: Bool,
+    addressOffset: SInt,
+    addressTag: Tag,
     storeDataTag: Tag,
     storeData: UInt,
     storeDataValid: Bool
@@ -53,11 +62,14 @@ object LoadStoreQueueEntry {
     val entry = LoadStoreQueueEntry.default
     entry.valid := true.B
 
-    entry.info := accessInfo
+    entry.operation := operation
+    entry.operationWidth := operationWidth
 
-    entry.addressAndLoadResultTag := addressAndStoreResultTag
+    entry.destinationTag := destinationTag
     entry.address := address
     entry.addressValid := addressValid
+    entry.addressOffset := addressOffset
+    entry.addressTag := addressTag
 
     entry.storeDataTag := storeDataTag
     entry.storeData := storeData
@@ -71,11 +83,14 @@ object LoadStoreQueueEntry {
     entry.valid := false.B
     entry.readyReorderSign := false.B
 
-    entry.info := DontCare
+    entry.operation := DontCare
+    entry.operationWidth := DontCare
 
-    entry.addressAndLoadResultTag := Tag(0, 0)
+    entry.destinationTag := Tag(0, 0)
+    entry.addressTag := Tag(0, 0)
     entry.address := 0.U
     entry.addressValid := false.B
+    entry.addressOffset := 0.S
 
     entry.storeDataTag := Tag(0, 0)
     entry.storeData := 0.U

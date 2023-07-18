@@ -22,4 +22,5 @@ project/plugins/project/
 /programs
 /processor
 
-stats.jsonl
+stats*.jsonl
+stats*.csv

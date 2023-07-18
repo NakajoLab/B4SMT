@@ -1,5 +1,6 @@
 package b4processor.modules.cache
 
+import circt.stage.ChiselStage
 import b4processor.Parameters
 import b4processor.connections.LoadStoreQueue2Memory
 import b4processor.modules.memory.{
@@ -7,10 +8,10 @@ import b4processor.modules.memory.{
   MemoryWriteTransaction
 }
 import b4processor.structures.memoryAccess.{MemoryAccessType, MemoryAccessWidth}
+import b4processor.utils.operations.{LoadStoreOperation, LoadStoreWidth}
 import b4processor.utils.{B4RRArbiter, FIFO}
 import chisel3._
 import chisel3.util._
-import chisel3.stage.ChiselStage
 
 /** from LSQ toDataMemory のためのバッファ
   *
@@ -45,57 +46,67 @@ class DataMemoryBuffer(implicit params: Parameters) extends Module {
 
   when(!buffer.empty) {
     val entry = buffer.output.bits
-    when(entry.accessInfo.accessType === MemoryAccessType.Load) {
+
+    val operationIsStore = LoadStoreOperation.Store === entry.operation
+
+    when(!operationIsStore) {
       io.dataReadRequest.valid := true.B
       io.dataReadRequest.bits.address := entry.address
-      io.dataReadRequest.bits.size := entry.accessInfo.accessWidth
+      io.dataReadRequest.bits.size := MuxLookup(
+        entry.operationWidth,
+        MemoryAccessWidth.DoubleWord
+      )(
+        Seq(
+          LoadStoreWidth.Byte -> MemoryAccessWidth.Byte,
+          LoadStoreWidth.HalfWord -> MemoryAccessWidth.HalfWord,
+          LoadStoreWidth.Word -> MemoryAccessWidth.Word,
+          LoadStoreWidth.DoubleWord -> MemoryAccessWidth.DoubleWord
+        )
+      )
       io.dataReadRequest.bits.outputTag := entry.tag
-      io.dataReadRequest.bits.signed := entry.accessInfo.signed
+      io.dataReadRequest.bits.signed := LoadStoreOperation.Load === entry.operation
       when(io.dataReadRequest.ready) {
         buffer.output.ready := true.B
       }
-    }.elsewhen(entry.accessInfo.accessType === MemoryAccessType.Store) {
+    }.elsewhen(operationIsStore) {
       io.dataWriteRequest.valid := true.B
       val addressUpper = entry.address(63, 3)
       val addressLower = entry.address(2, 0)
       io.dataWriteRequest.bits.address := addressUpper ## 0.U(3.W)
       io.dataWriteRequest.bits.outputTag := entry.tag
-      io.dataWriteRequest.bits.data := MuxLookup(
-        entry.accessInfo.accessWidth.asUInt,
-        0.U,
+      io.dataWriteRequest.bits.data := MuxLookup(entry.operationWidth, 0.U)(
         Seq(
-          MemoryAccessWidth.Byte.asUInt -> Mux1H(
+          LoadStoreWidth.Byte -> Mux1H(
             (0 until 8).map(i =>
-              (addressLower === i.U) -> (entry.data(7, 0) << i * 8)
+              (addressLower === i.U) -> (entry.data(7, 0) << i * 8).asUInt
             )
           ),
-          MemoryAccessWidth.HalfWord.asUInt -> Mux1H(
+          LoadStoreWidth.HalfWord -> Mux1H(
             (0 until 4).map(i =>
-              (addressLower(2, 1) === i.U) -> (entry.data(15, 0) << i * 16)
+              (addressLower(2, 1) === i.U) -> (entry
+                .data(15, 0) << i * 16).asUInt
             )
           ),
-          MemoryAccessWidth.Word.asUInt -> Mux1H(
+          LoadStoreWidth.Word -> Mux1H(
             (0 until 2).map(i =>
-              (addressLower(2) === i.U) -> (entry.data(31, 0) << i * 32)
+              (addressLower(2) === i.U) -> (entry.data(31, 0) << i * 32).asUInt
             )
           ),
-          MemoryAccessWidth.DoubleWord.asUInt -> entry.data
+          LoadStoreWidth.DoubleWord -> entry.data
         )
       )
-      io.dataWriteRequest.bits.mask := MuxLookup(
-        entry.accessInfo.accessWidth.asUInt,
-        0.U,
+      io.dataWriteRequest.bits.mask := MuxLookup(entry.operationWidth, 0.U)(
         Seq(
-          MemoryAccessWidth.Byte.asUInt -> Mux1H(
+          LoadStoreWidth.Byte -> Mux1H(
             (0 until 8).map(i => (addressLower === i.U) -> (1 << i).U)
           ),
-          MemoryAccessWidth.HalfWord.asUInt -> Mux1H(
+          LoadStoreWidth.HalfWord -> Mux1H(
             (0 until 4).map(i => (addressLower(2, 1) === i.U) -> (3 << i * 2).U)
           ),
-          MemoryAccessWidth.Word.asUInt -> Mux1H(
+          LoadStoreWidth.Word -> Mux1H(
             (0 until 2).map(i => (addressLower(2) === i.U) -> (15 << i * 4).U)
           ),
-          MemoryAccessWidth.DoubleWord.asUInt -> "b11111111".U
+          LoadStoreWidth.DoubleWord -> "b11111111".U
         )
       )
       io.dataReadRequest.bits.outputTag := entry.tag
@@ -108,10 +119,5 @@ class DataMemoryBuffer(implicit params: Parameters) extends Module {
 
 object DataMemoryBuffer extends App {
   implicit val params = Parameters(tagWidth = 4, maxRegisterFileCommitCount = 2)
-  (new ChiselStage).emitVerilog(
-    new DataMemoryBuffer,
-    args = Array(
-      "--emission-options=disableMemRandomization,disableRegisterRandomization"
-    )
-  )
+  ChiselStage.emitSystemVerilogFile(new DataMemoryBuffer)
 }

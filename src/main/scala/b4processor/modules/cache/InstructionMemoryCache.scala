@@ -4,8 +4,8 @@ import b4processor.Parameters
 import b4processor.connections.InstructionCache2Fetch
 import b4processor.modules.memory.{InstructionResponse, MemoryReadTransaction}
 import chisel3._
-import chisel3.stage.ChiselStage
 import chisel3.util._
+import _root_.circt.stage.ChiselStage
 
 /** 命令キャッシュモジュール
   *
@@ -136,5 +136,5 @@ class InstructionMemoryCache(implicit params: Parameters) extends Module {
 
 object InstructionMemoryCache extends App {
   implicit val params = Parameters()
-  (new ChiselStage).emitVerilog(new InstructionMemoryCache)
+  ChiselStage.emitSystemVerilogFile(new InstructionMemoryCache)
 }

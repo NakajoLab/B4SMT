@@ -18,9 +18,7 @@ class InstructionChecker extends Module {
     val csr = CSROperations()
   }))
 
-  output.instruction := MuxLookup(
-    input.opcode,
-    Instructions.Unknown,
+  output.instruction := MuxLookup(input.opcode, Instructions.Unknown)(
     Seq(
       // I
       "b0000011".U -> Instructions.Load,
@@ -54,9 +52,7 @@ class InstructionChecker extends Module {
 
   output.branch := Mux(
     output.instruction === Instructions.Branch,
-    MuxLookup(
-      input.function3bits,
-      BranchOperations.Unknown,
+    MuxLookup(input.function3bits, BranchOperations.Unknown)(
       Seq(
         0.U -> BranchOperations.Equal,
         1.U -> BranchOperations.NotEqual,
@@ -71,9 +67,7 @@ class InstructionChecker extends Module {
 
   output.operationWidth := Mux(
     output.instruction === Instructions.Load || output.instruction === Instructions.Store,
-    MuxLookup(
-      input.function3bits,
-      OperationWidth.Unknown,
+    MuxLookup(input.function3bits, OperationWidth.Unknown)(
       Seq(
         0.U -> OperationWidth.Byte,
         1.U -> OperationWidth.HalfWord,
@@ -92,14 +86,11 @@ class InstructionChecker extends Module {
 
   output.arithmetic := Mux(
     output.instruction === Instructions.Arithmetic || output.instruction === Instructions.ArithmeticImmediate,
-    MuxLookup(
-      input.function3bits,
-      ArithmeticOperations.Unknown,
+    MuxLookup(input.function3bits, ArithmeticOperations.Unknown)(
       Seq(
         0.U -> Mux(
-          output.instruction === Instructions.Arithmetic && input.function7bits(
-            5
-          ),
+          output.instruction === Instructions.Arithmetic && input
+            .function7bits(5),
           ArithmeticOperations.Subtraction,
           ArithmeticOperations.Addition
         ),
@@ -121,9 +112,7 @@ class InstructionChecker extends Module {
 
   output.csr := Mux(
     output.instruction === Instructions.Csr || output.instruction === Instructions.CsrI,
-    MuxLookup(
-      input.function3bits(1, 0),
-      CSROperations.Unknown,
+    MuxLookup(input.function3bits(1, 0), CSROperations.Unknown)(
       Seq(
         1.U -> CSROperations.ReadAndWrite,
         2.U -> CSROperations.ReadAndSet,

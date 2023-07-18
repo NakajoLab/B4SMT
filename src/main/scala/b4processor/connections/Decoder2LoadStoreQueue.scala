@@ -1,7 +1,7 @@
 package b4processor.connections
 
 import b4processor.Parameters
-import b4processor.structures.memoryAccess.MemoryAccessInfo
+import b4processor.utils.operations.{LoadStoreOperation, LoadStoreWidth}
 import b4processor.utils.Tag
 import chisel3._
 
@@ -13,13 +13,18 @@ import chisel3._
 class Decoder2LoadStoreQueue(implicit params: Parameters) extends Bundle {
 
   /** メモリアクセスの情報 */
-  val accessInfo = new MemoryAccessInfo()
+  val operation = LoadStoreOperation()
+  val operationWidth = LoadStoreWidth()
 
-  /** 命令自体を識別するためのタグ(Destination Tag) */
-  val addressAndLoadResultTag = new Tag
+  val destinationTag = new Tag
+
+  val addressTag = new Tag
 
   /** アドレス値が有効である */
   val address = UInt(64.W)
+
+  /** アドレス値が有効である */
+  val addressOffset = SInt(12.W)
 
   /** アドレス値が有効である */
   val addressValid = Bool()

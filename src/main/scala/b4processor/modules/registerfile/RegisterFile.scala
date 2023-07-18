@@ -1,12 +1,13 @@
 package b4processor.modules.registerfile
 
+import circt.stage.ChiselStage
 import b4processor.Parameters
 import b4processor.connections.{
   Decoder2RegisterFile,
   ReorderBuffer2RegisterFile
 }
 import chisel3._
-import chisel3.stage.ChiselStage
+import chisel3.experimental.prefix
 import chisel3.util._
 
 /** レジスタファイル
@@ -36,19 +37,24 @@ class RegisterFile(implicit params: Parameters) extends Module {
 
   /** レジスタx1~x31 tpのみthreadIdで初期化
     */
-  val registers = RegInit(VecInit(Seq.fill(32)(0.U(64.W))))
+//  val registers = RegInit(VecInit(Seq.fill(32)(-1.S(64.W).asUInt)))
+  val registers = Reg(Vec(32, UInt(64.W)))
+//  val registers = Mem(32, UInt(64.W))
 
-  for (rb <- io.reorderBuffer) {
-    when(rb.valid && rb.bits.destinationRegister =/= 0.U) {
-      registers(rb.bits.destinationRegister) := rb.bits.value
+  for ((rb, i) <- io.reorderBuffer.zipWithIndex) {
+    prefix(s"in${i}") {
+      val valid = rb.valid && rb.bits.destinationRegister.inner =/= 0.U
+      when(valid) {
+        registers(rb.bits.destinationRegister.inner) := rb.bits.value
+      }
     }
   }
 
   // それぞれのデコーダへの信号
   for (dec <- io.decoders) {
     // ソースレジスタが0ならば0それ以外ならばレジスタから
-    dec.value1 := registers(dec.sourceRegister1)
-    dec.value2 := registers(dec.sourceRegister2)
+    dec.value1 := registers(dec.sourceRegister1.inner)
+    dec.value2 := registers(dec.sourceRegister2.inner)
   }
 
   registers(0) := 0.U
@@ -62,10 +68,9 @@ class RegisterFile(implicit params: Parameters) extends Module {
 
 object RegisterFile extends App {
   implicit val params = Parameters()
-  (new ChiselStage).emitVerilog(
+  ChiselStage.emitSystemVerilogFile(
     new RegisterFile,
-    args = Array(
-      "--emission-options=disableMemRandomization,disableRegisterRandomization"
-    )
+    Array(),
+    Array("--disable-all-randomization")
   )
 }

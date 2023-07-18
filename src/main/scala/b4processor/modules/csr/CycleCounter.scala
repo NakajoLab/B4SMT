@@ -1,8 +1,7 @@
 package b4processor.modules.csr
 
 import chisel3._
-import chisel3.stage.ChiselStage
-import chisel3.util._
+import _root_.circt.stage.ChiselStage
 class CycleCounter extends Module {
   val count = IO(Output(UInt(64.W)))
   private val c = RegInit(0.U(64.W))
@@ -11,5 +10,5 @@ class CycleCounter extends Module {
 }
 
 object CycleCounter extends App {
-  (new ChiselStage).emitSystemVerilog(new CycleCounter)
+  ChiselStage.emitSystemVerilogFile(new CycleCounter)
 }

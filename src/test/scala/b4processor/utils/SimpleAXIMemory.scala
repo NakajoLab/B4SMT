@@ -1,12 +1,12 @@
 package b4processor.utils
 
+import b4processor.utils.axi.{ChiselAXI, Response}
 import chisel3._
-import chisel3.experimental.FlatIO
-import chisel3.stage.ChiselStage
 import chisel3.util.Valid
+import circt.stage.ChiselStage
 
 class SimpleAXIMemory(sizeBytes: Int = 1024 * 1024) extends Module {
-  val axi = FlatIO(Flipped(new AXI(64, 64)))
+  val axi = IO(Flipped(new ChiselAXI(64, 64)))
   val simulationSource = IO(new Bundle {
     val input = Flipped(Valid(UInt(64.W)))
   })
@@ -158,5 +158,5 @@ class SimpleAXIMemory(sizeBytes: Int = 1024 * 1024) extends Module {
 }
 
 object SimpleAXIMemory extends App {
-  (new ChiselStage).emitVerilog(new SimpleAXIMemory())
+  ChiselStage.emitSystemVerilogFile(new SimpleAXIMemory())
 }

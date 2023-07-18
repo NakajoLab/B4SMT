@@ -1,9 +1,11 @@
 package b4processor.modules.reorderbuffer
 
 import b4processor.Parameters
+import b4processor.utils.RVRegister.{AddRegConstructor, AddUIntRegConstructor}
 import b4processor.utils.{DecoderValue, ExecutorValue, RegisterFileValue, Tag}
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
+import chisel3._
 
 import scala.util.Random
 
@@ -17,10 +19,10 @@ class ReorderBufferWrapper(implicit params: Parameters)
   def setOutputs(values: Option[ExecutorValue] = None): Unit = {
     val output = this.io.collectedOutputs.outputs
     val v = values
-    output.valid.poke(v.isDefined)
+    output(0).valid.poke(v.isDefined)
     if (v.isDefined) {
-      output.bits.tag.poke(Tag(0, v.get.destinationTag))
-      output.bits.value.poke(v.get.value)
+      output(0).bits.tag.poke(Tag(0, v.get.destinationTag))
+      output(0).bits.value.poke(v.get.value)
     }
   }
 
@@ -46,7 +48,7 @@ class ReorderBufferWrapper(implicit params: Parameters)
           .registerFile(i)
           .bits
           .destinationRegister
-          .expect(outputs(i).get.destinationRegister)
+          .expect(outputs(i).get.destinationRegister.reg)
         this.io.registerFile(i).bits.value.expect(outputs(i).get.value)
       }
     }
@@ -90,9 +92,9 @@ class ReorderBufferTest extends AnyFlatSpec with ChiselScalatestTester {
           Seq(
             DecoderValue(
               valid = true,
-              source1 = Random.nextInt(32),
-              source2 = Random.nextInt(32),
-              destination = Random.nextInt(32)
+              source1 = Random.nextInt(32).reg,
+              source2 = Random.nextInt(32).reg,
+              destination = Random.nextInt(32).reg
             )
           )
         )
@@ -115,27 +117,27 @@ class ReorderBufferTest extends AnyFlatSpec with ChiselScalatestTester {
             Seq(
               DecoderValue(
                 valid = true,
-                source1 = Random.nextInt(32),
-                source2 = Random.nextInt(32),
-                destination = Random.nextInt(32)
+                source1 = Random.nextInt(32).reg,
+                source2 = Random.nextInt(32).reg,
+                destination = Random.nextInt(32).reg
               ),
               DecoderValue(
                 valid = true,
-                source1 = Random.nextInt(32),
-                source2 = Random.nextInt(32),
-                destination = Random.nextInt(32)
+                source1 = Random.nextInt(32).reg,
+                source2 = Random.nextInt(32).reg,
+                destination = Random.nextInt(32).reg
               ),
               DecoderValue(
                 valid = true,
-                source1 = Random.nextInt(32),
-                source2 = Random.nextInt(32),
-                destination = Random.nextInt(32)
+                source1 = Random.nextInt(32).reg,
+                source2 = Random.nextInt(32).reg,
+                destination = Random.nextInt(32).reg
               ),
               DecoderValue(
                 valid = true,
-                source1 = Random.nextInt(32),
-                source2 = Random.nextInt(32),
-                destination = Random.nextInt(32)
+                source1 = Random.nextInt(32).reg,
+                source2 = Random.nextInt(32).reg,
+                destination = Random.nextInt(32).reg
               )
             )
           )
@@ -159,15 +161,15 @@ class ReorderBufferTest extends AnyFlatSpec with ChiselScalatestTester {
             Seq(
               DecoderValue(
                 valid = true,
-                source1 = Random.nextInt(32),
-                source2 = Random.nextInt(32),
-                destination = Random.nextInt(32)
+                source1 = Random.nextInt(32).reg,
+                source2 = Random.nextInt(32).reg,
+                destination = Random.nextInt(32).reg
               ),
               DecoderValue(
                 valid = true,
-                source1 = Random.nextInt(32),
-                source2 = Random.nextInt(32),
-                destination = Random.nextInt(32)
+                source1 = Random.nextInt(32).reg,
+                source2 = Random.nextInt(32).reg,
+                destination = Random.nextInt(32).reg
               ),
               DecoderValue(),
               DecoderValue()
@@ -189,7 +191,12 @@ class ReorderBufferTest extends AnyFlatSpec with ChiselScalatestTester {
       //      println(c.io.head.get.peek().litValue, c.io.tail.get.peek().litValue)
       c.setDecoder(
         Seq(
-          DecoderValue(valid = true, destination = 1, source1 = 2, source2 = 3)
+          DecoderValue(
+            valid = true,
+            destination = 1.reg,
+            source1 = 2.reg,
+            source2 = 3.reg
+          )
         )
       )
       c.setOutputs(Some(ExecutorValue(destinationTag = 0, value = 3)))
@@ -216,9 +223,9 @@ class ReorderBufferTest extends AnyFlatSpec with ChiselScalatestTester {
           Seq(
             DecoderValue(
               valid = true,
-              destination = 1,
-              source1 = 2,
-              source2 = 3,
+              destination = 1.reg,
+              source1 = 2.reg,
+              source2 = 3.reg,
               programCounter = 500
             )
           )
@@ -261,30 +268,30 @@ class ReorderBufferTest extends AnyFlatSpec with ChiselScalatestTester {
         Seq(
           DecoderValue(
             valid = true,
-            destination = 1,
-            source1 = 2,
-            source2 = 3,
+            destination = 1.reg,
+            source1 = 2.reg,
+            source2 = 3.reg,
             programCounter = 500
           ),
           DecoderValue(
             valid = true,
-            destination = 2,
-            source1 = 2,
-            source2 = 3,
+            destination = 2.reg,
+            source1 = 2.reg,
+            source2 = 3.reg,
             programCounter = 500
           ),
           DecoderValue(
             valid = true,
-            destination = 3,
-            source1 = 2,
-            source2 = 3,
+            destination = 3.reg,
+            source1 = 2.reg,
+            source2 = 3.reg,
             programCounter = 500
           ),
           DecoderValue(
             valid = true,
-            destination = 4,
-            source1 = 2,
-            source2 = 3,
+            destination = 4.reg,
+            source1 = 2.reg,
+            source2 = 3.reg,
             programCounter = 500
           )
         )
@@ -362,30 +369,30 @@ class ReorderBufferTest extends AnyFlatSpec with ChiselScalatestTester {
         Seq(
           DecoderValue(
             valid = true,
-            destination = 1,
-            source1 = 2,
-            source2 = 3,
+            destination = 1.reg,
+            source1 = 2.reg,
+            source2 = 3.reg,
             programCounter = 500
           ),
           DecoderValue(
             valid = true,
-            destination = 2,
-            source1 = 2,
-            source2 = 3,
+            destination = 2.reg,
+            source1 = 2.reg,
+            source2 = 3.reg,
             programCounter = 504
           ),
           DecoderValue(
             valid = true,
-            destination = 3,
-            source1 = 2,
-            source2 = 3,
+            destination = 3.reg,
+            source1 = 2.reg,
+            source2 = 3.reg,
             programCounter = 508
           ),
           DecoderValue(
             valid = true,
-            destination = 4,
-            source1 = 2,
-            source2 = 3,
+            destination = 4.reg,
+            source1 = 2.reg,
+            source2 = 3.reg,
             programCounter = 512
           )
         )
@@ -398,30 +405,30 @@ class ReorderBufferTest extends AnyFlatSpec with ChiselScalatestTester {
         Seq(
           DecoderValue(
             valid = true,
-            destination = 5,
-            source1 = 2,
-            source2 = 3,
+            destination = 5.reg,
+            source1 = 2.reg,
+            source2 = 3.reg,
             programCounter = 516
           ),
           DecoderValue(
             valid = true,
-            destination = 6,
-            source1 = 2,
-            source2 = 3,
+            destination = 6.reg,
+            source1 = 2.reg,
+            source2 = 3.reg,
             programCounter = 520
           ),
           DecoderValue(
             valid = true,
-            destination = 7,
-            source1 = 2,
-            source2 = 3,
+            destination = 7.reg,
+            source1 = 2.reg,
+            source2 = 3.reg,
             programCounter = 524
           ),
           DecoderValue(
             valid = true,
-            destination = 8,
-            source1 = 2,
-            source2 = 3,
+            destination = 8.reg,
+            source1 = 2.reg,
+            source2 = 3.reg,
             programCounter = 528
           )
         )
@@ -510,30 +517,30 @@ class ReorderBufferTest extends AnyFlatSpec with ChiselScalatestTester {
         Seq(
           DecoderValue(
             valid = true,
-            destination = 1,
-            source1 = 2,
-            source2 = 3,
+            destination = 1.reg,
+            source1 = 2.reg,
+            source2 = 3.reg,
             programCounter = 500
           ),
           DecoderValue(
             valid = true,
-            destination = 2,
-            source1 = 2,
-            source2 = 3,
+            destination = 2.reg,
+            source1 = 2.reg,
+            source2 = 3.reg,
             programCounter = 504
           ),
           DecoderValue(
             valid = true,
-            destination = 3,
-            source1 = 2,
-            source2 = 3,
+            destination = 3.reg,
+            source1 = 2.reg,
+            source2 = 3.reg,
             programCounter = 508
           ),
           DecoderValue(
             valid = true,
-            destination = 4,
-            source1 = 2,
-            source2 = 3,
+            destination = 4.reg,
+            source1 = 2.reg,
+            source2 = 3.reg,
             programCounter = 512
           )
         )
@@ -546,30 +553,30 @@ class ReorderBufferTest extends AnyFlatSpec with ChiselScalatestTester {
         Seq(
           DecoderValue(
             valid = true,
-            destination = 5,
-            source1 = 2,
-            source2 = 3,
+            destination = 5.reg,
+            source1 = 2.reg,
+            source2 = 3.reg,
             programCounter = 516
           ),
           DecoderValue(
             valid = true,
-            destination = 6,
-            source1 = 2,
-            source2 = 3,
+            destination = 6.reg,
+            source1 = 2.reg,
+            source2 = 3.reg,
             programCounter = 520
           ),
           DecoderValue(
             valid = true,
-            destination = 7,
-            source1 = 2,
-            source2 = 3,
+            destination = 7.reg,
+            source1 = 2.reg,
+            source2 = 3.reg,
             programCounter = 524
           ),
           DecoderValue(
             valid = true,
-            destination = 8,
-            source1 = 2,
-            source2 = 3,
+            destination = 8.reg,
+            source1 = 2.reg,
+            source2 = 3.reg,
             programCounter = 528
           )
         )

@@ -5,7 +5,8 @@
 _start:
     init_all_regs
     csrrs tp,mhartid,zero
-    bnez tp,_start
+1:
+    bnez tp,1b
     rdcycle a0
     rdinstret a1
     li a5,10

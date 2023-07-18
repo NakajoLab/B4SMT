@@ -37,11 +37,11 @@ class ReservationStationWrapper(implicit params: Parameters)
 
   def setExecutors(values: Option[ExecutorValue]): Unit = {
     val bypassValue = io.collectedOutput(0).outputs
-    bypassValue.valid.poke(values.isDefined)
-    bypassValue.bits.value.poke(
+    bypassValue(0).valid.poke(values.isDefined)
+    bypassValue(0).bits.value.poke(
       values.getOrElse(ExecutorValue(destinationTag = 0, value = 0)).value
     )
-    bypassValue.bits.tag.poke(
+    bypassValue(0).bits.tag.poke(
       Tag(
         0,
         values

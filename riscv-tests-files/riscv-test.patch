@@ -1,21 +1,17 @@
 diff --git a/benchmarks/Makefile b/benchmarks/Makefile
-index c9469e2..9772f0e 100644
+index fde4f23..3d20ee8 100644
 --- a/benchmarks/Makefile
 +++ b/benchmarks/Makefile
-@@ -37,10 +37,11 @@ bmarks = \
- 
- RISCV_PREFIX ?= riscv$(XLEN)-unknown-elf-
- RISCV_GCC ?= $(RISCV_PREFIX)gcc
--RISCV_GCC_OPTS ?= -DPREALLOCATE=1 -mcmodel=medany -static -std=gnu99 -O2 -ffast-math -fno-common -fno-builtin-printf -fno-tree-loop-distribute-patterns
-+RISCV_GCC_OPTS ?= -DPREALLOCATE=1 -mcmodel=medany -static -std=gnu99 -O2 -ffast-math -fno-common -fno-builtin-printf -fno-tree-loop-distribute-patterns -march=rv64iafd
+@@ -47,6 +47,8 @@ RISCV_GCC_OPTS ?= -DPREALLOCATE=1 -mcmodel=medany -static -std=gnu99 -O2 -ffast-
  RISCV_LINK ?= $(RISCV_GCC) -T $(src_dir)/common/test.ld $(incs)
  RISCV_LINK_OPTS ?= -static -nostdlib -nostartfiles -lm -lgcc -T $(src_dir)/common/test.ld
  RISCV_OBJDUMP ?= $(RISCV_PREFIX)objdump --disassemble-all --disassemble-zeroes --section=.text --section=.text.startup --section=.text.init --section=.data
++OBJDUMP_LLVM ?= llvm-objdump --disassemble-all --disassemble-zeroes --section=.text --section=.text.startup --section=.text.init --section=.data
 +RISCV_OBJCOPY ?= $(RISCV_PREFIX)objcopy
- RISCV_SIM ?= spike --isa=rv$(XLEN)gc
+ RISCV_SIM ?= spike --isa=rv$(XLEN)gcv
  
  incs  += -I$(src_dir)/../env -I$(src_dir)/common $(addprefix -I$(src_dir)/, $(bmarks))
-@@ -57,6 +58,9 @@ $(foreach bmark,$(bmarks),$(eval $(call compile_template,$(bmark))))
+@@ -63,19 +65,35 @@ $(foreach bmark,$(bmarks),$(eval $(call compile_template,$(bmark))))
  # Build and run benchmarks on riscv simulator
  
  bmarks_riscv_bin  = $(addsuffix .riscv,  $(bmarks))
@@ -23,9 +19,15 @@ index c9469e2..9772f0e 100644
 +bmarks_riscv_hex64  = $(addsuffix .64.hex,  $(bmarks))
 +bmarks_riscv_binary  = $(addsuffix .binary,  $(bmarks))
  bmarks_riscv_dump = $(addsuffix .riscv.dump, $(bmarks))
++bmarks_riscv_dump_llvm = $(addsuffix .riscv.llvm.dump, $(bmarks))
  bmarks_riscv_out  = $(addsuffix .riscv.out,  $(bmarks))
  
-@@ -66,10 +70,19 @@ $(bmarks_riscv_dump): %.riscv.dump: %.riscv
+ $(bmarks_riscv_dump): %.riscv.dump: %.riscv
+ 	$(RISCV_OBJDUMP) $< > $@
+ 
++$(bmarks_riscv_dump_llvm): %.riscv.llvm.dump: %.riscv
++	$(OBJDUMP_LLVM) $< > $@
++
  $(bmarks_riscv_out): %.riscv.out: %.riscv
  	$(RISCV_SIM) $< > $@
  
@@ -39,7 +41,7 @@ index c9469e2..9772f0e 100644
 +%.64.hex: %.binary
 +	od -An -t x8 $< -w8 -v | tr -d " " > $@
 +
-+riscv: $(bmarks_riscv_dump) $(bmarks_riscv_hex) $(bmarks_riscv_hex64)
++riscv: $(bmarks_riscv_dump) $(bmarks_riscv_hex) $(bmarks_riscv_hex64) $(bmarks_riscv_dump_llvm)
  run: $(bmarks_riscv_out)
  
 -junk += $(bmarks_riscv_bin) $(bmarks_riscv_dump) $(bmarks_riscv_hex) $(bmarks_riscv_out)
@@ -47,7 +49,7 @@ index c9469e2..9772f0e 100644
  
  #------------------------------------------------------------
  # Default
-@@ -85,7 +98,7 @@ latest_install = $(shell ls -1 -d $(instbasedir)/$(instname)* | tail -n 1)
+@@ -91,7 +109,7 @@ latest_install = $(shell ls -1 -d $(instbasedir)/$(instname)* | tail -n 1)
  
  install:
  	mkdir $(install_dir)
@@ -56,267 +58,31 @@ index c9469e2..9772f0e 100644
  
  install-link:
  	rm -rf $(instbasedir)/$(instname)
-diff --git a/benchmarks/common/syscalls.c b/benchmarks/common/syscalls.c
-index 39547b3..6526fe6 100644
---- a/benchmarks/common/syscalls.c
-+++ b/benchmarks/common/syscalls.c
-@@ -25,8 +25,7 @@ static uintptr_t syscall(uintptr_t which, uint64_t arg0, uint64_t arg1, uint64_t
-   __sync_synchronize();
- 
-   tohost = (uintptr_t)magic_mem;
--  while (fromhost == 0)
--    ;
-+  // while (fromhost == 0);
-   fromhost = 0;
- 
-   __sync_synchronize();
-@@ -125,16 +124,18 @@ void _init(int cid, int nc)
- #undef putchar
- int putchar(int ch)
- {
--  static __thread char buf[64] __attribute__((aligned(64)));
--  static __thread int buflen = 0;
-+  // static __thread char buf[64] __attribute__((aligned(64)));
-+  // static __thread int buflen = 0;
- 
--  buf[buflen++] = ch;
-+  // buf[buflen++] = ch;
- 
--  if (ch == '\n' || buflen == sizeof(buf))
--  {
--    syscall(SYS_write, 1, (uintptr_t)buf, buflen);
--    buflen = 0;
--  }
-+  // if (ch == '\n' || buflen == sizeof(buf))
-+  // {
-+  //   syscall(SYS_write, 1, (uintptr_t)buf, buflen);
-+  //   buflen = 0;
-+  // }
-+
-+  tohost = ch;
- 
-   return 0;
- }
-diff --git a/benchmarks/common/test.ld b/benchmarks/common/test.ld
-index a50b017..cb71340 100644
---- a/benchmarks/common/test.ld
-+++ b/benchmarks/common/test.ld
-@@ -20,7 +20,6 @@ ENTRY(_start)
- 
- SECTIONS
- {
--
-   /* text: test code section */
-   . = 0x80000000;
-   .text.init : { *(.text.init) }
-diff --git a/benchmarks/dhrystone/dhrystone.c b/benchmarks/dhrystone/dhrystone.c
-index 38e3376..19a09d3 100644
---- a/benchmarks/dhrystone/dhrystone.c
-+++ b/benchmarks/dhrystone/dhrystone.c
-@@ -1,4 +1,6 @@
- // See LICENSE for license details.
-+#include <stdarg.h>
-+
- 
- #pragma GCC optimize ("no-inline")
- 
-@@ -178,8 +180,4 @@ Enumeration Enum_Par_Val;
-     return (true);
-   else /* not executed */
-     return (false);
--} /* Func_3 */
--
--void debug_printf(const char* str, ...)
--{
--}
-+} /* Func_3 */
-\ No newline at end of file
-diff --git a/benchmarks/dhrystone/dhrystone.h b/benchmarks/dhrystone/dhrystone.h
-index e350c17..3f7eaf3 100644
---- a/benchmarks/dhrystone/dhrystone.h
-+++ b/benchmarks/dhrystone/dhrystone.h
-@@ -381,7 +381,7 @@ extern clock_t	clock();
- 
- #elif defined(__riscv)
- 
--#define HZ 1000000
-+#define HZ 10000000
- #define Too_Small_Time 1
- #define CLOCK_TYPE "rdcycle()"
- #define Start_Timer() Begin_Time = read_csr(mcycle)
-@@ -413,7 +413,7 @@ struct tms      time_info;
- 
- 
- #define Mic_secs_Per_Second     1000000
--#define NUMBER_OF_RUNS		500 /* Default number of runs */
-+#define NUMBER_OF_RUNS		100 /* Default number of runs */
- 
- #ifdef  NOSTRUCTASSIGN
- #define structassign(d, s)      memcpy(&(d), &(s), sizeof(d))
-diff --git a/benchmarks/dhrystone/dhrystone_main.c b/benchmarks/dhrystone/dhrystone_main.c
-index 9c7bcf5..02bd713 100644
---- a/benchmarks/dhrystone/dhrystone_main.c
-+++ b/benchmarks/dhrystone/dhrystone_main.c
-@@ -11,8 +11,6 @@
- 
- #include "dhrystone.h"
- 
--void debug_printf(const char* str, ...);
--
- #include "util.h"
- 
- #include <alloca.h>
-@@ -90,22 +88,22 @@ int main (int argc, char** argv)
-         /* Warning: With 16-Bit processors and Number_Of_Runs > 32000,  */
-         /* overflow may occur for this array element.                   */
- 
--  debug_printf("\n");
--  debug_printf("Dhrystone Benchmark, Version %s\n", Version);
-+  printf("\n");
-+  printf("Dhrystone Benchmark, Version %s\n", Version);
-   if (Reg)
-   {
--    debug_printf("Program compiled with 'register' attribute\n");
-+    printf("Program compiled with 'register' attribute\n");
-   }
-   else
-   {
--    debug_printf("Program compiled without 'register' attribute\n");
-+    printf("Program compiled without 'register' attribute\n");
-   }
--  debug_printf("Using %s, HZ=%d\n", CLOCK_TYPE, HZ);
--  debug_printf("\n");
-+  printf("Using %s, HZ=%d\n", CLOCK_TYPE, HZ);
-+  printf("\n");
- 
-   Done = false;
-   while (!Done) {
--    debug_printf("Trying %d runs through Dhrystone:\n", Number_Of_Runs);
-+    printf("Trying %d runs through Dhrystone:\n", Number_Of_Runs);
- 
-     /***************/
-     /* Start timer */
-@@ -177,56 +175,56 @@ int main (int argc, char** argv)
-     } else Done = true;
-   }
- 
--  debug_printf("Final values of the variables used in the benchmark:\n");
--  debug_printf("\n");
--  debug_printf("Int_Glob:            %d\n", Int_Glob);
--  debug_printf("        should be:   %d\n", 5);
--  debug_printf("Bool_Glob:           %d\n", Bool_Glob);
--  debug_printf("        should be:   %d\n", 1);
--  debug_printf("Ch_1_Glob:           %c\n", Ch_1_Glob);
--  debug_printf("        should be:   %c\n", 'A');
--  debug_printf("Ch_2_Glob:           %c\n", Ch_2_Glob);
--  debug_printf("        should be:   %c\n", 'B');
--  debug_printf("Arr_1_Glob[8]:       %d\n", Arr_1_Glob[8]);
--  debug_printf("        should be:   %d\n", 7);
--  debug_printf("Arr_2_Glob[8][7]:    %d\n", Arr_2_Glob[8][7]);
--  debug_printf("        should be:   Number_Of_Runs + 10\n");
--  debug_printf("Ptr_Glob->\n");
--  debug_printf("  Ptr_Comp:          %d\n", (long) Ptr_Glob->Ptr_Comp);
--  debug_printf("        should be:   (implementation-dependent)\n");
--  debug_printf("  Discr:             %d\n", Ptr_Glob->Discr);
--  debug_printf("        should be:   %d\n", 0);
--  debug_printf("  Enum_Comp:         %d\n", Ptr_Glob->variant.var_1.Enum_Comp);
--  debug_printf("        should be:   %d\n", 2);
--  debug_printf("  Int_Comp:          %d\n", Ptr_Glob->variant.var_1.Int_Comp);
--  debug_printf("        should be:   %d\n", 17);
--  debug_printf("  Str_Comp:          %s\n", Ptr_Glob->variant.var_1.Str_Comp);
--  debug_printf("        should be:   DHRYSTONE PROGRAM, SOME STRING\n");
--  debug_printf("Next_Ptr_Glob->\n");
--  debug_printf("  Ptr_Comp:          %d\n", (long) Next_Ptr_Glob->Ptr_Comp);
--  debug_printf("        should be:   (implementation-dependent), same as above\n");
--  debug_printf("  Discr:             %d\n", Next_Ptr_Glob->Discr);
--  debug_printf("        should be:   %d\n", 0);
--  debug_printf("  Enum_Comp:         %d\n", Next_Ptr_Glob->variant.var_1.Enum_Comp);
--  debug_printf("        should be:   %d\n", 1);
--  debug_printf("  Int_Comp:          %d\n", Next_Ptr_Glob->variant.var_1.Int_Comp);
--  debug_printf("        should be:   %d\n", 18);
--  debug_printf("  Str_Comp:          %s\n",
-+  printf("Final values of the variables used in the benchmark:\n");
-+  printf("\n");
-+  printf("Int_Glob:            %d\n", Int_Glob);
-+  printf("        should be:   %d\n", 5);
-+  printf("Bool_Glob:           %d\n", Bool_Glob);
-+  printf("        should be:   %d\n", 1);
-+  printf("Ch_1_Glob:           %c\n", Ch_1_Glob);
-+  printf("        should be:   %c\n", 'A');
-+  printf("Ch_2_Glob:           %c\n", Ch_2_Glob);
-+  printf("        should be:   %c\n", 'B');
-+  printf("Arr_1_Glob[8]:       %d\n", Arr_1_Glob[8]);
-+  printf("        should be:   %d\n", 7);
-+  printf("Arr_2_Glob[8][7]:    %d\n", Arr_2_Glob[8][7]);
-+  printf("        should be:   Number_Of_Runs + 10\n");
-+  printf("Ptr_Glob->\n");
-+  printf("  Ptr_Comp:          %d\n", (long) Ptr_Glob->Ptr_Comp);
-+  printf("        should be:   (implementation-dependent)\n");
-+  printf("  Discr:             %d\n", Ptr_Glob->Discr);
-+  printf("        should be:   %d\n", 0);
-+  printf("  Enum_Comp:         %d\n", Ptr_Glob->variant.var_1.Enum_Comp);
-+  printf("        should be:   %d\n", 2);
-+  printf("  Int_Comp:          %d\n", Ptr_Glob->variant.var_1.Int_Comp);
-+  printf("        should be:   %d\n", 17);
-+  printf("  Str_Comp:          %s\n", Ptr_Glob->variant.var_1.Str_Comp);
-+  printf("        should be:   DHRYSTONE PROGRAM, SOME STRING\n");
-+  printf("Next_Ptr_Glob->\n");
-+  printf("  Ptr_Comp:          %d\n", (long) Next_Ptr_Glob->Ptr_Comp);
-+  printf("        should be:   (implementation-dependent), same as above\n");
-+  printf("  Discr:             %d\n", Next_Ptr_Glob->Discr);
-+  printf("        should be:   %d\n", 0);
-+  printf("  Enum_Comp:         %d\n", Next_Ptr_Glob->variant.var_1.Enum_Comp);
-+  printf("        should be:   %d\n", 1);
-+  printf("  Int_Comp:          %d\n", Next_Ptr_Glob->variant.var_1.Int_Comp);
-+  printf("        should be:   %d\n", 18);
-+  printf("  Str_Comp:          %s\n",
-                                 Next_Ptr_Glob->variant.var_1.Str_Comp);
--  debug_printf("        should be:   DHRYSTONE PROGRAM, SOME STRING\n");
--  debug_printf("Int_1_Loc:           %d\n", Int_1_Loc);
--  debug_printf("        should be:   %d\n", 5);
--  debug_printf("Int_2_Loc:           %d\n", Int_2_Loc);
--  debug_printf("        should be:   %d\n", 13);
--  debug_printf("Int_3_Loc:           %d\n", Int_3_Loc);
--  debug_printf("        should be:   %d\n", 7);
--  debug_printf("Enum_Loc:            %d\n", Enum_Loc);
--  debug_printf("        should be:   %d\n", 1);
--  debug_printf("Str_1_Loc:           %s\n", Str_1_Loc);
--  debug_printf("        should be:   DHRYSTONE PROGRAM, 1'ST STRING\n");
--  debug_printf("Str_2_Loc:           %s\n", Str_2_Loc);
--  debug_printf("        should be:   DHRYSTONE PROGRAM, 2'ND STRING\n");
--  debug_printf("\n");
-+  printf("        should be:   DHRYSTONE PROGRAM, SOME STRING\n");
-+  printf("Int_1_Loc:           %d\n", Int_1_Loc);
-+  printf("        should be:   %d\n", 5);
-+  printf("Int_2_Loc:           %d\n", Int_2_Loc);
-+  printf("        should be:   %d\n", 13);
-+  printf("Int_3_Loc:           %d\n", Int_3_Loc);
-+  printf("        should be:   %d\n", 7);
-+  printf("Enum_Loc:            %d\n", Enum_Loc);
-+  printf("        should be:   %d\n", 1);
-+  printf("Str_1_Loc:           %s\n", Str_1_Loc);
-+  printf("        should be:   DHRYSTONE PROGRAM, 1'ST STRING\n");
-+  printf("Str_2_Loc:           %s\n", Str_2_Loc);
-+  printf("        should be:   DHRYSTONE PROGRAM, 2'ND STRING\n");
-+  printf("\n");
- 
- 
-   Microseconds = ((User_Time / Number_Of_Runs) * Mic_secs_Per_Second) / HZ;
 diff --git a/isa/Makefile b/isa/Makefile
-index 0203a82..ea43550 100644
+index d66b901..b00a34d 100644
 --- a/isa/Makefile
 +++ b/isa/Makefile
-@@ -39,6 +39,7 @@ RISCV_PREFIX ?= riscv$(XLEN)-unknown-elf-
+@@ -39,6 +39,8 @@ RISCV_PREFIX ?= riscv$(XLEN)-unknown-elf-
  RISCV_GCC ?= $(RISCV_PREFIX)gcc
  RISCV_GCC_OPTS ?= -static -mcmodel=medany -fvisibility=hidden -nostdlib -nostartfiles
  RISCV_OBJDUMP ?= $(RISCV_PREFIX)objdump --disassemble-all --disassemble-zeroes --section=.text --section=.text.startup --section=.text.init --section=.data
++OBJDUMP_LLVM ?= llvm-objdump --disassemble-all --disassemble-zeroes --section=.text --section=.text.startup --section=.text.init --section=.data
 +RISCV_OBJCOPY ?= $(RISCV_PREFIX)objcopy
  RISCV_SIM ?= spike
  
  vpath %.S $(src_dir)
-@@ -55,6 +56,15 @@ vpath %.S $(src_dir)
+@@ -49,12 +51,24 @@ vpath %.S $(src_dir)
+ %.dump: %
+ 	$(RISCV_OBJDUMP) $< > $@
+ 
++%.llvm.dump: %
++	$(OBJDUMP_LLVM) $< > $@
++
+ %.out: %
+ 	$(RISCV_SIM) --isa=rv64gc_zfh_zicboz_svnapot_zicntr --misaligned $< 2> $@
+ 
  %.out32: %
- 	$(RISCV_SIM) --isa=rv32gc_zfh_zicboz_svnapot $< 2> $@
+ 	$(RISCV_SIM) --isa=rv32gc_zfh_zicboz_svnapot_zicntr --misaligned $< 2> $@
  
 +%.binary: %
 +	$(RISCV_OBJCOPY) $< -O binary $@
@@ -330,9 +96,11 @@ index 0203a82..ea43550 100644
  define compile_template
  
  $$($(1)_p_tests): $(1)-p-%: $(1)/%.S
-@@ -104,17 +114,18 @@ endif
+@@ -103,18 +117,20 @@ $(eval $(call compile_template,rv64mi,-march=rv64g -mabi=lp64))
+ endif
  
  tests_dump = $(addsuffix .dump, $(tests))
++tests_llvm_dump = $(addsuffix .llvm.dump, $(tests))
  tests_hex = $(addsuffix .hex, $(tests))
 +tests_hex64 = $(addsuffix .64.hex, $(tests))
  tests_out = $(addsuffix .out, $(filter rv64%,$(tests)))
@@ -347,7 +115,7 @@ index 0203a82..ea43550 100644
  # Default
  
 -all: $(tests_dump)
-+all: $(tests_dump) $(tests_hex) $(tests_hex64)
++all: $(tests_dump) $(tests_llvm_dump) $(tests_hex) $(tests_hex64)
  
  #------------------------------------------------------------
  # Clean up

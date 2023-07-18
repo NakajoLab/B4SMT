@@ -9,7 +9,6 @@ scalacOptions ++= Seq(
   "UTF-8",
   "-feature",
   "-unchecked",
-//  "-Xfatal-warnings",
   "-language:reflectiveCalls",
   "-Ymacro-annotations"
 )
@@ -20,10 +19,9 @@ scalacOptions ++= Seq(
 scalaVersion := "2.13.10"
 
 addCompilerPlugin(
-  "edu.berkeley.cs" % "chisel3-plugin" % "3.6.0-RC2" cross CrossVersion.full
+  "org.chipsalliance" % "chisel-plugin" % "5.0.0" cross CrossVersion.full
 )
 libraryDependencies ++= Seq(
-  "edu.berkeley.cs" %% "chisel3" % "3.6.0-RC2",
-  // We also recommend using chiseltest for writing unit tests
-  "edu.berkeley.cs" %% "chiseltest" % "0.6.0-RC2" % "test"
+  "org.chipsalliance" %% "chisel" % "5.0.0",
+  "edu.berkeley.cs" %% "chiseltest" % "5.0.0" % "test"
 )

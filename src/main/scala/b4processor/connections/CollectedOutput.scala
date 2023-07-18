@@ -5,5 +5,5 @@ import chisel3._
 import chisel3.util._
 
 class CollectedOutput(implicit params: Parameters) extends Bundle {
-  val outputs = Valid(new OutputValue())
+  val outputs = Vec(params.parallelOutput, Valid(new OutputValue()))
 }

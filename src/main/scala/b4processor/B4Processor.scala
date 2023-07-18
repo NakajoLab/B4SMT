@@ -9,15 +9,18 @@ import b4processor.modules.executor.Executor
 import b4processor.modules.fetch.{Fetch, FetchBuffer}
 import b4processor.modules.lsq.LoadStoreQueue
 import b4processor.modules.memory.ExternalMemoryInterface
-import b4processor.modules.outputcollector.OutputCollector
-import b4processor.modules.registerfile.RegisterFile
+import b4processor.modules.outputcollector.{OutputCollector, OutputCollector2}
+import b4processor.modules.registerfile.{RegisterFile, RegisterFileMem}
 import b4processor.modules.reorderbuffer.ReorderBuffer
 import b4processor.modules.reservationstation.ReservationStation
-import b4processor.utils.AXI
+import b4processor.utils.axi.{ChiselAXI, VerilogAXI}
 import chisel3._
+import chisel3.experimental.dataview.DataViewable
 
 class B4Processor(implicit params: Parameters) extends Module {
-  val axi = IO(new AXI(64, 64))
+  override val desiredName = "B4ProcessorInternal"
+  val axi = IO(new ChiselAXI(64, 64))
+
   val registerFileContents =
     if (params.debug) Some(IO(Output(Vec(params.threads, Vec(32, UInt(64.W))))))
     else None
@@ -36,12 +39,13 @@ class B4Processor(implicit params: Parameters) extends Module {
   private val fetchBuffer = Seq.fill(params.threads)(Module(new FetchBuffer))
   private val reorderBuffer =
     Seq.fill(params.threads)(Module(new ReorderBuffer))
-  private val registerFile = Seq.fill(params.threads)(Module(new RegisterFile))
+  private val registerFile =
+    Seq.fill(params.threads)(Module(new RegisterFileMem))
   private val loadStoreQueue =
     Seq.fill(params.threads)(Module(new LoadStoreQueue))
   private val dataMemoryBuffer = Module(new DataMemoryBuffer)
 
-  private val outputCollector = Module(new OutputCollector)
+  private val outputCollector = Module(new OutputCollector2)
   private val branchAddressCollector = Module(new BranchOutputCollector())
 
   private val uncompresser = Seq.fill(params.threads)(
@@ -188,15 +192,37 @@ class B4Processor(implicit params: Parameters) extends Module {
   externalMemoryInterface.io.dataWriteRequests <> dataMemoryBuffer.io.dataWriteRequest
 }
 
+class B4ProcessorFixedPorts(implicit params: Parameters) extends RawModule {
+  override val desiredName = "B4Processor"
+  val AXI_MM = IO(new VerilogAXI(64, 64))
+  val axi = AXI_MM.viewAs[ChiselAXI]
+
+  val aclk = IO(Input(Bool()))
+  val aresetn = IO(Input(Bool()))
+
+  withClockAndReset(aclk.asClock, (!aresetn).asAsyncReset) {
+    val processor = Module(new B4Processor())
+    processor.axi <> axi
+  }
+}
+
 object B4Processor extends App {
   implicit val params = Parameters(
     threads = 2,
     executors = 2,
-    decoderPerThread = 1,
+    decoderPerThread = 2,
     maxRegisterFileCommitCount = 1,
     tagWidth = 4,
     instructionStart = 0x2000_0000L
   )
-//  ChiselStage.emitSystemVerilogFile(new B4Processor())
-  ChiselStage.emitSystemVerilogFile(new B4Processor)
+
+  ChiselStage.emitSystemVerilogFile(
+    new B4ProcessorFixedPorts(),
+    Array.empty,
+    Array(
+//      "--disable-mem-randomization",
+//      "--disable-reg-randomization",
+//      "--disable-all-randomization"
+    )
+  )
 }

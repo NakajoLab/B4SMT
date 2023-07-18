@@ -3,8 +3,8 @@ package b4processor.utils
 import b4processor.{B4Processor, Parameters}
 import chisel3._
 import chiseltest._
-import chisel3.stage.ChiselStage
 import chisel3.util.Valid
+import circt.stage.ChiselStage
 
 class B4ProcessorWithMemory()(implicit params: Parameters) extends Module {
   val io = IO(new Bundle {
@@ -104,7 +104,6 @@ class B4ProcessorWithMemory()(implicit params: Parameters) extends Module {
     while (this.io.registerFileContents.get(thread)(regNum).peekInt() != value)
       this.clock.step()
     this.io.registerFileContents.get(thread)(regNum).expect(value)
-    this.clock.step(3)
   }
 
   def checkForRegisterChange(
@@ -130,10 +129,5 @@ object B4ProcessorWithMemory extends App {
     tagWidth = 5,
     loadStoreQueueIndexWidth = 3
   )
-  (new ChiselStage).emitVerilog(
-    new B4ProcessorWithMemory(),
-    args = Array(
-      "--emission-options=disableMemRandomization,disableRegisterRandomization"
-    )
-  )
+  ChiselStage.emitSystemVerilogFile(new B4ProcessorWithMemory())
 }

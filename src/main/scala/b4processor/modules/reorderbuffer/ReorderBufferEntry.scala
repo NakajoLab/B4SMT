@@ -1,12 +1,14 @@
 package b4processor.modules.reorderbuffer
 
+import b4processor.utils.RVRegister
+import b4processor.utils.RVRegister.AddRegConstructor
 import chisel3._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 
 class ReorderBufferEntry extends Bundle {
 
   /** デスティネーションレジスタ */
-  val destinationRegister = UInt(5.W)
+  val destinationRegister = new RVRegister()
 
   /** 命令の処理が完了した（コミットできる） */
   val valueReady = Bool()
@@ -28,7 +30,7 @@ object ReorderBufferEntry {
   def default: ReorderBufferEntry =
     (new ReorderBufferEntry).Lit(
       _.valueReady -> false.B,
-      _.destinationRegister -> 0.U,
+      _.destinationRegister -> 0.reg,
       _.isError -> false.B,
       _.value -> 0.U,
       _.programCounter -> 0.U,

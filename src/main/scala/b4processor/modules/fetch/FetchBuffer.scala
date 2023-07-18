@@ -3,7 +3,7 @@ package b4processor.modules.fetch
 import b4processor.Parameters
 import b4processor.connections.{Fetch2FetchBuffer, FetchBuffer2Uncompresser}
 import chisel3._
-import chisel3.stage.ChiselStage
+import circt.stage.ChiselStage
 
 import scala.math.pow
 
@@ -63,12 +63,7 @@ sealed class BufferEntry extends Bundle {
 
 object BufferEntry extends App {
   implicit val params = Parameters(tagWidth = 2, decoderPerThread = 1)
-  (new ChiselStage).emitVerilog(
-    new FetchBuffer(),
-    args = Array(
-      "--emission-options=disableMemRandomization,disableRegisterRandomization"
-    )
-  )
+  ChiselStage.emitSystemVerilogFile(new FetchBuffer())
 
   def default(): BufferEntry = {
     val w = Wire(new BufferEntry)

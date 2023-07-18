@@ -1,15 +1,15 @@
 package b4processor.modules.reservationstation
 
+import circt.stage.ChiselStage
 import b4processor.Parameters
 import b4processor.connections.{
   CollectedOutput,
   Decoder2ReservationStation,
-  ReservationStation2Executor,
-  ResultType
+  ReservationStation2Executor
 }
 import b4processor.utils.B4RRArbiter
 import chisel3._
-import chisel3.stage.ChiselStage
+import chisel3.experimental.prefix
 import chisel3.util._
 
 class ReservationStation(implicit params: Parameters) extends Module {
@@ -41,18 +41,19 @@ class ReservationStation(implicit params: Parameters) extends Module {
 
   for (eid <- 0 until params.executors) {
     for (i <- 0 until reservation.length / params.executors) {
-      val a = outputArbiter(eid).io.in(i)
-      val r = reservation(i * params.executors + eid)
-      a.bits.opcode := r.opcode
-      a.bits.destinationTag := r.destinationTag
-      a.bits.value1 := r.value1
-      a.bits.value2 := r.value2
-      a.bits.function3 := r.function3
-      a.bits.immediateOrFunction7 := r.immediateOrFunction7
-      a.bits.wasCompressed := r.wasCompressed
-      a.valid := r.valid && r.ready1 && r.ready2
-      when(a.valid && a.ready) {
-        r := ReservationStationEntry.default
+      prefix(s"exe${eid}_resv${i * params.executors + eid}") {
+        val a = outputArbiter(eid).io.in(i)
+        val r = reservation(i * params.executors + eid)
+        a.bits.operation := r.operation
+        a.bits.destinationTag := r.destinationTag
+        a.bits.value1 := r.value1
+        a.bits.value2 := r.value2
+        a.bits.wasCompressed := r.wasCompressed
+        a.bits.branchOffset := r.branchOffset
+        a.valid := r.valid && r.ready1 && r.ready2
+        when(a.valid && a.ready) {
+          r := ReservationStationEntry.default
+        }
       }
     }
     io.executor(eid) <> outputArbiter(eid).io.out
@@ -62,32 +63,38 @@ class ReservationStation(implicit params: Parameters) extends Module {
   private val head = RegInit(0.U(rsWidth.W))
   private var nextHead = head
   for (i <- 0 until (params.decoderPerThread * params.threads)) {
-    val decoder = io.decoder(i)
-    val resNext = reservation(nextHead)
-    decoder.ready := false.B
-    when(!resNext.valid) {
-      decoder.ready := true.B
-      when(decoder.entry.valid) {
-        resNext := decoder.entry
+    prefix(s"decoder$i") {
+      val decoder = io.decoder(i)
+      val resNext = reservation(nextHead)
+      decoder.ready := false.B
+      when(!resNext.valid) {
+        decoder.ready := true.B
+        when(decoder.entry.valid) {
+          resNext := decoder.entry
+        }
       }
+      nextHead = nextHead + Mux(!resNext.valid && decoder.entry.valid, 1.U, 0.U)
     }
-    nextHead = nextHead + Mux(!resNext.valid && decoder.entry.valid, 1.U, 0.U)
   }
   head := nextHead
 
-  for (output <- io.collectedOutput) {
-    when(
-      output.outputs.valid && output.outputs.bits.resultType === ResultType.Result
-    ) {
-      for (entry <- reservation) {
-        when(entry.valid) {
-          when(!entry.ready1 && entry.sourceTag1 === output.outputs.bits.tag) {
-            entry.value1 := output.outputs.bits.value
-            entry.ready1 := true.B
-          }
-          when(!entry.ready2 && entry.sourceTag2 === output.outputs.bits.tag) {
-            entry.value2 := output.outputs.bits.value
-            entry.ready2 := true.B
+  for ((thread_output, i) <- io.collectedOutput.zipWithIndex) {
+    prefix(s"thread$i") {
+      for (o <- thread_output.outputs) {
+        prefix(s"out$i") {
+          when(o.valid) {
+            for (entry <- reservation) {
+              when(entry.valid) {
+                when(!entry.ready1 && entry.sourceTag1 === o.bits.tag) {
+                  entry.value1 := o.bits.value
+                  entry.ready1 := true.B
+                }
+                when(!entry.ready2 && entry.sourceTag2 === o.bits.tag) {
+                  entry.value2 := o.bits.value
+                  entry.ready2 := true.B
+                }
+              }
+            }
           }
         }
       }
@@ -98,10 +105,5 @@ class ReservationStation(implicit params: Parameters) extends Module {
 object ReservationStation extends App {
   implicit val params =
     Parameters(tagWidth = 2, decoderPerThread = 1, threads = 1)
-  (new ChiselStage).emitVerilog(
-    new ReservationStation(),
-    args = Array(
-      "--emission-options=disableMemRandomization,disableRegisterRandomization"
-    )
-  )
+  ChiselStage.emitSystemVerilogFile(new ReservationStation())
 }

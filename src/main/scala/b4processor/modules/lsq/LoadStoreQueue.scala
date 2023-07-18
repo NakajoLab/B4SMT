@@ -4,17 +4,14 @@ import b4processor.Parameters
 import b4processor.connections.{
   CollectedOutput,
   Decoder2LoadStoreQueue,
-  Executor2LoadStoreQueue,
   LoadStoreQueue2Memory,
-  LoadStoreQueue2ReorderBuffer,
-  ResultType
+  LoadStoreQueue2ReorderBuffer
 }
-import b4processor.modules.outputcollector.OutputCollector
-import b4processor.structures.memoryAccess.MemoryAccessType._
-import b4processor.structures.memoryAccess.MemoryAccessWidth._
 import chisel3._
 import chisel3.util._
-import chisel3.stage.ChiselStage
+import _root_.circt.stage.ChiselStage
+import b4processor.utils.Tag
+import b4processor.utils.operations.LoadStoreOperation
 
 class LoadStoreQueue(implicit params: Parameters) extends Module {
   val io = IO(new Bundle {
@@ -69,10 +66,13 @@ class LoadStoreQueue(implicit params: Parameters) extends Module {
       //      printf("isLoad = %d\n", decoder.bits.opcode === LOAD)
       buffer(insertIndex) := LoadStoreQueueEntry.validEntry(
         // opcode = 1(load), 0(store) (bit数削減)
-        accessInfo = decoder.bits.accessInfo,
-        addressAndStoreResultTag = decoder.bits.addressAndLoadResultTag,
+        operation = decoder.bits.operation,
+        operationWidth = decoder.bits.operationWidth,
+        destinationTag = decoder.bits.destinationTag,
         address = decoder.bits.address,
         addressValid = decoder.bits.addressValid,
+        addressOffset = decoder.bits.addressOffset,
+        addressTag = decoder.bits.addressTag,
         storeDataTag = decoder.bits.storeDataTag,
         storeData = decoder.bits.storeData,
         storeDataValid = decoder.bits.storeDataValid
@@ -87,19 +87,17 @@ class LoadStoreQueue(implicit params: Parameters) extends Module {
 
   private val output = io.outputCollector.outputs
   for (buf <- buffer) {
-    when(output.valid && buf.valid) {
-      when(output.bits.resultType === ResultType.LoadStoreAddress) {
-        when(
-          buf.addressAndLoadResultTag === output.bits.tag && !buf.addressValid
-        ) {
-          buf.address := output.bits.value
-          buf.addressValid := true.B
-        }
-      }
-      when(output.bits.resultType === ResultType.Result) {
-        when(buf.storeDataTag === output.bits.tag && !buf.storeDataValid) {
-          buf.storeData := output.bits.value
+    for (o <- output) {
+      when(o.valid && buf.valid) {
+        when(buf.storeDataTag === o.bits.tag && !buf.storeDataValid) {
+          buf.storeDataTag := Tag(0, 0)
+          buf.storeData := o.bits.value
           buf.storeDataValid := true.B
+        }
+        when(buf.addressTag === o.bits.tag && !buf.addressValid) {
+          buf.addressTag := Tag(0, 0)
+          buf.address := o.bits.value
+          buf.addressValid := true.B
         }
       }
     }
@@ -108,9 +106,7 @@ class LoadStoreQueue(implicit params: Parameters) extends Module {
   for (rb <- io.reorderBuffer) {
     when(rb.valid) {
       for (buf <- buffer) {
-        when(
-          buf.valid && (rb.bits.destinationTag === buf.addressAndLoadResultTag)
-        ) {
+        when(buf.valid && (rb.bits.destinationTag === buf.destinationTag)) {
           buf.readyReorderSign := true.B
         }
       }
@@ -142,23 +138,23 @@ class LoadStoreQueue(implicit params: Parameters) extends Module {
   var nextTail = tail
   var isSet = false.B
 
-  io.memory.bits := DontCare
+  io.memory.bits := 0.U.asTypeOf(new LoadStoreQueue2Memory)
   io.memory.valid := false.B
   for (i <- 0 until params.loadStoreQueueCheckLength) {
     val checkIndex = tail + i.U
     val checkOk = WireDefault(false.B)
     when(buffer(checkIndex).valid) {
-      Address(i) := buffer(checkIndex).address
-      AddressValid(i) := buffer(checkIndex).addressValid
-      EntryValid(i) := buffer(checkIndex).valid
+      val buf = buffer(checkIndex)
+      Address(i) := (buf.address.asSInt + buf.addressOffset).asUInt
+      AddressValid(i) := buf.addressValid
+      EntryValid(i) := buf.valid
       //      Overlap(i) := false.B
       // 先行する命令が持つアドレスの中に被りがある場合，Overlap(i) := true.B
       if (i != 0) {
         for (j <- 0 until i) {
           when(EntryValid(j)) {
             when(
-              (AddressValid(j) && Address(j) === buffer(checkIndex).address)
-                || !AddressValid(j)
+              (AddressValid(j) && Address(j) === Address(i)) || !AddressValid(j)
             ) {
               Overlap(i) := true.B
             }
@@ -166,24 +162,26 @@ class LoadStoreQueue(implicit params: Parameters) extends Module {
         }
       }
 
+      val operationIsStore =
+        LoadStoreOperation.Store === buf.operation
+
       // io.memory(i).valid :=  io.memory(i).ready && (head =/= tail) && ("loadの送出条件" || "storeの送出条件")
-      checkOk := (head =/= tail) && buffer(checkIndex).valid && buffer(
-        checkIndex
-      ).addressValid &&
-        ((buffer(checkIndex).info.accessType === Load && !Overlap(i)) ||
-          (buffer(checkIndex).info.accessType === Store && buffer(
-            checkIndex
-          ).storeDataValid && buffer(checkIndex).readyReorderSign))
+      checkOk := (head =/= tail) && buf.valid &&
+        buf.addressValid &&
+        ((!operationIsStore && !Overlap(i)) ||
+          (operationIsStore && buf.storeDataValid &&
+            buf.readyReorderSign))
 
       io.memory.valid := checkOk | isSet
       // 送出実行
       when(checkOk && !isSet) {
-        io.memory.bits.tag := buffer(checkIndex).addressAndLoadResultTag
-        io.memory.bits.data := buffer(checkIndex).storeData
-        io.memory.bits.address := buffer(checkIndex).address
-        io.memory.bits.accessInfo := buffer(checkIndex).info
+        io.memory.bits.tag := buf.destinationTag
+        io.memory.bits.data := buf.storeData
+        io.memory.bits.address := Address(i)
+        io.memory.bits.operation := buf.operation
+        io.memory.bits.operationWidth := buf.operationWidth
         when(io.memory.ready) {
-          buffer(checkIndex) := LoadStoreQueueEntry.default
+          buf := LoadStoreQueueEntry.default
         }
       }
     }
@@ -203,10 +201,5 @@ class LoadStoreQueue(implicit params: Parameters) extends Module {
 
 object LoadStoreQueue extends App {
   implicit val params = Parameters(maxRegisterFileCommitCount = 2, tagWidth = 4)
-  (new ChiselStage).emitVerilog(
-    new LoadStoreQueue,
-    args = Array(
-      "--emission-options=disableMemRandomization,disableRegisterRandomization"
-    )
-  )
+  ChiselStage.emitSystemVerilogFile(new LoadStoreQueue)
 }

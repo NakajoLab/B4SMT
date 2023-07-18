@@ -16,19 +16,26 @@ class B4ProcessorRISCVTestWrapper()(implicit params: Parameters)
     }
     val reg3_value = this.io.registerFileContents.get(0)(3).peekInt()
     val fail_num = reg3_value >> 1
+    val error_message =
+      s"failed on test $fail_num\n" + this.io.registerFileContents
+        .get(0)
+        .map(_.peekInt())
+        .zipWithIndex
+        .map { case (n, i) => f"x$i%-2d = ($n%016X) $n" }
+        .reduce(_ + "\n" + _)
     this.io.registerFileContents
       .get(0)(3)
-      .expect(1, s"failed on test ${fail_num}")
+      .expect(1, error_message)
   }
 }
 
 class B4ProcessorRISCVTest extends AnyFlatSpec with ChiselScalatestTester {
   // デバッグに時間がかかりすぎるのでパラメータを少し下げる。
-  implicit val defaultParams = {
+  implicit var defaultParams = {
     Parameters(
       debug = true,
       threads = 1,
-      decoderPerThread = 1,
+      decoderPerThread = 4,
       tagWidth = 4,
       loadStoreQueueIndexWidth = 2,
       maxRegisterFileCommitCount = 2,
@@ -42,7 +49,7 @@ class B4ProcessorRISCVTest extends AnyFlatSpec with ChiselScalatestTester {
 
   def riscv_test_i(test_name: String, timeout: Int = 2000): Unit = {
 
-    it should s"run risc-v test ${test_name}" taggedAs (RISCVTest, Slow) in {
+    it should s"run risc-v test $test_name" taggedAs (RISCVTest, Slow) in {
       test( // FIXME fromFile8bit
         new B4ProcessorRISCVTestWrapper(
         )
@@ -52,7 +59,7 @@ class B4ProcessorRISCVTest extends AnyFlatSpec with ChiselScalatestTester {
         ) { c =>
           c.clock.setTimeout(timeout)
           c.initialize(
-            s"programs/riscv-tests/share/riscv-tests/isa/rv64ui-p-${test_name}"
+            s"programs/riscv-tests/share/riscv-tests/isa/rv64ui-p-$test_name"
           )
           c.riscv_test()
         }
@@ -116,7 +123,7 @@ class B4ProcessorRISCVTest extends AnyFlatSpec with ChiselScalatestTester {
 
   def riscv_test_c(test_name: String, timeout: Int = 2000): Unit = {
 
-    it should s"run risc-v test ${test_name}" taggedAs (RISCVTest, Slow) in {
+    it should s"run risc-v test $test_name" taggedAs (RISCVTest, Slow) in {
       test( // FIXME fromFile8bit
         new B4ProcessorRISCVTestWrapper(
         )
@@ -126,7 +133,7 @@ class B4ProcessorRISCVTest extends AnyFlatSpec with ChiselScalatestTester {
         ) { c =>
           c.clock.setTimeout(timeout)
           c.initialize(
-            s"programs/riscv-tests/share/riscv-tests/isa/rv64uc-p-${test_name}"
+            s"programs/riscv-tests/share/riscv-tests/isa/rv64uc-p-$test_name"
           )
           c.riscv_test()
         }

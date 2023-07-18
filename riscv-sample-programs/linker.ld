@@ -12,12 +12,13 @@ SECTIONS{
 		*(.text.init)
 		*(.text*)
 	    PROVIDE(__TEXT_END_ = .);
-
 	} > RAM
+
 	.data : {
 		. = ALIGN(8);
 		PROVIDE(__DATA_START_ = .);
-    *(.data)
+    *(.data .data*)
+    *(.sdata .sdata*)
     PROVIDE(__DATA_END_ = .);
     . = ALIGN(8);
     PROVIDE(__BINARY_END_ = .);

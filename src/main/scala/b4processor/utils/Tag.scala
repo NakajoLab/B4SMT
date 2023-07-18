@@ -9,8 +9,14 @@ class Tag(implicit params: Parameters) extends Bundle {
   val threadId = UInt(log2Up(params.threads).W)
   val id = UInt(params.tagWidth.W)
 
-  def ===(that: Tag): Bool =
-    this.id === that.id && this.threadId === that.threadId
+//  def ===(that: Tag): Bool =
+//    this.id === that.id && this.threadId === that.threadId
+
+  override def toPrintable = if (params.threads == 1) {
+    cf"Tag(${this.id})"
+  } else {
+    cf"Tag(thread=${this.threadId}, id=${this.id})"
+  }
 }
 
 object Tag {

@@ -8,8 +8,6 @@ import scala.math.pow
   *   リオーダバッファで使用するタグのビット数
   * @param loadStoreQueueIndexWidth
   *   ロードストアキューに使うインデックスのビット幅
-  * @param runParallel
-  *   同時実行数
   * @param maxRegisterFileCommitCount
   *   リオーダバッファからレジスタファイルに1クロックでコミットする命令の数(Max)
   * @param maxDataMemoryCommitCount
@@ -22,8 +20,6 @@ import scala.math.pow
   *   分岐予測で使う下位ビット数
   * @param instructionStart
   *   プログラムカウンタの初期値
-  * @param dataMemorySize
-  *   データメモリのサイズ
   */
 case class Parameters(
   tagWidth: Int = 4,
@@ -36,6 +32,7 @@ case class Parameters(
   maxDataMemoryCommitCount: Int = 1,
   fetchWidth: Int = 2,
   branchPredictionWidth: Int = 4,
+  parallelOutput: Int = 2,
   instructionStart: Long = 0x8010_0000L,
   debug: Boolean = false
 )

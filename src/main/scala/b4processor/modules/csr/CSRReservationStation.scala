@@ -1,14 +1,13 @@
 package b4processor.modules.csr
 
+import circt.stage.ChiselStage
 import b4processor.Parameters
 import b4processor.connections.{
   CSRReservationStation2CSR,
   CollectedOutput,
-  Decoder2CSRReservationStation,
-  OutputValue
+  Decoder2CSRReservationStation
 }
 import chisel3._
-import chisel3.stage.ChiselStage
 import chisel3.util._
 
 class CSRReservationStation(implicit params: Parameters) extends Module {
@@ -46,7 +45,7 @@ class CSRReservationStation(implicit params: Parameters) extends Module {
         w.value := d.bits.value
         w.ready := d.bits.ready
         w.address := d.bits.address
-        w.csrAccessType := d.bits.csrAccessType
+        w.operation := d.bits.operation
         w
       }
     }
@@ -60,18 +59,20 @@ class CSRReservationStation(implicit params: Parameters) extends Module {
     io.toCSR.bits.value := bufTail.value
     io.toCSR.bits.address := bufTail.address
     io.toCSR.bits.destinationTag := bufTail.destinationTag
-    io.toCSR.bits.csrAccessType := bufTail.csrAccessType
+    io.toCSR.bits.operation := bufTail.operation
     when(io.toCSR.ready) {
       tail := tail + 1.U
       bufTail.valid := false.B
     }
   }
 
-  when(io.output.outputs.valid) {
-    for (b <- buf) {
-      when(b.valid && !b.ready && b.sourceTag === io.output.outputs.bits.tag) {
-        b.value := io.output.outputs.bits.value
-        b.ready := true.B
+  for (o <- io.output.outputs) {
+    when(o.valid) {
+      for (b <- buf) {
+        when(b.valid && !b.ready && b.sourceTag === o.bits.tag) {
+          b.value := o.bits.value
+          b.ready := true.B
+        }
       }
     }
   }
@@ -79,5 +80,5 @@ class CSRReservationStation(implicit params: Parameters) extends Module {
 
 object CSRReservationStation extends App {
   implicit val params = Parameters()
-  (new ChiselStage).emitSystemVerilog(new CSRReservationStation())
+  ChiselStage.emitSystemVerilogFile(new CSRReservationStation())
 }

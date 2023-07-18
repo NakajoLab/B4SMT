@@ -9,7 +9,6 @@
     riscv-test-src = {
       url = "https://github.com/riscv-software-src/riscv-tests";
       type = "git";
-      rev = "0d397a64d880a83a249e926f985e3cf57ce03620";
       submodules = true;
       flake = false;
     };
@@ -36,10 +35,12 @@
               "build.sbt"
             ];
           };
-          buildInputs = with pkgs; [ circt ];
-          depsSha256 = "sha256-SvJ+E9Nh1s762KF2MCeScLJYbniXvs6f3+A8x/+91/s=";
+          buildInputs = with pkgs; [ circt ripgrep ];
+          depsSha256 = "sha256-oG92yXLLHHuVYQvbUTDiX8qeLE45mrQjwdMZ8TEfFA0=";
           buildPhase = ''
             sbt "runMain b4processor.B4Processor"
+            cat B4Processor.sv | rg -U '(?s)module B4Processor\(.*endmodule' > B4Processor.wrapper.v
+            sed -i 's/module B4Processor(/module B4ProcessorUnused(/g' B4Processor.sv
           '';
 
           # install your software in $out, depending on your needs
@@ -52,7 +53,13 @@
         } // attrs);
         sbtTest = testCommand: B4ProcessorDerivation {
           pname = "B4Processor-tests";
-          buildInputs = with pkgs; [ verilog verilator stdenv.cc zlib circt ];
+          buildInputs = with pkgs; [
+            verilog
+            verilator
+            stdenv.cc
+            zlib
+            circt
+          ];
           buildPhase = ''
             ln -s ${self.packages.${system}.default} programs
             ${testCommand}
@@ -84,12 +91,13 @@
           buildInputs = with pkgs;[
             circt
             rustfilt
-            pkgsCross.riscv64-embedded.stdenv.cc
-            (pkgs.sbt.override {
-              jre = pkgs.jdk19;
-            })
+            pkgsCross.riscv64-embedded.buildPackages.gcc
+            sbt
+            jdk
+            verilog
+            verilator
+            zlib
           ];
-          JAVA_19_HOME = "${pkgs.jdk19}/lib/openjdk";
         };
       });
 }

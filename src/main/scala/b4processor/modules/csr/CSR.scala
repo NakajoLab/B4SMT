@@ -5,12 +5,13 @@ import b4processor.connections.{
   CSR2Fetch,
   CSRReservationStation2CSR,
   OutputValue,
-  ReorderBuffer2CSR,
-  ResultType
+  ReorderBuffer2CSR
 }
 import chisel3._
-import chisel3.stage.ChiselStage
 import chisel3.util._
+import _root_.circt.stage.ChiselStage
+import b4processor.riscv.CSRs
+import b4processor.utils.operations.CSROperation
 
 class CSR(implicit params: Parameters) extends Module {
   val io = IO(new Bundle {
@@ -21,14 +22,13 @@ class CSR(implicit params: Parameters) extends Module {
     val threadId = Input(UInt(log2Up(params.threads).W))
   })
 
+  private val operation = io.decoderInput.bits.operation
+
   io.decoderInput.ready := io.CSROutput.ready
   io.CSROutput.valid := false.B
   io.CSROutput.bits.tag := io.decoderInput.bits.destinationTag
   io.CSROutput.bits.value := 0.U
   io.CSROutput.bits.isError := false.B
-  io.CSROutput.bits.resultType := ResultType.Result
-
-  io.fetch := DontCare
 
   val retireCounter = Module(new RetireCounter)
   retireCounter.io.retireInCycle := io.reorderBuffer.retireCount
@@ -46,45 +46,53 @@ class CSR(implicit params: Parameters) extends Module {
   def setCSROutput(reg: UInt): Unit = {
     io.CSROutput.bits.value := reg
     when(io.CSROutput.ready && io.CSROutput.valid) {
-      reg := MuxLookup(
-        io.decoderInput.bits.csrAccessType.asUInt,
-        0.U,
+      reg := MuxLookup(operation, 0.U)(
         Seq(
-          CSRAccessType.ReadWrite.asUInt -> io.decoderInput.bits.value,
-          CSRAccessType.ReadSet.asUInt -> (reg | io.decoderInput.bits.value),
-          CSRAccessType.ReadClear.asUInt -> (reg & io.decoderInput.bits.value)
+          CSROperation.ReadWrite -> io.decoderInput.bits.value,
+          CSROperation.ReadSet -> (reg | io.decoderInput.bits.value),
+          CSROperation.ReadClear -> (reg & io.decoderInput.bits.value)
         )
       )
     }
   }
 
   when(io.decoderInput.valid) {
+//    printf(p"csr in ${operation}\n")
     val address = io.decoderInput.bits.address
+//    printf(p"csr address ${address}\n")
+
     io.CSROutput.valid := true.B
 
-    when(address === CSRName.cycle || address === CSRName.mcycle) {
+    when(address === CSRs.cycle.U || address === CSRs.mcycle.U) {
       io.CSROutput.bits.value := cycleCounter.count
-    }.elsewhen(address === CSRName.instret || address === CSRName.minstret) {
+    }.elsewhen(address === CSRs.instret.U || address === CSRs.minstret.U) {
       io.CSROutput.bits.value := retireCounter.io.count
-    }.elsewhen(address === CSRName.mhartid) {
+    }.elsewhen(address === CSRs.mhartid.U) {
       io.CSROutput.bits.value := io.threadId
-    }.elsewhen(address === CSRName.mtvec) {
+    }.elsewhen(address === CSRs.mtvec.U) {
       setCSROutput(mtvec)
-    }.elsewhen(address === CSRName.mepc) {
+    }.elsewhen(address === CSRs.mepc.U) {
       setCSROutput(mepc)
-    }.elsewhen(address === CSRName.mcause) {
+    }.elsewhen(address === CSRs.mcause.U) {
       setCSROutput(mcause)
-    }.elsewhen(address === CSRName.mstatus) {
+    }.elsewhen(address === CSRs.mstatus.U) {
       setCSROutput(mstatus)
-    }.elsewhen(address === CSRName.mie) {
+    }.elsewhen(address === CSRs.mie.U) {
       setCSROutput(mie)
     }.otherwise {
       io.CSROutput.bits.isError := true.B
     }
   }
+
+  when(io.reorderBuffer.mcause.valid) {
+    mcause := io.reorderBuffer.mcause.bits
+  }
+  when(io.reorderBuffer.mepc.valid) {
+    mepc := io.reorderBuffer.mepc.bits
+  }
 }
 
 object CSR extends App {
   implicit val params = Parameters()
-  (new ChiselStage).emitVerilog(new CSR())
+  ChiselStage.emitSystemVerilogFile(new CSR())
 }
