@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 
 object OpcodeFormat extends ChiselEnum {
-  val R, I, J, S, U, B, Unknown = Value
+  val R, I, J, S, U, B, Vector, Unknown = Value
 }
 
 class OpcodeFormatChecker extends Module {
@@ -27,14 +27,15 @@ class OpcodeFormatChecker extends Module {
       "b1101111".U -> OpcodeFormat.J, // jal
       // U
       "b0110111".U -> OpcodeFormat.U, // lui
-      "b0010111".U -> OpcodeFormat.U, // aupic
+      "b0010111".U -> OpcodeFormat.U, // auipc
       // B
       "b1100011".U -> OpcodeFormat.B, // 分岐
       // S
       "b0100011".U -> OpcodeFormat.S, // store
       // R
       "b0110011".U -> OpcodeFormat.R, // 演算
-      "b0111011".U -> OpcodeFormat.R // 演算(64I)
+      "b0111011".U -> OpcodeFormat.R, // 演算(64I)
+      "b1010111".U -> OpcodeFormat.Vector, // ベクタ拡張
     )
   )
 }

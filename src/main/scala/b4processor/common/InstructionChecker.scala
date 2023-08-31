@@ -16,6 +16,7 @@ class InstructionChecker extends Module {
     val operationWidth = OperationWidth()
     val arithmetic = ArithmeticOperations()
     val csr = CSROperations()
+    val vConfSet = VConfSets()
   }))
 
   output.instruction := MuxLookup(input.opcode, Instructions.Unknown)(
@@ -46,7 +47,8 @@ class InstructionChecker extends Module {
       "b0100011".U -> Instructions.Store,
       // R
       "b0110011".U -> Instructions.Arithmetic,
-      "b0111011".U -> Instructions.Arithmetic
+      "b0111011".U -> Instructions.Arithmetic,
+      "b1010111".U -> Instructions.Vector,
     )
   )
 
@@ -121,12 +123,22 @@ class InstructionChecker extends Module {
     ),
     CSROperations.Unknown
   )
+
+  output.vConfSet := Mux(
+    (output.instruction === Instructions.Vector) && (input.function3bits === "b111".U(3.W)),
+    MuxCase(VConfSets.Unknown, Seq(
+      input.function7bits === BitPat("b0??????") -> VConfSets.VSETVLI,
+      input.function7bits === BitPat("b11?????") -> VConfSets.VSETIVLI,
+      input.function7bits === BitPat("b1000000") -> VConfSets.VSETVL,
+    )),
+    VConfSets.Unknown
+  )
 }
 
 /** 命令の種類 */
 object Instructions extends ChiselEnum {
   val lui, auipc, jal, jalr, Branch, Load, Store, ArithmeticImmediate,
-    Arithmetic, fence, fencei, ecall, ebreak, Csr, CsrI, Unknown = Value
+    Arithmetic, fence, fencei, ecall, ebreak, Csr, CsrI, Vector, Unknown = Value
 }
 
 /** 分岐命令の種類 */
@@ -242,4 +254,9 @@ object CSROperations extends ChiselEnum {
 
   /** Unknown */
   val Unknown = Value
+}
+
+/** vector Configuration-Setting Instructions */
+object VConfSets extends ChiselEnum {
+  val VSETVLI, VSETIVLI, VSETVL, Unknown = Value
 }

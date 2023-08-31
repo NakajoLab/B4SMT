@@ -20,6 +20,8 @@ import scala.math.pow
   *   分岐予測で使う下位ビット数
   * @param instructionStart
   *   プログラムカウンタの初期値
+  * @param xprlen
+  *   整数レジスタ長
   */
 case class Parameters(
   tagWidth: Int = 4,
@@ -34,5 +36,6 @@ case class Parameters(
   branchPredictionWidth: Int = 4,
   parallelOutput: Int = 2,
   instructionStart: Long = 0x8010_0000L,
-  debug: Boolean = false
+  debug: Boolean = false,
+  xprlen: Int = 64
 )
