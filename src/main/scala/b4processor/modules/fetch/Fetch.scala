@@ -125,14 +125,26 @@ class Fetch(wfiWaitWidth: Int = 10)(implicit params: Parameters)
 
   val wfiCnt = Reg(UInt(wfiWaitWidth.W))
 
+  val lastWaiting = RegNext(waiting)
+  val cnt = RegInit(1.U(8.W))
   // 停止している際の挙動
   when(waiting =/= WaitingReason.None) {
+    when(lastWaiting === waiting) {
+      when(cnt === 0.U) {
+//        printf("Something may be wrong in fetch...\n")
+      }.otherwise {
+        cnt := cnt + 1.U
+      }
+    }.otherwise {
+      cnt := 1.U
+    }
     when(waiting === WaitingReason.Branch || waiting === WaitingReason.JALR) {
       val e = io.collectedBranchAddresses.addresses
       when(e.valid && e.bits.threadId === io.threadId) {
         waiting := WaitingReason.None
         pc := (pc.asSInt + e.bits.programCounterOffset).asUInt
       }
+
     }
     when(waiting === WaitingReason.Fence || waiting === WaitingReason.FenceI) {
       when(

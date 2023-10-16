@@ -21,19 +21,15 @@ class OutputCollector2(implicit params: Parameters)
   val io = IO(new Bundle {
     val outputs = Vec(params.threads, new CollectedOutput)
     val executor = Flipped(Vec(params.executors, Irrevocable(new OutputValue)))
-    val memoryReadResult = Flipped(Irrevocable(new OutputValue))
-    val memoryWriteResult = Flipped(Irrevocable(new OutputValue))
+    val dataMemory = Flipped(Irrevocable(new OutputValue))
     val amo = Flipped(Irrevocable(new OutputValue))
     val csr = Flipped(Vec(params.threads, Irrevocable(new OutputValue)))
     val pextExecutor =
       Flipped(Vec(params.pextExecutors, Irrevocable(new OutputValue)))
   })
 
-  val allInputs = io.csr ++ Seq(
-    io.amo,
-    io.memoryReadResult,
-    io.memoryWriteResult,
-  ) ++ io.pextExecutor ++ io.executor
+  val allInputs =
+    io.csr ++ Seq(io.amo, io.dataMemory) ++ io.pextExecutor ++ io.executor
 
   val bufferedInputs = allInputs map { PassthroughBuffer(_) }
 

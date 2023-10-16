@@ -27,8 +27,8 @@ class DataMemoryBufferTest extends AnyFlatSpec with ChiselScalatestTester {
         c.io.dataIn(0).bits.data.poke(123)
         c.io.dataIn(0).bits.operation.poke(LoadStoreOperation.Load)
         c.io.dataIn(0).bits.operationWidth.poke(LoadStoreWidth.Byte)
-        c.io.dataReadRequest.ready.poke(true)
-        c.io.dataWriteRequest.ready.poke(true)
+        c.io.memory.read.request.ready.poke(true)
+        c.io.memory.write.request.ready.poke(true)
 
         c.io.dataIn(1).valid.poke(true)
         c.io.dataIn(1).bits.address.poke(8)
@@ -37,8 +37,8 @@ class DataMemoryBufferTest extends AnyFlatSpec with ChiselScalatestTester {
         c.io.dataIn(1).bits.operation.poke(LoadStoreOperation.Store)
         c.io.dataIn(1).bits.operationWidth.poke(LoadStoreWidth.Word)
 
-        c.io.dataReadRequest.ready.poke(true.B)
-        c.io.dataWriteRequest.ready.poke(true.B)
+        c.io.memory.read.request.ready.poke(true.B)
+        c.io.memory.write.request.ready.poke(true.B)
 
         if (c.io.dataIn(0).ready.peekBoolean()) {
           c.clock.step(1)
@@ -49,20 +49,20 @@ class DataMemoryBufferTest extends AnyFlatSpec with ChiselScalatestTester {
         }
 
         // RRArbterで順序が入れ替わってしまっている。
-        c.io.dataReadRequest.valid.expect(false)
-        c.io.dataWriteRequest.valid.expect(true)
-        c.io.dataWriteRequest.bits.address.expect(8)
-        c.io.dataWriteRequest.bits.outputTag.id.expect(11)
-        c.io.dataWriteRequest.bits.data.expect(1234)
+        c.io.memory.read.request.valid.expect(false)
+        c.io.memory.write.request.valid.expect(true)
+        c.io.memory.write.request.bits.address.expect(8)
+        c.io.memory.write.request.bits.outputTag.id.expect(11)
+        c.io.memory.write.requestData.bits.data.expect(1234)
         c.clock.step(1)
 
         c.io.dataIn(0).valid.poke(false)
         c.io.dataIn(1).valid.poke(false)
 
-        c.io.dataReadRequest.valid.expect(true)
-        c.io.dataWriteRequest.valid.expect(false)
-        c.io.dataReadRequest.bits.address.expect(4)
-        c.io.dataReadRequest.bits.outputTag.id.expect(10)
+        c.io.memory.read.request.valid.expect(true)
+        c.io.memory.write.request.valid.expect(false)
+        c.io.memory.read.request.bits.address.expect(4)
+        c.io.memory.read.request.bits.outputTag.id.expect(10)
         c.clock.step(1)
       }
   }

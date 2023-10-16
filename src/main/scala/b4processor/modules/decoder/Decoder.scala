@@ -2,7 +2,7 @@ package b4processor.modules.decoder
 
 import b4processor.Parameters
 import b4processor.connections._
-import b4processor.utils.{FormalTools, Tag}
+import b4processor.utils.{FormalTools, Tag, TagValueBundle}
 import chisel3._
 import chisel3.util._
 import _root_.circt.stage.ChiselStage
@@ -61,6 +61,12 @@ class Decoder(implicit params: Parameters) extends Module with FormalTools {
   }
   val destinationTag = io.reorderBuffer.destination.destinationTag
 
+  for (s <- sourceTags) {
+    when(s.valid) {
+      assert(s.bits =/= destinationTag, "tag wrong?")
+    }
+  }
+
   // Valueの選択
   val values = Wire(Vec(3, Valid(UInt(64.W))))
   values := io.reorderBuffer.sources zip io.registerFile.values zip sourceTags map {
@@ -89,16 +95,16 @@ class Decoder(implicit params: Parameters) extends Module with FormalTools {
     rs.destinationTag := destinationTag
     rs.sources zip values zip sourceTags zip operations.sources foreach {
       case (((rs_s, v), st), o) =>
-        rs_s.ready := v.valid || o.valid
-        rs_s.value := MuxCase(0.U, Seq(o.valid -> o.value, v.valid -> v.bits))
-        rs_s.tag := Mux(v.valid || o.valid, Tag(io.threadId, 0.U), st.bits)
-
+        rs_s := new TagValueBundle().fromConditional(
+          !(v.valid || o.valid),
+          st.bits,
+          MuxCase(0.U, Seq(o.valid -> o.value, v.valid -> v.bits)),
+        )
     }
 
     rs.branchOffset := operations.branchOffset
     rs.wasCompressed := io.instructionFetch.bits.wasCompressed
   }
-  rs.sources foreach { s => s.tag.threadId := io.threadId }
 
   // load or store命令の場合，LSQへ発送
   io.loadStoreQueue.bits := 0.U.asTypeOf(new Decoder2LoadStoreQueue)
@@ -181,7 +187,12 @@ class Decoder(implicit params: Parameters) extends Module with FormalTools {
 
   // source and destination tags threadid should be const
   rs.sources.zipWithIndex foreach { case (s, i) =>
-    assert(s.tag.threadId === io.threadId, s"thread id wrong on source($i)")
+    when(s.isTag) {
+      assert(
+        s.getTagUnsafe.threadId === io.threadId,
+        s"thread id wrong on source($i)",
+      )
+    }
   }
   assert(
     io.amo.bits.srcReg.threadId === io.threadId,

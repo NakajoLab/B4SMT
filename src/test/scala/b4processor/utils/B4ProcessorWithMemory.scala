@@ -24,7 +24,7 @@ class B4ProcessorWithMemory()(implicit params: Parameters) extends Module {
     }
   })
   val core = Module(new B4Processor)
-  val axiMemory = Module(new SimpleAXIMemoryWithSimulationIO())
+  val axiMemory = Module(new SimpleAXIMemoryWithSimulationIO(1024*1024*512))
   core.axi <> axiMemory.axi
   io.simulation <> axiMemory.simulationSource.input
 
@@ -151,6 +151,9 @@ class B4ProcessorWithMemory()(implicit params: Parameters) extends Module {
       this.clock.step()
     this.io.simulationIO.output.ready.poke(true)
     val c = this.io.simulationIO.output.bits.peekInt().toChar
+    if (print_value) {
+      print(this.io.simulationIO.output.bits.peekInt().toChar)
+    }
     this.clock.step()
     this.io.simulationIO.output.ready.poke(false)
     c

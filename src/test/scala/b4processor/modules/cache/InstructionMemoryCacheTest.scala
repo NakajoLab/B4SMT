@@ -12,10 +12,10 @@ class InstructionMEmoryCacheWrapper()(implicit params: Parameters)
 
   def responseStep(data: UInt) = {
     this.io.memory.response.valid.poke(true)
-    this.io.memory.response.bits.inner.poke(data)
+    this.io.memory.response.bits.value.poke(data)
     this.clock.step()
     this.io.memory.response.valid.poke(false)
-    this.io.memory.response.bits.inner.poke(0)
+    this.io.memory.response.bits.value.poke(0)
   }
 
   def setFetch(address: UInt) = {

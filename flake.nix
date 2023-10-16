@@ -3,7 +3,6 @@
 
 
   inputs.nixpkgs.url = "nixpkgs/nixpkgs-unstable";
-  inputs.nixpkgs-old.url = "nixpkgs/nixos-22.05";
   inputs.flake-utils.url = "github:numtide/flake-utils";
   inputs.nix-filter.url = "github:numtide/nix-filter";
   inputs.nix-sbt = {
@@ -19,12 +18,22 @@
     flake = false;
   };
 
-  outputs = { self, nixpkgs, flake-utils, nix-sbt, nix-filter, espresso-flake, riscv-test-src, ... }@inputs:
+  outputs = { self, nixpkgs, flake-utils, nix-sbt, nix-filter, espresso-flake, riscv-test-src }:
     flake-utils.lib.eachSystem [ "x86_64-linux" ] (system:
       let
         pkgs = import nixpkgs { inherit system; overlays = [ espresso-flake.overlays.default ]; };
         # pkgsStable = nixpkgs-stable.legacyPackages.${system};
-        verilator' = inputs.nixpkgs-old.legacyPackages.${system}.verilator;
+        verilator_4 = (pkgs.verilator.overrideAttrs (old: rec{
+          inherit (old) pname;
+          version = "4.228";
+          src = pkgs.fetchFromGitHub {
+            owner = pname;
+            repo = pname;
+            rev = "v${version}";
+            sha256 = "sha256-ToYad8cvBF3Mio5fuT4Ce4zXbWxFxd6smqB1TxvlHao=";
+          };
+          doCheck = false;
+        }));
         nf = import nix-filter;
         B4ProcessorDerivation = attrs: nix-sbt.mkSbtDerivation.x86_64-linux ({
           pname = "B4Processor";
@@ -38,7 +47,7 @@
             ];
           };
           buildInputs = with pkgs; [ circt ripgrep ];
-          depsSha256 = "sha256-h/RK552qw6iKNTvNseVB53eNQRi5H/lWF9H9XQCAuZc=";
+          depsSha256 = "sha256-JOxVZpQoFD0hhgRUjMgpPiM1gjwSdbOCac5ov5Tuo/Q=";
           buildPhase = ''
             sbt "runMain b4processor.B4Processor"
             cat B4Processor.sv | rg -U '(?s)module B4Processor\(.*endmodule' > B4Processor.wrapper.v
@@ -57,7 +66,7 @@
           pname = "B4Processor-tests";
           buildInputs = with pkgs; [
             verilog
-            verilator'
+            verilator_4
             stdenv.cc
             zlib
             circt
@@ -87,6 +96,7 @@
             { name = "riscv-sample-programs"; path = riscv-sample-programs; }
           ];
           slowChecks = sbtTest ''sbt "testOnly * -- -n org.scalatest.tags.Slow"'';
+          inherit verilator_4;
         };
         checks =
           {
@@ -98,11 +108,11 @@
           buildInputs = with pkgs;[
             circt
             rustfilt
-            pkgsCross.riscv64-embedded.buildPackages.gcc
+            pkgsCross.riscv64.stdenv.cc
             sbt
             jdk
             verilog
-            verilator'
+            verilator_4
             zlib
             yosys
             graphviz

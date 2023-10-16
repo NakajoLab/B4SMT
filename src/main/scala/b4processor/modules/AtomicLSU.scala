@@ -10,9 +10,10 @@ import chisel3._
 import chisel3.util._
 import _root_.circt.stage.ChiselStage
 import b4processor.modules.memory.{
-  MemoryReadTransaction,
-  MemoryWriteTransaction,
-  MemoryWriteIntent,
+  MemoryAccessChannels,
+  MemoryReadRequest,
+  MemoryWriteRequest,
+  MemoryWriteRequestData,
 }
 import b4processor.structures.memoryAccess.MemoryAccessWidth
 import b4processor.utils.{B4RRArbiter, FIFO, Tag}
@@ -51,10 +52,7 @@ class AtomicLSU(implicit params: Parameters) extends Module {
     )
     val collectedOutput = Flipped(Vec(params.threads, new CollectedOutput()))
     val output = Decoupled(new OutputValue)
-    val readRequest = Decoupled(new MemoryReadTransaction)
-    val writeRequest = Decoupled(new MemoryWriteTransaction)
-    val readResponse = Flipped(Decoupled(new OutputValue))
-    val writeResponse = Flipped(Decoupled(new OutputValue))
+    val memory = new MemoryAccessChannels()
     val reorderBuffer = Flipped(
       Vec(
         params.threads,
@@ -68,13 +66,14 @@ class AtomicLSU(implicit params: Parameters) extends Module {
 
   io.output.valid := false.B
   io.output.bits := 0.U.asTypeOf(new OutputValue())
-  io.readRequest.valid := false.B
-  io.readRequest.bits := 0.U.asTypeOf(new MemoryReadTransaction())
-  io.writeRequest.valid := false.B
-  io.writeRequest.bits := 0.U.asTypeOf(new MemoryWriteTransaction())
-  io.readResponse.ready := false.B
-  io.writeResponse.ready := false.B
-  io.writeRequest.bits.accessType := MemoryWriteIntent.Amo
+  io.memory.read.request.valid := false.B
+  io.memory.read.request.bits := 0.U.asTypeOf(new MemoryReadRequest())
+  io.memory.write.request.valid := false.B
+  io.memory.write.request.bits := 0.U.asTypeOf(new MemoryWriteRequest())
+  io.memory.write.requestData.valid := false.B
+  io.memory.write.requestData.bits := 0.U.asTypeOf(new MemoryWriteRequestData())
+  io.memory.read.response.ready := false.B
+  io.memory.write.response.ready := false.B
 
   private val bufferLength = pow(2, 3).toInt
   private val heads = RegInit(
@@ -188,18 +187,18 @@ class AtomicLSU(implicit params: Parameters) extends Module {
       when(issueQueue.output.bits.operation === AMOOperation.Sc) {
         state := write_request
       }.otherwise {
-        io.readRequest.valid := true.B
+        io.memory.read.request.valid := true.B
         val accessWidth = Mux(
           issueQueue.output.bits.operationWidth === AMOOperationWidth.Word,
           MemoryAccessWidth.Word,
           MemoryAccessWidth.DoubleWord,
         )
-        io.readRequest.bits := MemoryReadTransaction.ReadToAmo(
+        io.memory.read.request.bits := MemoryReadRequest.ReadToAmo(
           issueQueue.output.bits.addressValue,
           accessWidth,
           issueQueue.output.bits.destinationTag,
         )
-        when(io.readRequest.ready) {
+        when(io.memory.read.request.ready) {
           state := load_wait_response
         }
       }
@@ -207,12 +206,14 @@ class AtomicLSU(implicit params: Parameters) extends Module {
   }
 
   when(state === load_wait_response) {
-    io.readResponse.ready := true.B
-    when(io.readResponse.valid) {
-      assert(issueQueue.output.bits.destinationTag === io.readResponse.bits.tag)
-      response := io.readResponse.bits.value
-      isError := io.readResponse.bits.isError
-      when(io.readResponse.bits.isError) {
+    io.memory.read.response.ready := true.B
+    when(io.memory.read.response.valid) {
+      assert(
+        issueQueue.output.bits.destinationTag === io.memory.read.response.bits.tag,
+      )
+      response := io.memory.read.response.bits.value
+      isError := io.memory.read.response.bits.isError
+      when(io.memory.read.response.bits.isError) {
         state := write_back
       }.elsewhen(issueQueue.output.bits.operation === AMOOperation.Lr) {
         state := write_back
@@ -224,6 +225,9 @@ class AtomicLSU(implicit params: Parameters) extends Module {
       }
     }
   }
+
+  private val writeRequestDone = RegInit(false.B)
+  private val writeRequestDataDone = RegInit(false.B)
 
   when(state === write_request) {
     val res = reservation(issueQueue.output.bits.destinationTag.threadId)
@@ -237,7 +241,12 @@ class AtomicLSU(implicit params: Parameters) extends Module {
       when(issueQueue.output.bits.operation === AMOOperation.Sc) {
         response := 0.U
       }
-      io.writeRequest.valid := true.B
+      when(!writeRequestDone) {
+        io.memory.write.request.valid := true.B
+      }
+      when(!writeRequestDataDone) {
+        io.memory.write.requestData.valid := true.B
+      }
       val srcValue = issueQueue.output.bits.srcValue
       import AMOOperation._
       val writeData = MuxLookup(issueQueue.output.bits.operation, 0.U)(
@@ -270,14 +279,14 @@ class AtomicLSU(implicit params: Parameters) extends Module {
           Sc -> srcValue,
         ),
       )
-      io.writeRequest.bits.address := issueQueue.output.bits.addressValue
-      io.writeRequest.bits.outputTag := issueQueue.output.bits.destinationTag
-      io.writeRequest.bits.mask := Mux(
+      io.memory.write.request.bits.address := issueQueue.output.bits.addressValue
+      io.memory.write.request.bits.outputTag := issueQueue.output.bits.destinationTag
+      io.memory.write.requestData.bits.mask := Mux(
         issueQueue.output.bits.operationWidth === AMOOperationWidth.DoubleWord,
         0xff.U,
         Mux(issueQueue.output.bits.addressValue(2), 0xf0.U, 0x0f.U),
       )
-      io.writeRequest.bits.data := Mux(
+      io.memory.write.requestData.bits.data := Mux(
         issueQueue.output.bits.operationWidth === AMOOperationWidth.DoubleWord,
         writeData,
         Mux(
@@ -286,23 +295,36 @@ class AtomicLSU(implicit params: Parameters) extends Module {
           writeData,
         ),
       )
-      when(io.writeRequest.ready) {
-        state := write_wait_response
-        res.valid := false.B
-        for (r <- reservation) {
-          when(r.bits === issueQueue.output.bits.addressValue) {
-            r.valid := false.B
-          }
+      io.memory.write.request.bits.burstLen := 0.U
+
+      res.valid := false.B
+      for (r <- reservation) {
+        when(r.bits === issueQueue.output.bits.addressValue) {
+          r.valid := false.B
         }
       }
+
+      // 条件は真理値表を用いて作成
+      val RD = writeRequestDone
+      val DD = writeRequestDataDone
+      val RR = io.memory.write.request.ready
+      val DR = io.memory.write.requestData.ready
+      RD := (!RD && !DD && RR && !DR) || (RD && !DD && !DR)
+      DD := (!RD && !DD && !RR && DR) || (!RD && DD && !RR)
+      val next =
+        (!RD && !DD && RR && DR) || (!RD && DD && RR) || (RD && !DD && DR)
+      when(next) {
+        state := write_wait_response
+      }
+
     }
   }
 
   when(state === write_wait_response) {
-    io.writeResponse.ready := true.B
-    when(io.writeResponse.valid) {
+    io.memory.write.response.ready := true.B
+    when(io.memory.write.response.valid) {
       state := write_back
-      isError := isError | io.writeResponse.bits.isError
+      isError := isError | io.memory.write.response.bits.isError
     }
   }
 

@@ -203,7 +203,7 @@ class ReorderBuffer(implicit params: Parameters) extends Module {
 
       locally {
         for (source_index <- 0 until 3) {
-          prefix(s"prev_dec_check_${i}_src${source_index}") {
+          prefix(s"prev_dec_check_${i}_src$source_index") {
             val matches_prev_decoder = (0 until i)
               .map(n =>
                 (previousDecoderMap(n).valid &&
@@ -274,6 +274,10 @@ class ReorderBuffer(implicit params: Parameters) extends Module {
     io.bufferIndex0.get := buffer(0)
     //    printf(p"reorder buffer pc=${buffer(0).programCounter} value=${buffer(0).value} ready=${buffer(0).ready} rd=${buffer(0).destinationRegister}\n")
   }
+
+  for (d <- io.decoders)
+    for (s <- d.sources)
+      s.matchingTag.bits.threadId := io.threadId
 
   // FORMAL
   for (d <- io.decoders)

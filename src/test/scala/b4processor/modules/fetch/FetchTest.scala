@@ -75,22 +75,22 @@ class FetchWrapper()(implicit params: Parameters) extends Module {
   fetch.io.interrupt := io.interrupt
 
   cache.io.fetch <> fetch.io.cache
-  cache.io.memory.request <> memoryInterface.io.instructionFetchRequest(0)
-  cache.io.memory.response <> memoryInterface.io.instructionOut(0)
+  cache.io.memory.request <> memoryInterface.io.instruction(0)
+  cache.io.memory.response <> memoryInterface.io.instruction(0)
   cache.io.threadId := 0.U
 
-  memoryInterface.io.dataReadRequests.valid := false.B
-  memoryInterface.io.dataReadRequests.bits := DontCare
-  memoryInterface.io.dataWriteRequests.valid := false.B
-  memoryInterface.io.dataWriteRequests.bits := DontCare
-  memoryInterface.io.dataReadOut.ready := true.B
-  memoryInterface.io.amoReadRequests.valid := false.B
-  memoryInterface.io.amoReadRequests.bits := DontCare
-  memoryInterface.io.amoWriteRequests.valid := DontCare
-  memoryInterface.io.amoWriteRequests.bits := DontCare
-  memoryInterface.io.dataWriteOut.ready := true.B
-  memoryInterface.io.amoReadOut.ready := true.B
-  memoryInterface.io.amoWriteOut.ready := true.B
+  memoryInterface.io.data.read.request.valid := false.B
+  memoryInterface.io.data.read.request.bits := DontCare
+  memoryInterface.io.data.write.request.valid := false.B
+  memoryInterface.io.data.write.request.bits := DontCare
+  memoryInterface.io.data.read.response.ready := true.B
+  memoryInterface.io.amo.read.response.valid := false.B
+  memoryInterface.io.amo.read.request.bits := DontCare
+  memoryInterface.io.amo.write.request.valid := DontCare
+  memoryInterface.io.amo.write.requestData.bits := DontCare
+  memoryInterface.io.data.write.requestData.ready := true.B
+  memoryInterface.io.amo.read.response.ready := true.B
+  memoryInterface.io.amo.write.response.ready := true.B
 
   axiMemory.axi <> memoryInterface.io.coordinator
   axiMemory.simulationSource.input <> io.memorySetup

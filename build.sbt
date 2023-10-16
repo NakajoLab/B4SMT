@@ -23,5 +23,5 @@ addCompilerPlugin(
 )
 libraryDependencies ++= Seq(
   "org.chipsalliance" %% "chisel" % "5.0.0",
-  "edu.berkeley.cs" %% "chiseltest" % "5.0.1" % "test"
+  "edu.berkeley.cs" %% "chiseltest" % "5.0.2" % "test"
 )
