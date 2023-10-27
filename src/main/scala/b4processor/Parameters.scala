@@ -37,5 +37,9 @@ case class Parameters(
   parallelOutput: Int = 2,
   instructionStart: Long = 0x8010_0000L,
   debug: Boolean = false,
-  xprlen: Int = 64
-)
+  xprlen: Int = 64,
+  vlen: Int = 256,
+  vecAluExecUnitNum: Int = 2,
+) {
+  def vlenb: Int = vlen/8
+}

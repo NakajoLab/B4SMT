@@ -15,6 +15,7 @@ class VtypeBundle(implicit params: Parameters) extends Bundle {
   def getBits: UInt = Mux(vill, Cat(true.B, 0.U((params.xprlen-1).W)), Cat(0.U((params.xprlen-8).W), vma, vta, vsew, vlmul))
   def setBits(vtypei: UInt): Unit = {
     vill := vtypei(params.xprlen-1) || (vtypei(params.xprlen-2, 8) =/= 0.U) || vtypei(5) || (vtypei(2,0) =/= 0.U)
+    // villが1ならばこれらは0にすべき？
     vma := vtypei(7)
     vta := vtypei(6)
     vsew := vtypei(5,3)
@@ -32,7 +33,7 @@ class VecCtrlUnitReq(implicit params: Parameters) extends Bundle {
 
 class VecCtrlUnitResp(implicit params: Parameters) extends Bundle {
   val vtype = new VtypeBundle()
-  val vl = UInt(log2Up(params.vlenb).W)
+  val vl = UInt((log2Up(params.vlenb)+1).W)
 }
 
 class VecCtrlUnitIO(implicit params: Parameters) extends Bundle {
@@ -71,6 +72,6 @@ class VecCtrlUnit(implicit params: Parameters) extends Module with VectorOpConst
 }
 
 object VecCtrlUnit extends App {
-  def apply(implicit params: HajimeCoreParams): VecCtrlUnit = new VecCtrlUnit()
-  ChiselStage.emitSystemVerilogFile(VecCtrlUnit(HajimeCoreParams()), firtoolOpts = COMPILE_CONSTANTS.FIRTOOLOPS)
+  def apply(implicit params: Parameters): VecCtrlUnit = new VecCtrlUnit()
+  ChiselStage.emitSystemVerilogFile(VecCtrlUnit(Parameters()), firtoolOpts = COMPILE_CONSTANTS.FIRTOOLOPS)
 }
