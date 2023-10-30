@@ -127,9 +127,9 @@ class InstructionChecker extends Module {
   output.vConfSet := Mux(
     (output.instruction === Instructions.Vector) && (input.function3bits === "b111".U(3.W)),
     MuxCase(VConfSets.Unknown, Seq(
-      input.function7bits === BitPat("b0??????") -> VConfSets.VSETVLI,
-      input.function7bits === BitPat("b11?????") -> VConfSets.VSETIVLI,
-      input.function7bits === BitPat("b1000000") -> VConfSets.VSETVL,
+      (input.function7bits === BitPat("b0??????")) -> VConfSets.VSETVLI,
+      (input.function7bits === BitPat("b11?????")) -> VConfSets.VSETIVLI,
+      (input.function7bits === BitPat("b1000000")) -> VConfSets.VSETVL,
     )),
     VConfSets.Unknown
   )

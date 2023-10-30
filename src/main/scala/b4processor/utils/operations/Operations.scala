@@ -1,7 +1,7 @@
 package b4processor.utils.operations
 
 import b4processor.riscv.Instructions
-import b4processor.riscv.Instructions.{I64Type, ZICSRType, ZIFENCEIType}
+import b4processor.riscv.Instructions.{I64Type, ZICSRType, ZIFENCEIType, VType}
 import b4processor.utils.BundleInitialize.AddBundleInitializeConstructor
 import b4processor.utils.RVRegister
 import b4processor.utils.RVRegister.{AddRegConstructor, AddUIntRegConstructor}
@@ -194,6 +194,33 @@ object Operations {
       (u, _) => u.csrOp -> op
     )
 
+  def vsetvliOp(op: CSROperation.Type): (UInt, UInt) => Operations =
+    createOperation(
+      _.rd -> _(11,7).reg,
+      _.rs1 -> _(19, 15).reg,
+      _.rs2Value -> _(30, 20),
+      (u, _) => u.rs2ValueValid -> true.B,
+      (u, _) => u.csrOp -> op,
+    )
+
+  def vsetivliOp(op: CSROperation.Type): (UInt, UInt) => Operations =
+    createOperation(
+      _.rd -> _(11, 7).reg,
+      _.rs1Value -> _(19, 15),
+      (u, _) => u.rs1ValueValid -> true.B,
+      _.rs2Value -> _(29, 20),
+      (u, _) => u.rs2ValueValid -> true.B,
+      (u, _) => u.csrOp -> op,
+    )
+
+  def vsetvlOp(op: CSROperation.Type): (UInt, UInt) => Operations =
+    createOperation(
+      _.rd -> _(11,7).reg,
+      _.rs1 -> _(19,15).reg,
+      _.rs2 -> _(24,20).reg,
+      (u, _) => u.csrOp -> op
+    )
+
   def decodingList = {
     import Instructions.IType
     Seq(
@@ -314,7 +341,10 @@ object Operations {
       ZICSRType("CSRRW") -> csrOp(CSROperation.ReadWrite),
       ZICSRType("CSRRCI") -> csrImmOp(CSROperation.ReadClear),
       ZICSRType("CSRRSI") -> csrImmOp(CSROperation.ReadSet),
-      ZICSRType("CSRRWI") -> csrImmOp(CSROperation.ReadWrite)
+      ZICSRType("CSRRWI") -> csrImmOp(CSROperation.ReadWrite),
+      VType("VSETVLI") -> vsetvliOp(CSROperation.SetVl),
+      VType("VSETIVLI") -> vsetivliOp(CSROperation.SetVl),
+      VType("VSETVL") -> vsetvlOp(CSROperation.SetVl),
     )
   }
 
@@ -363,5 +393,5 @@ object LoadStoreWidth extends ChiselEnum {
 }
 
 object CSROperation extends ChiselEnum {
-  val None, ReadWrite, ReadSet, ReadClear = Value
+  val None, ReadWrite, ReadSet, ReadClear, SetVl = Value
 }

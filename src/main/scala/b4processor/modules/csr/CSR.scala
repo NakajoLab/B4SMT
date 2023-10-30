@@ -1,17 +1,14 @@
 package b4processor.modules.csr
 
 import b4processor.Parameters
-import b4processor.connections.{
-  CSR2Fetch,
-  CSRReservationStation2CSR,
-  OutputValue,
-  ReorderBuffer2CSR
-}
+import b4processor.connections.{CSR2Fetch, CSRReservationStation2CSR, OutputValue, ReorderBuffer2CSR}
 import chisel3._
 import chisel3.util._
 import _root_.circt.stage.ChiselStage
+import b4processor.modules.vector._
 import b4processor.riscv.CSRs
 import b4processor.utils.operations.CSROperation
+import chisel3.experimental.BundleLiterals._
 
 class CSR(implicit params: Parameters) extends Module {
   val io = IO(new Bundle {
@@ -42,6 +39,14 @@ class CSR(implicit params: Parameters) extends Module {
   io.fetch.mcause := mcause
   val mstatus = RegInit(0.U(64.W))
   val mie = RegInit(0.U(64.W))
+  val vtype = RegInit(new VtypeBundle().Lit(
+    _.vill -> true.B,
+    _.vma -> false.B,
+    _.vta -> false.B,
+    _.vsew -> 0.U,
+    _.vlmul -> 0.U
+  ))
+  val vl = RegInit(0.U((log2Up(params.vlenb)+1).W))
 
   def setCSROutput(reg: UInt): Unit = {
     io.CSROutput.bits.value := reg
@@ -79,6 +84,20 @@ class CSR(implicit params: Parameters) extends Module {
       setCSROutput(mstatus)
     }.elsewhen(address === CSRs.mie.U) {
       setCSROutput(mie)
+    }.elsewhen(address === CSRs.vtype.U) {
+      io.CSROutput.bits.value := vtype.getBits
+    }.elsewhen(address === CSRs.vl.U) {
+      io.CSROutput.bits.value := vl
+    }.elsewhen(io.decoderInput.bits.operation === CSROperation.SetVl) {
+      val avl = io.decoderInput.bits.value
+      val vtypei = 0.U(52.W) ## io.decoderInput.bits.address
+      val vtypeBits = Wire(new VtypeBundle())
+      vtypeBits.setBits(vtypei)
+      val maxVl = MuxLookup(vtypeBits.vsew, 0.U)(
+        (0 until 4).map(i => i.U(3.W) -> (params.vlen >> (3 + i)).U)
+      )
+      vtype := vtypeBits
+      vl := Mux(avl >= maxVl, maxVl, avl)
     }.otherwise {
       io.CSROutput.bits.isError := true.B
     }
