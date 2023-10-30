@@ -97,7 +97,9 @@ class CSR(implicit params: Parameters) extends Module {
         (0 until 4).map(i => i.U(3.W) -> (params.vlen >> (3 + i)).U)
       )
       vtype := vtypeBits
-      vl := Mux(avl >= maxVl, maxVl, avl)
+      val nextVl = Mux(avl >= maxVl, maxVl, avl)
+      vl := nextVl
+      io.CSROutput.bits.value := nextVl
     }.otherwise {
       io.CSROutput.bits.isError := true.B
     }

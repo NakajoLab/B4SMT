@@ -16,6 +16,7 @@ SUBDIRS := fibonacci \
 			csrtest \
 			simple_loader_hello \
 			illegal_inst \
+			vsetvl \
 #			simple_loader_uart \
 
 all: $(SUBDIRS)

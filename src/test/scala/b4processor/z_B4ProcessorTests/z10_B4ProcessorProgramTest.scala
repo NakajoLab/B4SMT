@@ -556,4 +556,18 @@ class z10_B4ProcessorProgramTest
         c.clock.step(20)
       }
   }
+
+  it should "run vector configuration" in {
+    test(
+      new B4ProcessorWithMemory()(
+        defaultParams.copy(threads = 1, decoderPerThread = 1)
+      )
+    )
+      .withAnnotations(
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
+      ) { c =>
+        c.initialize("programs/riscv-sample-programs/vsetvl")
+        c.checkForRegister(13, 20, 1000)
+      }
+  }
 }
