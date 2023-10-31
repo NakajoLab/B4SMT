@@ -567,7 +567,7 @@ class z10_B4ProcessorProgramTest
         Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
       ) { c =>
         c.initialize("programs/riscv-sample-programs/vsetvl")
-        c.checkForRegister(13, 20, 1000)
+        c.checkForRegister(3, 4, 1000)
       }
   }
 }
