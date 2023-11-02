@@ -40,6 +40,8 @@ case class Parameters(
   xprlen: Int = 64,
   vlen: Int = 256,
   vecAluExecUnitNum: Int = 2,
+  physicalVrfFor1Thread: Int = 48,
 ) {
   def vlenb: Int = vlen/8
+  def physicalVrfEntries: Int = physicalVrfFor1Thread * threads
 }

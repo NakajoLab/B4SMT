@@ -35,7 +35,10 @@ class OpcodeFormatChecker extends Module {
       // R
       "b0110011".U -> OpcodeFormat.R, // 演算
       "b0111011".U -> OpcodeFormat.R, // 演算(64I)
+      // V
       "b1010111".U -> OpcodeFormat.Vector, // ベクタ拡張
+      "b0000111".U -> OpcodeFormat.Vector, // ベクタ拡張（メモリロード）
+      "b0100111".U -> OpcodeFormat.Vector, // ベクタ拡張（メモリストア）
     )
   )
 }

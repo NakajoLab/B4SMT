@@ -31,6 +31,16 @@ class Operations extends Bundle {
   val compressed = Bool()
   val csrOp = CSROperation()
   val csrAddress = UInt(12.W)
+  val vecLdst = Bool()
+  val vecExec = Bool()
+  val vMop = MopOperation()
+  val vUmop = UmopOperation()
+  val vs1 = UInt(5.W)
+  val vs2 = UInt(5.W)
+  val vd = UInt(5.W)
+  val vs1Valid = Bool()
+  val vs2Valid = Bool()
+  val vdValid = Bool()
 }
 
 object Operations {
@@ -80,7 +90,17 @@ object Operations {
     _.ebreak -> false.B,
     _.compressed -> false.B,
     _.csrOp -> CSROperation.None,
-    _.csrAddress -> 0.U
+    _.csrAddress -> 0.U,
+    _.vecLdst -> false.B,
+    _.vecExec -> false.B,
+    _.vMop -> MopOperation.UnitStride,
+    _.vUmop -> UmopOperation.Normal,
+    _.vs1 -> 0.U,
+    _.vs2 -> 0.U,
+    _.vd -> 0.U,
+    _.vs1Valid -> false.B,
+    _.vs2Valid -> false.B,
+    _.vdValid -> false.B,
   )
 
   implicit class UIntAccess(u: UInt) {
@@ -219,6 +239,36 @@ object Operations {
       _.rs1 -> _(19,15).reg,
       _.rs2 -> _(24,20).reg,
       (u, _) => u.csrOp -> op
+    )
+
+  def vUnitStrideLoadOp(
+    width: LoadStoreWidth.Type,
+    umop: UmopOperation.Type
+  ): (UInt, UInt) => Operations =
+    createOperation(
+      (u, _) => u.loadStoreOp -> LoadStoreOperation.Load,
+      (u, _) => u.loadStoreWidth -> width,
+      (u, _) => u.vMop -> MopOperation.UnitStride,
+      (u, _) => u.vUmop -> umop,
+      (u, _) => u.vecLdst -> true.B,
+      _.vd -> _(11, 7),
+      _.vdValid -> true.B,
+      _.rs1 -> _(19, 15).reg,
+    )
+
+  def vUnitStrideStoreOp(
+    width: LoadStoreWidth.Type,
+    umop: UmopOperation.Type,
+  ): (UInt, UInt) => Operations =
+    createOperation(
+      (u, _) => u.loadStoreOp -> LoadStoreOperation.Store,
+      (u, _) => u.loadStoreWidth -> width,
+      (u, _) => u.vMop -> MopOperation.UnitStride,
+      (u, _) => u.vUmop -> umop,
+      (u, _) => u.vecLdst -> true.B,
+      _.vd -> _(11, 7),
+      _.vdValid -> true.B,
+      _.rs1 -> _(19, 15).reg,
     )
 
   def decodingList = {
@@ -394,4 +444,12 @@ object LoadStoreWidth extends ChiselEnum {
 
 object CSROperation extends ChiselEnum {
   val None, ReadWrite, ReadSet, ReadClear, SetVl = Value
+}
+
+object MopOperation extends ChiselEnum {
+  val UnitStride, IndexedUnordered, Strided, IndexedOrdered = Value
+}
+
+object UmopOperation extends ChiselEnum {
+  val Normal, WholeReg, Mask = Value
 }
