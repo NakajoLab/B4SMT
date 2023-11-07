@@ -3,11 +3,12 @@ package b4processor.utils.operations
 import circt.stage.ChiselStage
 import b4processor.Parameters
 import b4processor.modules.PExt.PExtensionOperation
-import b4processor.riscv.Instructions
+import b4processor.riscv.Instructions._
 import b4processor.utils.BundleInitialize.AddBundleInitializeConstructor
 import b4processor.utils.RVRegister
 import b4processor.utils.RVRegister.{AddRegConstructor, AddUIntRegConstructor}
-import b4processor.utils.operations.OptionalBundle.{invalid, valid}
+import b4processor.utils.operations.Operations._
+import OptionalBundle._
 import chisel3._
 import chisel3.util._
 import chisel3.util.experimental.decode.{TruthTable, decoder}
@@ -41,6 +42,17 @@ class Operations extends Bundle {
     val value = UInt(64.W)
     val valid = Bool()
   }
+  val csrAddress = UInt(12.W)
+  val vecLdst = Bool()
+  val vecExec = Bool()
+  val vMop = MopOperation()
+  val vUmop = UmopOperation()
+  val vs1 = UInt(5.W)
+  val vs2 = UInt(5.W)
+  val vd = UInt(5.W)
+  val vs1Valid = Bool()
+  val vs2Valid = Bool()
+  val vdValid = Bool()
 }
 
 object Operations {
@@ -98,6 +110,17 @@ object Operations {
     _.amoWidth -> AMOOperationWidth.Word,
     _.amoOrdering -> AMOOrdering(false.B, false.B),
     _.pextOp -> invalid(PExtensionOperation.Type()),
+    _.csrAddress -> 0.U,
+    _.vecLdst -> false.B,
+    _.vecExec -> false.B,
+    _.vMop -> MopOperation.UnitStride,
+    _.vUmop -> UmopOperation.Normal,
+    _.vs1 -> 0.U,
+    _.vs2 -> 0.U,
+    _.vd -> 0.U,
+    _.vs1Valid -> false.B,
+    _.vs2Valid -> false.B,
+    _.vdValid -> false.B,
   )
 
   implicit class UIntAccess(u: UInt) {
@@ -210,8 +233,66 @@ object Operations {
       (u, _) => u.csrOp -> valid(op),
     )
 
+  def vsetvliOp(op: CSROperation.Type): (UInt, UInt) => Operations =
+    createOperation(
+      _.rd -> _(11,7).reg,
+      _.sources(0).reg -> _(19, 15).reg,
+      _.sources(1).value -> _(30, 20),
+      (u, _) => u.sources(1).valid -> true.B,
+      (u, _) => u.csrOp -> valid(op),
+    )
+
+  def vsetivliOp(op: CSROperation.Type): (UInt, UInt) => Operations =
+    createOperation(
+      _.rd -> _(11, 7).reg,
+      _.sources(0).value -> _(19, 15),
+      (u, _) => u.sources(0).valid -> true.B,
+      _.sources(1).value -> _(29, 20),
+      (u, _) => u.sources(1).valid -> true.B,
+      (u, _) => u.csrOp -> valid(op),
+    )
+
+  def vsetvlOp(op: CSROperation.Type): (UInt, UInt) => Operations =
+    createOperation(
+      _.rd -> _(11,7).reg,
+      _.sources(0).reg -> _(19,15).reg,
+      _.sources(1).reg -> _(24,20).reg,
+      (u, _) => u.csrOp -> valid(op)
+    )
+
+  /*
+  def vUnitStrideLoadOp(
+    width: LoadStoreWidth.Type,
+    umop: UmopOperation.Type
+  ): (UInt, UInt) => Operations =
+    createOperation(
+      (u, _) => u.loadStoreOp -> LoadStoreOperation.Load,
+      (u, _) => u.loadStoreWidth -> width,
+      (u, _) => u.vMop -> MopOperation.UnitStride,
+      (u, _) => u.vUmop -> umop,
+      (u, _) => u.vecLdst -> true.B,
+      _.vd -> _(11, 7),
+      _.vdValid -> true.B,
+      _.sources(0).reg -> _(19, 15).reg,
+    )
+
+  def vUnitStrideStoreOp(
+    width: LoadStoreWidth.Type,
+    umop: UmopOperation.Type,
+  ): (UInt, UInt) => Operations =
+    createOperation(
+      (u, _) => u.loadStoreOp -> LoadStoreOperation.Store,
+      (u, _) => u.loadStoreWidth -> width,
+      (u, _) => u.vMop -> MopOperation.UnitStride,
+      (u, _) => u.vUmop -> umop,
+      (u, _) => u.vecLdst -> true.B,
+      _.vd -> _(11, 7),
+      _.vdValid -> true.B,
+      _.sources(0).reg -> _(19, 15).reg,
+    )
+   */
+
   def BaseDecodingList = {
-    import Instructions.{IType, I64Type, ZICSRType, ZIFENCEIType}
     Seq(
       IType("BEQ") -> btypeOp(ALUOperation.BranchEqual),
       IType("BNE") -> btypeOp(ALUOperation.BranchNotEqual),
@@ -331,6 +412,43 @@ object Operations {
       ZICSRType("CSRRCI") -> csrImmOp(CSROperation.ReadClear),
       ZICSRType("CSRRSI") -> csrImmOp(CSROperation.ReadSet),
       ZICSRType("CSRRWI") -> csrImmOp(CSROperation.ReadWrite),
+      VType("VSETVLI") -> vsetvliOp(CSROperation.SetVl),
+      VType("VSETIVLI") -> vsetivliOp(CSROperation.SetVl),
+      VType("VSETVL") -> vsetvlOp(CSROperation.SetVl),
+      /*
+      VType("VLE8") -> vUnitStrideLoadOp(
+        width = LoadStoreWidth.Byte,
+        umop = UmopOperation.Normal,
+      ),
+      VType("VLE16") -> vUnitStrideLoadOp(
+        width = LoadStoreWidth.HalfWord,
+        umop = UmopOperation.Normal,
+      ),
+      VType("VLE32") -> vUnitStrideLoadOp(
+        width = LoadStoreWidth.Word,
+        umop = UmopOperation.Normal,
+      ),
+      VType("VLE64") -> vUnitStrideLoadOp(
+        width = LoadStoreWidth.DoubleWord,
+        umop = UmopOperation.Normal,
+      ),
+      VType("VSE8") -> vUnitStrideStoreOp(
+        width = LoadStoreWidth.Byte,
+        umop = UmopOperation.Normal,
+      ),
+      VType("VSE16") -> vUnitStrideStoreOp(
+        width = LoadStoreWidth.HalfWord,
+        umop = UmopOperation.Normal,
+      ),
+      VType("VSE32") -> vUnitStrideStoreOp(
+        width = LoadStoreWidth.Word,
+        umop = UmopOperation.Normal,
+      ),
+      VType("VSE64") -> vUnitStrideStoreOp(
+        width = LoadStoreWidth.DoubleWord,
+        umop = UmopOperation.Normal,
+      ),
+       */
     )
   }
 
@@ -348,7 +466,6 @@ object Operations {
     )
 
   def AextDecodingList = {
-    import Instructions.{AType, A64Type}
     import AMOOperation._
     import AMOOperationWidth._
 
@@ -484,7 +601,6 @@ object Operations {
     )
 
   def ZPN32ExtDecodingList = {
-    import Instructions.ZPNType
     import PExtensionOperation._
     Seq(
       ZPNType("ADD16") -> zpnRtypeOpWithRd(ADD16),
@@ -685,7 +801,6 @@ object Operations {
   }
 
   def ZPN64ExtDecodingList = {
-    import Instructions.ZPN64Type
     import PExtensionOperation._
     Seq(
       ZPN64Type("ADD32") -> zpnRtypeOpWithRd(ADD32),
@@ -774,7 +889,6 @@ object Operations {
   }
 
   def ZBBExtDecodingList = {
-    import Instructions.ZBBType
     import PExtensionOperation._
     Seq(
 //      ZBBType("ANDN") -> zpnRtypeOpWithRd(ANDN),
@@ -796,7 +910,6 @@ object Operations {
   }
 
   def ZBTExtDecodingList = {
-    import Instructions.ZBTType
     import PExtensionOperation._
     Seq(
       ZBTType("CMIX") -> rtypeWithR3(CMIX),
@@ -807,7 +920,6 @@ object Operations {
   }
 
   def ZPSFExtDecodingList = {
-    import Instructions.ZPSFType
     import PExtensionOperation._
     Seq(
       ZPSFType("KADD64") -> zpnRtypeOpWithRd(KADD64),
@@ -1035,5 +1147,13 @@ object LoadStoreWidth extends ChiselEnum {
 }
 
 object CSROperation extends ChiselEnum {
-  val ReadWrite, ReadSet, ReadClear = Value
+  val None, ReadWrite, ReadSet, ReadClear, SetVl = Value
+}
+
+object MopOperation extends ChiselEnum {
+  val UnitStride, IndexedUnordered, Strided, IndexedOrdered = Value
+}
+
+object UmopOperation extends ChiselEnum {
+  val Normal, WholeReg, Mask = Value
 }
