@@ -23,7 +23,7 @@ class LoadStoreQueue(implicit params: Parameters)
         Flipped(Decoupled(new Decoder2LoadStoreQueue())),
       )
     val outputCollector = Flipped(new CollectedOutput)
-    val vCsrOutput = Input(new VCsrBundle())
+    // val vCsrOutput = Input(new VCsrBundle())
     val reorderBuffer = Flipped(
       Vec(
         params.maxRegisterFileCommitCount,

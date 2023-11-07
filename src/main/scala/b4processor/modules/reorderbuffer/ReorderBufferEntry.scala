@@ -27,10 +27,12 @@ class ReorderBufferEntry(implicit params: Parameters) extends Bundle {
   /** isError */
   val isError = Bool()
 
+  /*
   val vecCsrBypass = new Bundle {
     val vtype = new VtypeBundle()
     val vl = UInt((log2Up(params.vlenb)+1).W)
   }
+   */
 }
 
 // TODO: ベクトルCSRの値を追加する

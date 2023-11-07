@@ -415,6 +415,7 @@ object Operations {
       VType("VSETVLI") -> vsetvliOp(CSROperation.SetVl),
       VType("VSETIVLI") -> vsetivliOp(CSROperation.SetVl),
       VType("VSETVL") -> vsetvlOp(CSROperation.SetVl),
+      /*
       VType("VLE8") -> vUnitStrideLoadOp(
         width = LoadStoreWidth.Byte,
         umop = UmopOperation.Normal,
@@ -447,6 +448,7 @@ object Operations {
         width = LoadStoreWidth.DoubleWord,
         umop = UmopOperation.Normal,
       ),
+       */
     )
   }
 
