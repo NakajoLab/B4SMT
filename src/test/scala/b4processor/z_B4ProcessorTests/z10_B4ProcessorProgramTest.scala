@@ -653,6 +653,8 @@ class z10_B4ProcessorProgramTest
       ) { c =>
         c.initialize("programs/riscv-sample-programs/pext_test")
         c.clock.step(300)
+      }
+  }
   it should "run vector configuration" in {
     test(
       new B4ProcessorWithMemory()(

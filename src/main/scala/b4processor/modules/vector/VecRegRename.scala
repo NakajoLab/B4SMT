@@ -32,7 +32,7 @@ class VecRegRename(implicit params: Parameters) extends Module {
   // 2スレッドデフォルト: (64, 65, ..., 95)
   val freeList = RegInit(VecInit(
     (0 until params.physicalVrfEntries).map(
-      i => i.U + (32 * params.threads)
+      i => i.U + (32 * params.threads).U
     )
   ))
   for(((out, in), i) <- (io.renamedVs1 zip io.vs1).zipWithIndex) {
