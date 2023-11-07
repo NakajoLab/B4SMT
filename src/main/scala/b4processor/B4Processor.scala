@@ -113,6 +113,10 @@ class B4Processor(implicit params: Parameters) extends Module {
 
     csr(tid).io.CSROutput <> outputCollector.io.csr(tid)
 
+    for((csr, ldst) <- (csr zip loadStoreQueue)) {
+      ldst.io.vCsrOutput := csr.io.vCsrOutput
+    }
+
     csrReservationStation(tid).io.output <> outputCollector.io.outputs(tid)
 
     reorderBuffer(tid).io.csr <> csr(tid).io.reorderBuffer

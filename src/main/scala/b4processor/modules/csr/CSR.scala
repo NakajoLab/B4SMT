@@ -17,6 +17,7 @@ class CSR(implicit params: Parameters) extends Module {
     val fetch = Output(new CSR2Fetch)
     val reorderBuffer = Flipped(new ReorderBuffer2CSR)
     val threadId = Input(UInt(log2Up(params.threads).W))
+    val vCsrOutput = Output(new VCsrBundle())
   })
 
   private val operation = io.decoderInput.bits.operation

@@ -395,6 +395,38 @@ object Operations {
       VType("VSETVLI") -> vsetvliOp(CSROperation.SetVl),
       VType("VSETIVLI") -> vsetivliOp(CSROperation.SetVl),
       VType("VSETVL") -> vsetvlOp(CSROperation.SetVl),
+      VType("VLE8") -> vUnitStrideLoadOp(
+        width = LoadStoreWidth.Byte,
+        umop = UmopOperation.Normal,
+      ),
+      VType("VLE16") -> vUnitStrideLoadOp(
+        width = LoadStoreWidth.HalfWord,
+        umop = UmopOperation.Normal,
+      ),
+      VType("VLE32") -> vUnitStrideLoadOp(
+        width = LoadStoreWidth.Word,
+        umop = UmopOperation.Normal,
+      ),
+      VType("VLE64") -> vUnitStrideLoadOp(
+        width = LoadStoreWidth.DoubleWord,
+        umop = UmopOperation.Normal,
+      ),
+      VType("VSE8") -> vUnitStrideStoreOp(
+        width = LoadStoreWidth.Byte,
+        umop = UmopOperation.Normal,
+      ),
+      VType("VSE16") -> vUnitStrideStoreOp(
+        width = LoadStoreWidth.HalfWord,
+        umop = UmopOperation.Normal,
+      ),
+      VType("VSE32") -> vUnitStrideStoreOp(
+        width = LoadStoreWidth.Word,
+        umop = UmopOperation.Normal,
+      ),
+      VType("VSE64") -> vUnitStrideStoreOp(
+        width = LoadStoreWidth.DoubleWord,
+        umop = UmopOperation.Normal,
+      ),
     )
   }
 

@@ -1,15 +1,11 @@
 package b4processor.modules.lsq
 
 import b4processor.Parameters
-import b4processor.connections.{
-  CollectedOutput,
-  Decoder2LoadStoreQueue,
-  LoadStoreQueue2Memory,
-  LoadStoreQueue2ReorderBuffer
-}
+import b4processor.connections.{CollectedOutput, Decoder2LoadStoreQueue, LoadStoreQueue2Memory, LoadStoreQueue2ReorderBuffer}
 import chisel3._
 import chisel3.util._
 import _root_.circt.stage.ChiselStage
+import b4processor.modules.vector.VCsrBundle
 import b4processor.utils.Tag
 import b4processor.utils.operations.LoadStoreOperation
 
@@ -21,6 +17,7 @@ class LoadStoreQueue(implicit params: Parameters) extends Module {
         Flipped(Decoupled(new Decoder2LoadStoreQueue()))
       )
     val outputCollector = Flipped(new CollectedOutput)
+    val vCsrOutput = Input(new VCsrBundle())
     val reorderBuffer = Flipped(
       Vec(
         params.maxRegisterFileCommitCount,
