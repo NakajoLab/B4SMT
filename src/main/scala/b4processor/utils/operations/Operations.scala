@@ -3,7 +3,7 @@ package b4processor.utils.operations
 import circt.stage.ChiselStage
 import b4processor.Parameters
 import b4processor.modules.PExt.PExtensionOperation
-import b4processor.riscv.Instructions
+import b4processor.riscv.Instructions._
 import b4processor.utils.BundleInitialize.AddBundleInitializeConstructor
 import b4processor.utils.RVRegister
 import b4processor.utils.RVRegister.{AddRegConstructor, AddUIntRegConstructor}
@@ -41,6 +41,17 @@ class Operations extends Bundle {
     val value = UInt(64.W)
     val valid = Bool()
   }
+  val csrAddress = UInt(12.W)
+  val vecLdst = Bool()
+  val vecExec = Bool()
+  val vMop = MopOperation()
+  val vUmop = UmopOperation()
+  val vs1 = UInt(5.W)
+  val vs2 = UInt(5.W)
+  val vd = UInt(5.W)
+  val vs1Valid = Bool()
+  val vs2Valid = Bool()
+  val vdValid = Bool()
 }
 
 object Operations {
@@ -98,6 +109,17 @@ object Operations {
     _.amoWidth -> AMOOperationWidth.Word,
     _.amoOrdering -> AMOOrdering(false.B, false.B),
     _.pextOp -> invalid(PExtensionOperation.Type()),
+    _.csrAddress -> 0.U,
+    _.vecLdst -> false.B,
+    _.vecExec -> false.B,
+    _.vMop -> MopOperation.UnitStride,
+    _.vUmop -> UmopOperation.Normal,
+    _.vs1 -> 0.U,
+    _.vs2 -> 0.U,
+    _.vd -> 0.U,
+    _.vs1Valid -> false.B,
+    _.vs2Valid -> false.B,
+    _.vdValid -> false.B,
   )
 
   implicit class UIntAccess(u: UInt) {
@@ -212,6 +234,66 @@ object Operations {
 
   def BaseDecodingList = {
     import Instructions.{IType, I64Type, ZICSRType, ZIFENCEIType}
+
+  def vsetvliOp(op: CSROperation.Type): (UInt, UInt) => Operations =
+    createOperation(
+      _.rd -> _(11,7).reg,
+      _.rs1 -> _(19, 15).reg,
+      _.rs2Value -> _(30, 20),
+      (u, _) => u.rs2ValueValid -> true.B,
+      (u, _) => u.csrOp -> op,
+    )
+
+  def vsetivliOp(op: CSROperation.Type): (UInt, UInt) => Operations =
+    createOperation(
+      _.rd -> _(11, 7).reg,
+      _.rs1Value -> _(19, 15),
+      (u, _) => u.rs1ValueValid -> true.B,
+      _.rs2Value -> _(29, 20),
+      (u, _) => u.rs2ValueValid -> true.B,
+      (u, _) => u.csrOp -> op,
+    )
+
+  def vsetvlOp(op: CSROperation.Type): (UInt, UInt) => Operations =
+    createOperation(
+      _.rd -> _(11,7).reg,
+      _.rs1 -> _(19,15).reg,
+      _.rs2 -> _(24,20).reg,
+      (u, _) => u.csrOp -> op
+    )
+
+  def vUnitStrideLoadOp(
+    width: LoadStoreWidth.Type,
+    umop: UmopOperation.Type
+  ): (UInt, UInt) => Operations =
+    createOperation(
+      (u, _) => u.loadStoreOp -> LoadStoreOperation.Load,
+      (u, _) => u.loadStoreWidth -> width,
+      (u, _) => u.vMop -> MopOperation.UnitStride,
+      (u, _) => u.vUmop -> umop,
+      (u, _) => u.vecLdst -> true.B,
+      _.vd -> _(11, 7),
+      _.vdValid -> true.B,
+      _.rs1 -> _(19, 15).reg,
+    )
+
+  def vUnitStrideStoreOp(
+    width: LoadStoreWidth.Type,
+    umop: UmopOperation.Type,
+  ): (UInt, UInt) => Operations =
+    createOperation(
+      (u, _) => u.loadStoreOp -> LoadStoreOperation.Store,
+      (u, _) => u.loadStoreWidth -> width,
+      (u, _) => u.vMop -> MopOperation.UnitStride,
+      (u, _) => u.vUmop -> umop,
+      (u, _) => u.vecLdst -> true.B,
+      _.vd -> _(11, 7),
+      _.vdValid -> true.B,
+      _.rs1 -> _(19, 15).reg,
+    )
+
+  def decodingList = {
+    import Instructions.IType
     Seq(
       IType("BEQ") -> btypeOp(ALUOperation.BranchEqual),
       IType("BNE") -> btypeOp(ALUOperation.BranchNotEqual),
@@ -331,6 +413,9 @@ object Operations {
       ZICSRType("CSRRCI") -> csrImmOp(CSROperation.ReadClear),
       ZICSRType("CSRRSI") -> csrImmOp(CSROperation.ReadSet),
       ZICSRType("CSRRWI") -> csrImmOp(CSROperation.ReadWrite),
+      VType("VSETVLI") -> vsetvliOp(CSROperation.SetVl),
+      VType("VSETIVLI") -> vsetivliOp(CSROperation.SetVl),
+      VType("VSETVL") -> vsetvlOp(CSROperation.SetVl),
     )
   }
 
@@ -1035,5 +1120,13 @@ object LoadStoreWidth extends ChiselEnum {
 }
 
 object CSROperation extends ChiselEnum {
-  val ReadWrite, ReadSet, ReadClear = Value
+  val None, ReadWrite, ReadSet, ReadClear, SetVl = Value
+}
+
+object MopOperation extends ChiselEnum {
+  val UnitStride, IndexedUnordered, Strided, IndexedOrdered = Value
+}
+
+object UmopOperation extends ChiselEnum {
+  val Normal, WholeReg, Mask = Value
 }

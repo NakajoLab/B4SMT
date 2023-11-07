@@ -20,6 +20,8 @@ import scala.math.pow
   *   分岐予測で使う下位ビット数
   * @param instructionStart
   *   プログラムカウンタの初期値
+  * @param xprlen
+  *   整数レジスタ長
   */
 case class Parameters(
   tagWidth: Int = 4,
@@ -37,4 +39,11 @@ case class Parameters(
   debug: Boolean = false,
   enablePExt: Boolean = false,
   pextExecutors: Int = 1,
-)
+  xprlen: Int = 64,
+  vlen: Int = 256,
+  vecAluExecUnitNum: Int = 2,
+  physicalVrfFor1Thread: Int = 48,
+) {
+  def vlenb: Int = vlen/8
+  def physicalVrfEntries: Int = physicalVrfFor1Thread * threads
+}
