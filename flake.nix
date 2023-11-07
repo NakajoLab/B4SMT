@@ -1,28 +1,39 @@
 {
   description = "riscv test flake";
 
-  inputs = {
-    nixpkgs.url = "nixpkgs/nixos-unstable";
-    #    nixpkgs-stable.url = "nixpkgs/nixos-22.11";
-    flake-utils.url = "github:numtide/flake-utils";
-    nix-filter.url = "github:numtide/nix-filter";
-    riscv-test-src = {
-      url = "https://github.com/riscv-software-src/riscv-tests";
-      type = "git";
-      submodules = true;
-      flake = false;
-    };
-    nix-sbt = {
-      url = "github:zaninime/sbt-derivation";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.flake-utils.follows = "flake-utils";
-    };
+
+  inputs.nixpkgs.url = "nixpkgs/nixpkgs-unstable";
+  inputs.flake-utils.url = "github:numtide/flake-utils";
+  inputs.nix-filter.url = "github:numtide/nix-filter";
+  inputs.nix-sbt = {
+    url = "github:zaninime/sbt-derivation";
+    inputs.nixpkgs.follows = "nixpkgs";
+    inputs.flake-utils.follows = "flake-utils";
+  };
+  inputs.espresso-flake.url = "github:pineapplehunter/espresso-flake";
+  inputs.riscv-test-src = {
+    url = "https://github.com/riscv-software-src/riscv-tests";
+    type = "git";
+    submodules = true;
+    flake = false;
   };
 
-  outputs = { self, nixpkgs, flake-utils, riscv-test-src, nix-sbt, nix-filter }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs = { self, nixpkgs, flake-utils, nix-sbt, nix-filter, espresso-flake, riscv-test-src }:
+    flake-utils.lib.eachSystem [ "x86_64-linux" ] (system:
       let
-        pkgs = import nixpkgs { inherit system; };
+        pkgs = import nixpkgs { inherit system; overlays = [ espresso-flake.overlays.default ]; };
+        # pkgsStable = nixpkgs-stable.legacyPackages.${system};
+        verilator_4 = (pkgs.verilator.overrideAttrs (old: rec{
+          inherit (old) pname;
+          version = "4.228";
+          src = pkgs.fetchFromGitHub {
+            owner = pname;
+            repo = pname;
+            rev = "v${version}";
+            sha256 = "sha256-ToYad8cvBF3Mio5fuT4Ce4zXbWxFxd6smqB1TxvlHao=";
+          };
+          doCheck = false;
+        }));
         nf = import nix-filter;
         B4ProcessorDerivation = attrs: nix-sbt.mkSbtDerivation.x86_64-linux ({
           pname = "B4Processor";
@@ -36,7 +47,7 @@
             ];
           };
           buildInputs = with pkgs; [ circt ripgrep ];
-          depsSha256 = "sha256-oG92yXLLHHuVYQvbUTDiX8qeLE45mrQjwdMZ8TEfFA0=";
+          depsSha256 = "sha256-JOxVZpQoFD0hhgRUjMgpPiM1gjwSdbOCac5ov5Tuo/Q=";
           buildPhase = ''
             sbt "runMain b4processor.B4Processor"
             cat B4Processor.sv | rg -U '(?s)module B4Processor\(.*endmodule' > B4Processor.wrapper.v
@@ -55,10 +66,15 @@
           pname = "B4Processor-tests";
           buildInputs = with pkgs; [
             verilog
-            verilator
+            verilator_4
             stdenv.cc
             zlib
             circt
+            yosys
+            yices
+            espresso
+            z3
+            symbiyosys
           ];
           buildPhase = ''
             ln -s ${self.packages.${system}.default} programs
@@ -72,14 +88,15 @@
       in
       {
         packages = rec {
-          riscv-tests = import ./riscv-tests-files/riscv-tests.nix { inherit pkgs riscv-test-src; };
-          riscv-sample-programs = import ./riscv-sample-programs/sample-programs.nix { inherit pkgs; };
+          riscv-tests = pkgs.callPackage ./riscv-tests-files { inherit riscv-test-src; };
+          riscv-sample-programs = pkgs.callPackage ./riscv-sample-programs/sample-programs.nix { };
           processor = B4ProcessorDerivation { };
           default = pkgs.linkFarm "processor test programs" [
             { name = "riscv-tests"; path = riscv-tests; }
             { name = "riscv-sample-programs"; path = riscv-sample-programs; }
           ];
           slowChecks = sbtTest ''sbt "testOnly * -- -n org.scalatest.tags.Slow"'';
+          inherit verilator_4;
         };
         checks =
           {
@@ -91,12 +108,19 @@
           buildInputs = with pkgs;[
             circt
             rustfilt
-            pkgsCross.riscv64-embedded.buildPackages.gcc
+            pkgsCross.riscv64.stdenv.cc
             sbt
             jdk
             verilog
-            verilator
+            verilator_4
             zlib
+            yosys
+            graphviz
+            xdot
+            espresso
+            z3
+            symbiyosys
+            yices
           ];
         };
       });

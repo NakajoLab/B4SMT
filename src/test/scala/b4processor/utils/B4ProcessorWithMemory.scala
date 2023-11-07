@@ -3,8 +3,8 @@ package b4processor.utils
 import b4processor.{B4Processor, Parameters}
 import chisel3._
 import chiseltest._
-import chisel3.util.Valid
-import circt.stage.ChiselStage
+import chisel3.util._
+import _root_.circt.stage.ChiselStage
 
 class B4ProcessorWithMemory()(implicit params: Parameters) extends Module {
   val io = IO(new Bundle {
@@ -18,13 +18,20 @@ class B4ProcessorWithMemory()(implicit params: Parameters) extends Module {
       val writeAddress = Valid(UInt(64.W))
       val writeData = Valid(UInt(64.W))
     }
+    val simulationIO = new Bundle {
+      val input = Flipped(Decoupled(UInt(8.W)))
+      val output = Decoupled(UInt(8.W))
+    }
   })
   val core = Module(new B4Processor)
-  val axiMemory = Module(new SimpleAXIMemory())
+  val axiMemory = Module(new SimpleAXIMemoryWithSimulationIO(1024*1024*512))
   core.axi <> axiMemory.axi
   io.simulation <> axiMemory.simulationSource.input
 
-  io.registerFileContents.get <> core.registerFileContents.get
+  axiMemory.simulationIO <> io.simulationIO
+
+  if (params.debug)
+    io.registerFileContents.get <> core.registerFileContents.get
 
   io.accessMemoryAddress.readAddress.valid := core.axi.readAddress.valid
   io.accessMemoryAddress.readAddress.bits := core.axi.readAddress.bits.ADDR
@@ -98,7 +105,7 @@ class B4ProcessorWithMemory()(implicit params: Parameters) extends Module {
     regNum: Int,
     value: BigInt,
     timeout: Int = 500,
-    thread: Int = 0
+    thread: Int = 0,
   ): Unit = {
     this.clock.setTimeout(timeout)
     while (this.io.registerFileContents.get(thread)(regNum).peekInt() != value)
@@ -106,11 +113,57 @@ class B4ProcessorWithMemory()(implicit params: Parameters) extends Module {
     this.io.registerFileContents.get(thread)(regNum).expect(value)
   }
 
+  def checkForOutput(
+    value: Char,
+    timeout: Int = 500,
+    print_value: Boolean = false,
+  ): Unit = {
+    this.clock.setTimeout(timeout)
+    while (!this.io.simulationIO.output.valid.peekBoolean())
+      this.clock.step()
+    this.io.simulationIO.output.ready.poke(true)
+    this.io.simulationIO.output.bits.expect(value)
+    if (print_value) {
+      print(this.io.simulationIO.output.bits.peekInt().toChar)
+    }
+    this.clock.step()
+    this.io.simulationIO.output.ready.poke(false)
+  }
+
+  def checkForOutputAny(
+    timeout: Int = 500,
+    print_value: Boolean = false,
+  ): Unit = {
+    this.clock.setTimeout(timeout)
+    while (!this.io.simulationIO.output.valid.peekBoolean())
+      this.clock.step()
+    this.io.simulationIO.output.ready.poke(true)
+    if (print_value) {
+      print(this.io.simulationIO.output.bits.peekInt().toChar)
+    }
+    this.clock.step()
+    this.io.simulationIO.output.ready.poke(false)
+  }
+
+  def getOutput(timeout: Int = 500, print_value: Boolean = false): Char = {
+    this.clock.setTimeout(timeout)
+    while (!this.io.simulationIO.output.valid.peekBoolean())
+      this.clock.step()
+    this.io.simulationIO.output.ready.poke(true)
+    val c = this.io.simulationIO.output.bits.peekInt().toChar
+    if (print_value) {
+      print(this.io.simulationIO.output.bits.peekInt().toChar)
+    }
+    this.clock.step()
+    this.io.simulationIO.output.ready.poke(false)
+    c
+  }
+
   def checkForRegisterChange(
     regNum: Int,
     value: BigInt,
     timeout: Int = 500,
-    thread: Int = 0
+    thread: Int = 0,
   ): Unit = {
     this.clock.setTimeout(timeout)
     while (this.io.registerFileContents.get(thread)(regNum).peekInt() == 0)
@@ -122,12 +175,12 @@ class B4ProcessorWithMemory()(implicit params: Parameters) extends Module {
 
 object B4ProcessorWithMemory extends App {
   implicit val params = Parameters(
-    debug = true,
+//    debug = true,
     threads = 1,
     decoderPerThread = 2,
     maxRegisterFileCommitCount = 4,
     tagWidth = 5,
-    loadStoreQueueIndexWidth = 3
+    loadStoreQueueIndexWidth = 3,
   )
   ChiselStage.emitSystemVerilogFile(new B4ProcessorWithMemory())
 }

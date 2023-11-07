@@ -1,6 +1,7 @@
 package b4processor.connections
 
 import b4processor.Parameters
+import b4processor.modules.PExt.PExtensionOperation
 import b4processor.utils.Tag
 import b4processor.utils.operations.ALUOperation
 import chisel3._

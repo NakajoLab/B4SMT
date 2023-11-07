@@ -1,16 +1,17 @@
 package b4processor.modules.csr
 
 import b4processor.Parameters
-import b4processor.connections.{CSR2Fetch, CSRReservationStation2CSR, OutputValue, ReorderBuffer2CSR}
+import b4processor.connections._
 import chisel3._
 import chisel3.util._
 import _root_.circt.stage.ChiselStage
 import b4processor.modules.vector._
 import b4processor.riscv.CSRs
+import b4processor.utils.FormalTools
 import b4processor.utils.operations.CSROperation
 import chisel3.experimental.BundleLiterals._
 
-class CSR(implicit params: Parameters) extends Module {
+class CSR(implicit params: Parameters) extends Module with FormalTools {
   val io = IO(new Bundle {
     val decoderInput = Flipped(Decoupled(new CSRReservationStation2CSR))
     val CSROutput = Irrevocable(new OutputValue)
@@ -56,8 +57,8 @@ class CSR(implicit params: Parameters) extends Module {
         Seq(
           CSROperation.ReadWrite -> io.decoderInput.bits.value,
           CSROperation.ReadSet -> (reg | io.decoderInput.bits.value),
-          CSROperation.ReadClear -> (reg & io.decoderInput.bits.value)
-        )
+          CSROperation.ReadClear -> (reg & io.decoderInput.bits.value),
+        ),
       )
     }
   }
@@ -112,6 +113,15 @@ class CSR(implicit params: Parameters) extends Module {
   when(io.reorderBuffer.mepc.valid) {
     mepc := io.reorderBuffer.mepc.bits
   }
+  io.CSROutput.bits.tag.threadId := io.threadId
+
+  when(io.decoderInput.valid) {
+    assume(io.decoderInput.bits.destinationTag.threadId === io.threadId)
+  }
+  when(io.CSROutput.valid) {
+    assert(io.CSROutput.bits.tag.threadId === io.threadId)
+  }
+  takesEveryValue(io.CSROutput.valid)
 }
 
 object CSR extends App {

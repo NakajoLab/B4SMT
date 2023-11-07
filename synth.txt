@@ -1,9 +1,0 @@
-read_verilog B4Processor.v
-
-hierarchy -top B4Processor
-proc
-opt
-synth_xilinx
-opt
-
-stat

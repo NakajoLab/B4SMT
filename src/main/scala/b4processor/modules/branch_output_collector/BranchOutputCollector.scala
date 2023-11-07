@@ -15,11 +15,11 @@ class BranchOutputCollector(implicit params: Parameters) extends Module {
   private val executorQueue =
     Seq.fill(params.executors)(Module(new FIFO(2)(new BranchOutput)))
   private val executorArbiters = Seq.fill(params.threads)(
-    Module(new Arbiter(new BranchOutput, params.executors))
+    Module(new Arbiter(new BranchOutput, params.executors)),
   )
   for (i <- 0 until params.executors) {
     executorQueue(i).input <> io.executor(i)
-    executorQueue(i).flush := false.B
+//    executorQueue(i).flush := false.B
   }
   for (tid <- 0 until params.threads) {
     for (e <- 0 until params.executors) {
@@ -34,7 +34,7 @@ class BranchOutputCollector(implicit params: Parameters) extends Module {
     executorQueue(e).output.ready := (0 until params.threads)
       .map(tid =>
         executorArbiters(tid).io.in(e).ready
-          && executorQueue(e).output.bits.threadId === tid.U
+          && executorQueue(e).output.bits.threadId === tid.U,
       )
       .reduce(_ || _)
   }

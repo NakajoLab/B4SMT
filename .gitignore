@@ -8,11 +8,13 @@ project/plugins/project/
 .history
 .cache
 .lib/
+.direnv
 
 /.idea
 /.bsp
 
 /test_run_dir
+/formal
 **/*.fir
 **/*.v
 **/*.sv

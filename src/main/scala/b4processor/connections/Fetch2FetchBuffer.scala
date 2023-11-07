@@ -12,7 +12,7 @@ class Fetch2FetchBuffer(implicit params: Parameters) extends Bundle {
     Decoupled(new Bundle {
       val instruction = UInt(32.W)
       val programCounter = UInt(64.W)
-    })
+    }),
   )
   val empty = Input(Bool())
 }

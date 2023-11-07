@@ -26,12 +26,12 @@ class InstructionChecker extends Module {
       "b0001111".U -> Mux(
         input.function3bits(0),
         Instructions.fencei,
-        Instructions.fence
+        Instructions.fence,
       ),
       "b1110011".U -> Mux(
         input.function3bits.orR,
         Mux(input.function3bits(2), Instructions.CsrI, Instructions.Csr),
-        Mux(input.function7bits(0), Instructions.ebreak, Instructions.ecall)
+        Mux(input.function7bits(0), Instructions.ebreak, Instructions.ecall),
       ),
       "b0010011".U -> Instructions.ArithmeticImmediate,
       "b0011011".U -> Instructions.ArithmeticImmediate,
@@ -49,7 +49,7 @@ class InstructionChecker extends Module {
       "b0110011".U -> Instructions.Arithmetic,
       "b0111011".U -> Instructions.Arithmetic,
       "b1010111".U -> Instructions.Vector,
-    )
+    ),
   )
 
   output.branch := Mux(
@@ -61,10 +61,10 @@ class InstructionChecker extends Module {
         4.U -> BranchOperations.LessThan,
         5.U -> BranchOperations.GreaterOrEqual,
         6.U -> BranchOperations.LessThanUnsigned,
-        7.U -> BranchOperations.GreaterOrEqualUnsigned
-      )
+        7.U -> BranchOperations.GreaterOrEqualUnsigned,
+      ),
     ),
-    BranchOperations.Unknown
+    BranchOperations.Unknown,
   )
 
   output.operationWidth := Mux(
@@ -74,16 +74,16 @@ class InstructionChecker extends Module {
         0.U -> OperationWidth.Byte,
         1.U -> OperationWidth.HalfWord,
         2.U -> OperationWidth.Word,
-        3.U -> OperationWidth.DoubleWord
-      )
+        3.U -> OperationWidth.DoubleWord,
+      ),
     ),
     MuxCase(
       OperationWidth.Unknown,
       Seq(
         (input.opcode === BitPat("b0?10011")) -> OperationWidth.DoubleWord,
-        (input.opcode === BitPat("b0?11011")) -> OperationWidth.Word
-      )
-    )
+        (input.opcode === BitPat("b0?11011")) -> OperationWidth.Word,
+      ),
+    ),
   )
 
   output.arithmetic := Mux(
@@ -94,7 +94,7 @@ class InstructionChecker extends Module {
           output.instruction === Instructions.Arithmetic && input
             .function7bits(5),
           ArithmeticOperations.Subtraction,
-          ArithmeticOperations.Addition
+          ArithmeticOperations.Addition,
         ),
         1.U -> ArithmeticOperations.ShiftLeftLogical,
         2.U -> ArithmeticOperations.SetLessThan,
@@ -103,13 +103,13 @@ class InstructionChecker extends Module {
         5.U -> Mux(
           input.function7bits(5),
           ArithmeticOperations.ShiftRightArithmetic,
-          ArithmeticOperations.ShiftRightLogical
+          ArithmeticOperations.ShiftRightLogical,
         ),
         6.U -> ArithmeticOperations.Or,
-        7.U -> ArithmeticOperations.And
-      )
+        7.U -> ArithmeticOperations.And,
+      ),
     ),
-    ArithmeticOperations.Unknown
+    ArithmeticOperations.Unknown,
   )
 
   output.csr := Mux(
@@ -118,10 +118,10 @@ class InstructionChecker extends Module {
       Seq(
         1.U -> CSROperations.ReadAndWrite,
         2.U -> CSROperations.ReadAndSet,
-        3.U -> CSROperations.ReadAndClear
-      )
+        3.U -> CSROperations.ReadAndClear,
+      ),
     ),
-    CSROperations.Unknown
+    CSROperations.Unknown,
   )
 
   output.vConfSet := Mux(

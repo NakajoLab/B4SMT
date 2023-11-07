@@ -13,6 +13,7 @@ class CSRReservationStationEntry(implicit params: Parameters) extends Bundle {
   val destinationTag = new Tag
   val address = UInt(12.W)
   val operation = CSROperation()
+  val committed = Bool()
 }
 
 object CSRReservationStationEntry {

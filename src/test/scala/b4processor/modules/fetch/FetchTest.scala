@@ -5,7 +5,7 @@ import b4processor.connections.{Fetch2BranchPrediction, Fetch2FetchBuffer}
 import b4processor.modules.branch_output_collector.CollectedBranchAddresses
 import b4processor.modules.cache.InstructionMemoryCache
 import b4processor.modules.memory.{ExternalMemoryInterface, InstructionMemory}
-import b4processor.utils.{InstructionUtil, SimpleAXIMemory}
+import b4processor.utils.{InstructionUtil, SimpleAXIMemory, SymbiYosysFormal}
 import chisel3._
 import chisel3.util._
 import chiseltest._
@@ -51,9 +51,12 @@ class FetchWrapper()(implicit params: Parameters) extends Module {
     val branchTypes = Output(Vec(params.decoderPerThread, new BranchType.Type))
 
     val memorySetup = Flipped(Valid(UInt(64.W)))
+
+    val interrupt = Input(Bool())
+    val isError = Input(Bool())
   })
 
-  val fetch = Module(new Fetch)
+  val fetch = Module(new Fetch(1))
   val cache = Module(new InstructionMemoryCache)
   val memoryInterface = Module(new ExternalMemoryInterface)
   val axiMemory = Module(new SimpleAXIMemory)
@@ -67,19 +70,27 @@ class FetchWrapper()(implicit params: Parameters) extends Module {
   fetch.io.csr := DontCare
   fetch.io.csrReservationStationEmpty := true.B
   fetch.io.fetchBuffer.empty := true.B
-  fetch.io.isError := false.B
+  fetch.io.isError := io.isError
   fetch.io.threadId := 0.U
+  fetch.io.interrupt := io.interrupt
 
   cache.io.fetch <> fetch.io.cache
-  cache.io.memory.request <> memoryInterface.io.instructionFetchRequest(0)
-  cache.io.memory.response <> memoryInterface.io.instructionOut(0)
+  cache.io.memory.request <> memoryInterface.io.instruction(0)
+  cache.io.memory.response <> memoryInterface.io.instruction(0)
   cache.io.threadId := 0.U
 
-  memoryInterface.io.dataReadRequests.valid := false.B
-  memoryInterface.io.dataReadRequests.bits := DontCare
-  memoryInterface.io.dataWriteRequests.valid := false.B
-  memoryInterface.io.dataWriteRequests.bits := DontCare
-  memoryInterface.io.dataReadOut.ready := true.B
+  memoryInterface.io.data.read.request.valid := false.B
+  memoryInterface.io.data.read.request.bits := DontCare
+  memoryInterface.io.data.write.request.valid := false.B
+  memoryInterface.io.data.write.request.bits := DontCare
+  memoryInterface.io.data.read.response.ready := true.B
+  memoryInterface.io.amo.read.response.valid := false.B
+  memoryInterface.io.amo.read.request.bits := DontCare
+  memoryInterface.io.amo.write.request.valid := DontCare
+  memoryInterface.io.amo.write.requestData.bits := DontCare
+  memoryInterface.io.data.write.requestData.ready := true.B
+  memoryInterface.io.amo.read.response.ready := true.B
+  memoryInterface.io.amo.write.response.ready := true.B
 
   axiMemory.axi <> memoryInterface.io.coordinator
   axiMemory.simulationSource.input <> io.memorySetup
@@ -127,14 +138,17 @@ class FetchWrapper()(implicit params: Parameters) extends Module {
   }
 }
 
-class FetchTest extends AnyFlatSpec with ChiselScalatestTester {
+class FetchTest
+    extends AnyFlatSpec
+    with ChiselScalatestTester
+    with SymbiYosysFormal {
   behavior of "Fetch"
   implicit val defaultParams =
     Parameters(
       debug = true,
       threads = 1,
       decoderPerThread = 2,
-      instructionStart = 0x1000_0000
+      instructionStart = 0x1000_0000,
     )
 
   // 普通の命令と分岐を区別できるか
@@ -146,11 +160,11 @@ class FetchTest extends AnyFlatSpec with ChiselScalatestTester {
   it should "load memory" in {
     test(
       new FetchWrapper(
-      )
+      ),
     ).withAnnotations(Seq(WriteVcdAnnotation)) { c =>
       c.initialize(
         InstructionUtil
-          .fromStringSeq32bit(Seq("00000013", "00000463", "00000013"))
+          .fromStringSeq32bit(Seq("00000013", "00000463", "00000013")),
       )
 
       c.waitForCacheValid()
@@ -172,10 +186,10 @@ class FetchTest extends AnyFlatSpec with ChiselScalatestTester {
   it should "read both values in loop" in {
     test(
       new FetchWrapper(
-      )
+      ),
     ) { c =>
       c.initialize(
-        InstructionUtil.fromStringSeq32bit(Seq("00000063", "00000000"))
+        InstructionUtil.fromStringSeq32bit(Seq("00000063", "00000000")),
       )
       c.setPrediction(Seq(true, true))
 
@@ -202,11 +216,11 @@ class FetchTest extends AnyFlatSpec with ChiselScalatestTester {
   it should "understand branch prediction=false" in {
     test(
       new FetchWrapper(
-      )
+      ),
     ) { c =>
       c.initialize(
         InstructionUtil
-          .fromStringSeq32bit(Seq("00000013", "00000463", "00000013"))
+          .fromStringSeq32bit(Seq("00000013", "00000463", "00000013")),
       )
       c.waitForCacheValid()
       c.io.nextPC.expect(0x10000004)
@@ -222,11 +236,11 @@ class FetchTest extends AnyFlatSpec with ChiselScalatestTester {
   it should "understand branch prediction=true" in {
     test(
       new FetchWrapper(
-      )
+      ),
     ) { c =>
       c.initialize(
         InstructionUtil
-          .fromStringSeq32bit(Seq("00000013", "00000463", "00000013"))
+          .fromStringSeq32bit(Seq("00000013", "00000463", "00000013")),
       )
       c.waitForCacheValid()
       c.io.nextPC.expect(0x10000004)
@@ -241,10 +255,10 @@ class FetchTest extends AnyFlatSpec with ChiselScalatestTester {
   it should "understand loop to self" in {
     test(
       new FetchWrapper(
-      )
+      ),
     ) { c =>
       c.initialize(
-        InstructionUtil.fromStringSeq32bit(Seq("00000013", "00000063"))
+        InstructionUtil.fromStringSeq32bit(Seq("00000013", "00000063")),
       )
       c.waitForCacheValid()
       c.io.nextPC.expect(0x10000004)
@@ -265,10 +279,10 @@ class FetchTest extends AnyFlatSpec with ChiselScalatestTester {
   it should "understand loop" in {
     test(
       new FetchWrapper(
-      )
+      ),
     ).withAnnotations(Seq(WriteVcdAnnotation)) { c =>
       c.initialize(
-        InstructionUtil.fromStringSeq32bit(Seq("00000013", "00000063"))
+        InstructionUtil.fromStringSeq32bit(Seq("00000013", "00000063")),
       )
       c.waitForCacheValid()
       c.io.nextPC.expect(0x10000004)
@@ -291,10 +305,10 @@ class FetchTest extends AnyFlatSpec with ChiselScalatestTester {
   it should "understand jal loop" in {
     test(
       new FetchWrapper(
-      )
+      ),
     ) { c =>
       c.initialize(
-        InstructionUtil.fromStringSeq32bit(Seq("00000013", "ffdff06f"))
+        InstructionUtil.fromStringSeq32bit(Seq("00000013", "ffdff06f")),
       )
       c.waitForCacheValid()
       c.io.nextPC.expect(0x10000000)
@@ -317,7 +331,7 @@ class FetchTest extends AnyFlatSpec with ChiselScalatestTester {
   it should "understand jal jumps" in {
     test(
       new FetchWrapper(
-      )
+      ),
     ) { c =>
       c.initialize(
         InstructionUtil.fromStringSeq32bit(
@@ -330,9 +344,9 @@ class FetchTest extends AnyFlatSpec with ChiselScalatestTester {
             "00000013",
             "00000013",
             "00000013",
-            "fe1ff06f"
-          )
-        )
+            "fe1ff06f",
+          ),
+        ),
       )
       c.waitForCacheValid()
       c.io.nextPC.expect(0x1000001c)
@@ -356,18 +370,18 @@ class FetchTest extends AnyFlatSpec with ChiselScalatestTester {
   it should "understand fence" in {
     test(
       new FetchWrapper(
-      )
+      ),
     ).withAnnotations(Seq(WriteVcdAnnotation)) { c =>
       c.initialize(
         InstructionUtil.fromStringSeq32bit(
-          Seq("00000013", "0ff0000f", "00000013", "00000013")
-        )
+          Seq("00000013", "0ff0000f", "00000013", "00000013"),
+        ),
       )
       c.waitForCacheValid()
       c.io.branchTypes(0).expect(BranchType.Next4)
       c.io.branchTypes(1).expect(BranchType.Fence)
       c.io.decoders.toBuffer(0).valid.expect(true)
-      c.io.decoders.toBuffer(1).valid.expect(true)
+      c.io.decoders.toBuffer(1).valid.expect(false)
       c.io.nextPC.expect(0x10000004)
 
       c.clock.step()
@@ -392,5 +406,9 @@ class FetchTest extends AnyFlatSpec with ChiselScalatestTester {
       c.io.decoders.toBuffer(0).valid.expect(true)
       c.io.decoders.toBuffer(1).valid.expect(true)
     }
+  }
+
+  it should "check formal" in {
+    symbiYosysCheck(new FetchWrapper())
   }
 }

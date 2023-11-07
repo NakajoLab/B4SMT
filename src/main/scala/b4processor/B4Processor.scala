@@ -1,5 +1,12 @@
 package b4processor
 
+import b4processor.connections.{
+  OutputValue,
+  ReservationStation2Executor,
+  ReservationStation2PExtExecutor,
+}
+import b4processor.modules.AtomicLSU
+import b4processor.modules.PExt.B4PExtExecutor
 import circt.stage.ChiselStage
 import b4processor.modules.branch_output_collector.BranchOutputCollector
 import b4processor.modules.cache.{DataMemoryBuffer, InstructionMemoryCache}
@@ -12,7 +19,13 @@ import b4processor.modules.memory.ExternalMemoryInterface
 import b4processor.modules.outputcollector.{OutputCollector, OutputCollector2}
 import b4processor.modules.registerfile.{RegisterFile, RegisterFileMem}
 import b4processor.modules.reorderbuffer.ReorderBuffer
-import b4processor.modules.reservationstation.{IssueBuffer, ReservationStation}
+import b4processor.modules.reservationstation.{
+  IssueBuffer,
+  IssueBuffer2,
+  IssueBuffer3,
+  ReservationStation,
+  ReservationStation2,
+}
 import b4processor.utils.axi.{ChiselAXI, VerilogAXI}
 import chisel3._
 import chisel3.experimental.dataview.DataViewable
@@ -30,7 +43,7 @@ class B4Processor(implicit params: Parameters) extends Module {
   require(params.tagWidth >= 1, "タグ幅は1以上である必要があります。")
   require(
     params.maxRegisterFileCommitCount >= 1,
-    "レジスタファイルへのコミット数は1以上である必要があります。"
+    "レジスタファイルへのコミット数は1以上である必要があります。",
   )
 
   private val instructionCache =
@@ -49,14 +62,18 @@ class B4Processor(implicit params: Parameters) extends Module {
   private val branchAddressCollector = Module(new BranchOutputCollector())
 
   private val uncompresser = Seq.fill(params.threads)(
-    Seq.fill(params.decoderPerThread)(Module(new Uncompresser))
+    Seq.fill(params.decoderPerThread)(Module(new Uncompresser)),
   )
   private val decoders = Seq.fill(params.threads)(
-    (0 until params.decoderPerThread).map(n => Module(new Decoder))
+    (0 until params.decoderPerThread).map(n => Module(new Decoder)),
   )
   private val reservationStation =
-    Seq.fill(params.threads)(Module(new ReservationStation))
-  private val issueBuffer = Module(new IssueBuffer)
+    Seq.fill(params.threads)(
+      Seq.fill(params.decoderPerThread)(Module(new ReservationStation2)),
+    )
+  private val issueBuffer = Module(
+    new IssueBuffer3(params.executors, new ReservationStation2Executor),
+  )
   private val executors = Seq.fill(params.executors)(Module(new Executor))
 
   private val externalMemoryInterface = Module(new ExternalMemoryInterface)
@@ -64,18 +81,41 @@ class B4Processor(implicit params: Parameters) extends Module {
   private val csrReservationStation =
     Seq.fill(params.threads)(Module(new CSRReservationStation))
   private val csr = Seq.fill(params.threads)(Module(new CSR))
+  private val amo = Module(new AtomicLSU)
+
+  private val pextIssueBuffer =
+    if (params.enablePExt)
+      Some(
+        Module(
+          new IssueBuffer3(
+            params.pextExecutors,
+            new ReservationStation2PExtExecutor(),
+          ),
+        ),
+      )
+    else None
+  private val pextExecutors =
+    if (params.enablePExt)
+      Some(Seq.fill(params.pextExecutors)(Module(new B4PExtExecutor())))
+    else None
 
   axi <> externalMemoryInterface.io.coordinator
 
-  /** 出力コレクタとデータメモリ */
-  outputCollector.io.dataMemory <> externalMemoryInterface.io.dataReadOut
-
   /** レジスタのコンテンツをデバッグ時に接続 */
-  if (params.debug) {
+  if (params.debug)
     for (tid <- 0 until params.threads)
       for (i <- 0 until 32)
         registerFileContents.get(tid)(i) <> registerFile(tid).io.values.get(i)
-  }
+  if (params.enablePExt)
+    for (pe <- 0 until params.pextExecutors) {
+      pextIssueBuffer.get.io.executors(pe) <> pextExecutors.get(pe).io.input
+      outputCollector.io.pextExecutor(pe) <> pextExecutors.get(pe).io.output
+    }
+  else
+    outputCollector.io.pextExecutor foreach { o =>
+      o.valid := false.B
+      o.bits := 0.U.asTypeOf(new OutputValue())
+    }
 
   for (e <- 0 until params.executors) {
 
@@ -90,11 +130,13 @@ class B4Processor(implicit params: Parameters) extends Module {
   }
 
   for (tid <- 0 until params.threads) {
-    reservationStation(tid).io.issue <> issueBuffer.io.reservationStations(tid)
+    amo.io.collectedOutput := outputCollector.io.outputs
+    amo.io.output <> outputCollector.io.amo
+    amo.io.reorderBuffer(tid) <> reorderBuffer(tid).io.loadStoreQueue
 
-    /** リザベーションステーションと実行ユニットの接続 */
-    reservationStation(tid).io.collectedOutput :=
-      outputCollector.io.outputs(tid)
+    csrReservationStation(tid).io.reorderBuffer <>
+      reorderBuffer(tid).io.loadStoreQueue
+    csrReservationStation(tid).io.isError := reorderBuffer(tid).io.isError
 
     csr(tid).io.threadId := tid.U
     instructionCache(tid).io.threadId := tid.U
@@ -126,12 +168,27 @@ class B4Processor(implicit params: Parameters) extends Module {
     fetch(tid).io.csrReservationStationEmpty :=
       csrReservationStation(tid).io.empty
 
-    outputCollector.io.isError(tid) := reorderBuffer(tid).io.isError
     branchAddressCollector.io.isError(tid) := reorderBuffer(tid).io.isError
     fetch(tid).io.isError := reorderBuffer(tid).io.isError
 
     /** フェッチとデコーダの接続 */
     for (d <- 0 until params.decoderPerThread) {
+      reservationStation(tid)(d).io.collectedOutput :=
+        outputCollector.io.outputs(tid)
+
+      reservationStation(tid)(d).io.threadId := tid.U
+
+      fetch(tid).io.interrupt := false.B
+      reservationStation(tid)(d).io.issue <>
+        issueBuffer.io.reservationStations(tid)(d)
+      if (params.enablePExt)
+        reservationStation(tid)(d).io.pextIssue <>
+          pextIssueBuffer.get.io.reservationStations(tid)(d)
+      else
+        reservationStation(tid)(d).io.pextIssue.ready := false.B
+
+      amo.io.decoders(tid)(d) <> decoders(tid)(d).io.amo
+
       decoders(tid)(d).io.csr <> csrReservationStation(tid).io.decoderInput(d)
 
       decoders(tid)(d).io.threadId := tid.U
@@ -145,7 +202,7 @@ class B4Processor(implicit params: Parameters) extends Module {
       decoders(tid)(d).io.reorderBuffer <> reorderBuffer(tid).io.decoders(d)
 
       /** デコーダとリザベーションステーションを接続 */
-      reservationStation(tid).io.decoder(d) <>
+      reservationStation(tid)(d).io.decoder <>
         decoders(tid)(d).io.reservationStation
 
       /** デコーダとレジスタファイルの接続 */
@@ -172,7 +229,7 @@ class B4Processor(implicit params: Parameters) extends Module {
     registerFile(tid).io.reorderBuffer <> reorderBuffer(tid).io.registerFile
 
     /** フェッチとLSQの接続 */
-    fetch(tid).io.loadStoreQueueEmpty := loadStoreQueue(tid).io.isEmpty
+    fetch(tid).io.loadStoreQueueEmpty := loadStoreQueue(tid).io.empty
 
     /** フェッチとリオーダバッファの接続 */
     fetch(tid).io.reorderBufferEmpty := reorderBuffer(tid).io.isEmpty
@@ -187,18 +244,17 @@ class B4Processor(implicit params: Parameters) extends Module {
     reorderBuffer(tid).io.loadStoreQueue <> loadStoreQueue(tid).io.reorderBuffer
 
     /** 命令メモリと命令キャッシュを接続 */
-    externalMemoryInterface.io.instructionFetchRequest(tid) <>
-      instructionCache(tid).io.memory.request
-    externalMemoryInterface.io.instructionOut(tid) <>
-      instructionCache(tid).io.memory.response
+    externalMemoryInterface.io.instruction(tid) <>
+      instructionCache(tid).io.memory
 
     /** フェッチと分岐予測 TODO */
     fetch(tid).io.prediction <> DontCare
   }
 
   /** メモリとデータメモリバッファ */
-  externalMemoryInterface.io.dataReadRequests <> dataMemoryBuffer.io.dataReadRequest
-  externalMemoryInterface.io.dataWriteRequests <> dataMemoryBuffer.io.dataWriteRequest
+  externalMemoryInterface.io.data <> dataMemoryBuffer.io.memory
+  dataMemoryBuffer.io.output <> outputCollector.io.dataMemory
+  externalMemoryInterface.io.amo <> amo.io.memory
 }
 
 class B4ProcessorFixedPorts(implicit params: Parameters) extends RawModule {
@@ -217,21 +273,24 @@ class B4ProcessorFixedPorts(implicit params: Parameters) extends RawModule {
 
 object B4Processor extends App {
   implicit val params = Parameters(
-    threads = 2,
-    executors = 2,
-    decoderPerThread = 2,
+    threads = 1,
+    executors = 1,
+    decoderPerThread = 1,
     maxRegisterFileCommitCount = 1,
     tagWidth = 4,
-    instructionStart = 0x2000_0000L
+    parallelOutput = 1,
+    instructionStart = 0x2000_0000L,
+    enablePExt = true,
+    pextExecutors = 1,
   )
 
   ChiselStage.emitSystemVerilogFile(
     new B4ProcessorFixedPorts(),
     Array.empty,
     Array(
-//      "--disable-mem-randomization",
-//      "--disable-reg-randomization",
-//      "--disable-all-randomization"
-    )
+      "--lowering-options=disallowLocalVariables,disallowPackedArrays,noAlwaysComb",
+      "--disable-all-randomization",
+      "--add-vivado-ram-address-conflict-synthesis-bug-workaround",
+    ),
   )
 }

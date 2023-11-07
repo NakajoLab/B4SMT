@@ -27,7 +27,7 @@ class ValueSelectorWrapper(implicit params: Parameters) extends ValueSelector {
     reorderBufferValue: Option[Int] = None,
     aluBypassValue: Option[(Int, Int)] = None,
     opcodeFormat: OpcodeFormat.Type = R,
-    immediate: Int = 0
+    immediate: Int = 0,
   ): Unit = {
     this.io.outputCollector
       .outputs(0)
@@ -76,7 +76,7 @@ class ValueSelectorTest extends AnyFlatSpec with ChiselScalatestTester {
       c.initialize(
         sourceTag = Some(3),
         registerFileValue = 5,
-        reorderBufferValue = Some(6)
+        reorderBufferValue = Some(6),
       )
       c.expectValue(Some(6))
     }
@@ -88,7 +88,7 @@ class ValueSelectorTest extends AnyFlatSpec with ChiselScalatestTester {
         c.initialize(
           sourceTag = Some(3),
           registerFileValue = 5,
-          aluBypassValue = Some((3, 12))
+          aluBypassValue = Some((3, 12)),
         )
         c.expectValue(Some(12))
     }
@@ -100,7 +100,7 @@ class ValueSelectorTest extends AnyFlatSpec with ChiselScalatestTester {
         c.initialize(
           sourceTag = Some(3),
           registerFileValue = 5,
-          aluBypassValue = Some(3, 12)
+          aluBypassValue = Some(3, 12),
         )
         c.expectValue(Some(12))
     }

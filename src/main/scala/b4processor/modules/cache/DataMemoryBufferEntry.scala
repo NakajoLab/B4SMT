@@ -27,7 +27,7 @@ object DataMemoryBufferEntry {
     tag: Tag,
     data: UInt,
     operation: LoadStoreOperation.Type,
-    operationWidth: LoadStoreWidth.Type
+    operationWidth: LoadStoreWidth.Type,
   )(implicit params: Parameters): DataMemoryBufferEntry = {
     val entry = DataMemoryBufferEntry.default
     entry.address := address

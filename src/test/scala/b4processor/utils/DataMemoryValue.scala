@@ -5,5 +5,5 @@ case class DataMemoryValue(
   tag: Int,
   data: Int,
   opcode: Int,
-  function3: Int
+  function3: Int,
 )

@@ -31,8 +31,8 @@ class ValueSelector(implicit params: Parameters) extends Module {
     Seq(
       (io.sourceTag.valid && io.reorderBufferValue.valid) -> true.B,
       (io.sourceTag.valid && outputMatchingTagExists) -> true.B,
-      (!io.sourceTag.valid) -> true.B
-    )
+      (!io.sourceTag.valid) -> true.B,
+    ),
   )
   // 値の内容
   io.value.bits := MuxCase(
@@ -41,11 +41,11 @@ class ValueSelector(implicit params: Parameters) extends Module {
       (io.sourceTag.valid && io.reorderBufferValue.valid) -> io.reorderBufferValue.bits,
       (io.sourceTag.valid && outputMatchingTagExists) -> Mux1H(
         io.outputCollector.outputs.map(o =>
-          (o.valid && o.bits.tag === io.sourceTag.bits) -> o.bits.value
-        )
+          (o.valid && o.bits.tag === io.sourceTag.bits) -> o.bits.value,
+        ),
       ),
-      (!io.sourceTag.valid) -> io.registerFileValue
-    )
+      (!io.sourceTag.valid) -> io.registerFileValue,
+    ),
   )
 }
 
@@ -54,7 +54,7 @@ object ValueSelector {
     reorderBufferValue: Valid[UInt],
     registerFileValue: UInt,
     outputCollector: CollectedOutput,
-    sourceTag: Valid[Tag]
+    sourceTag: Valid[Tag],
   )(implicit params: Parameters): Valid[UInt] = {
     val m = Module(new ValueSelector)
     m.io.reorderBufferValue := reorderBufferValue

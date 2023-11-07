@@ -25,7 +25,7 @@ class InstructionCheckerWrapper extends InstructionChecker {
     branch: BranchOperations.Type = BranchOperations.Unknown,
     operationWidth: OperationWidth.Type = OperationWidth.Unknown,
     arithmetic: ArithmeticOperations.Type = ArithmeticOperations.Unknown,
-    csr: CSROperations.Type = CSROperations.Unknown
+    csr: CSROperations.Type = CSROperations.Unknown,
   ): Unit = {
     this.output.instruction.expect(instruction, s"$instruction")
     this.output.branch.expect(branch, s"$branch")
@@ -44,7 +44,7 @@ class InstructionCheckerTest extends AnyFlatSpec with ChiselScalatestTester {
       c.expect(
         instruction = Arithmetic,
         arithmetic = Addition,
-        operationWidth = DoubleWord
+        operationWidth = DoubleWord,
       )
     }
   }
@@ -55,7 +55,7 @@ class InstructionCheckerTest extends AnyFlatSpec with ChiselScalatestTester {
       c.expect(
         instruction = Arithmetic,
         arithmetic = Addition,
-        operationWidth = Word
+        operationWidth = Word,
       )
     }
   }

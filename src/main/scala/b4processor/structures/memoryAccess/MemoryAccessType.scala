@@ -13,8 +13,8 @@ object MemoryAccessType extends ChiselEnum {
     Mux1H(
       Seq(
         (opcode(5) === false.B) -> MemoryAccessType.Load,
-        (opcode(5) === true.B) -> MemoryAccessType.Store
-      )
+        (opcode(5) === true.B) -> MemoryAccessType.Store,
+      ),
     )
   }
 }

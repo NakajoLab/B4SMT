@@ -12,8 +12,8 @@ object MemoryAccessWidth extends ChiselEnum {
         (funct3(1, 0) === "b00".U) -> MemoryAccessWidth.Byte,
         (funct3(1, 0) === "b01".U) -> MemoryAccessWidth.HalfWord,
         (funct3(1, 0) === "b10".U) -> MemoryAccessWidth.Word,
-        (funct3(1, 0) === "b11".U) -> MemoryAccessWidth.DoubleWord
-      )
+        (funct3(1, 0) === "b11".U) -> MemoryAccessWidth.DoubleWord,
+      ),
     )
   }
 }

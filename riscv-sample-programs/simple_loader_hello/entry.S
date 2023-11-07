@@ -63,3 +63,6 @@ _WEND:
 
 .section .data
 hello: .string "Hello World\r\nFrom B4Processor!\r\n"
+
+.section .data
+to_ram: .string "Some Text that goes to ram!\r\n"

@@ -72,7 +72,7 @@ object InstructionUtil {
         .map(k => i * 8 + k)
         .map(p =>
           if (p < output.length) { output(p) }
-          else { "00" }
+          else { "00" },
         )
         .reverse
         .reduce(_ + _)

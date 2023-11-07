@@ -9,11 +9,10 @@ import scala.language.implicitConversions
 
 class RVRegister extends Bundle {
   override def toPrintable = p"reg(${inner})"
+
   val inner = UInt(5.W)
 
-  def =/=(other: RVRegister): Bool = {
-    this.inner =/= other.inner
-  }
+  def =/=(other: RVRegister) = this.inner =/= other.inner
 }
 
 object RVRegister {

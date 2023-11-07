@@ -57,7 +57,7 @@ object LoadStoreQueueEntry {
     addressTag: Tag,
     storeDataTag: Tag,
     storeData: UInt,
-    storeDataValid: Bool
+    storeDataValid: Bool,
   )(implicit params: Parameters): LoadStoreQueueEntry = {
     val entry = LoadStoreQueueEntry.default
     entry.valid := true.B

@@ -7,5 +7,5 @@ case class DecodeEnqueue(
   operationWidth: LoadStoreWidth.Type,
   addressTag: Int,
   storeDataTag: Int,
-  storeData: Option[Long]
+  storeData: Option[Long],
 )

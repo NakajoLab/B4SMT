@@ -12,7 +12,7 @@ class ChiselAXI(
   val userWriteAddressWidth: Int = 0,
   val userWriteResponceWidth: Int = 0,
   val userReadAddressWidth: Int = 0,
-  val userReadWidth: Int = 0
+  val userReadWidth: Int = 0,
 ) extends Bundle {
   class WriteAddressChannel extends Bundle {
     val ID = UInt(idWidth.W) // Optional Default 0
@@ -79,7 +79,7 @@ object ChiselAXI {
         vab.userWriteAddressWidth,
         vab.userWriteResponseWidth,
         vab.userReadAddressWidth,
-        vab.userReadWidth
+        vab.userReadWidth,
       ),
     _.awid -> _.writeAddress.bits.ID,
     _.awaddr -> _.writeAddress.bits.ADDR,
@@ -122,6 +122,6 @@ object ChiselAXI {
     _.rlast -> _.read.bits.LAST,
     _.ruser -> _.read.bits.USER,
     _.rvalid -> _.read.valid,
-    _.rready -> _.read.ready
+    _.rready -> _.read.ready,
   )
 }

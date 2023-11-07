@@ -8,5 +8,5 @@ case class LSQ2Memory(
   tag: Int,
   data: Int,
   operation: LoadStoreOperation.Type,
-  operationWidth: LoadStoreWidth.Type
+  operationWidth: LoadStoreWidth.Type,
 )

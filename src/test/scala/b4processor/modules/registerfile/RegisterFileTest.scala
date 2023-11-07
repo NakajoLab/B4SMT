@@ -13,7 +13,7 @@ class RegisterFileTest extends AnyFlatSpec with ChiselScalatestTester {
     Parameters(
       threads = 1,
       decoderPerThread = 1,
-      maxRegisterFileCommitCount = 1
+      maxRegisterFileCommitCount = 1,
     )
 
   it should "save a value" in {
@@ -24,8 +24,8 @@ class RegisterFileTest extends AnyFlatSpec with ChiselScalatestTester {
 
       c.clock.step()
 
-      c.io.decoders(0).sourceRegister1.poke(5.reg)
-      c.io.decoders(0).value1.expect(123)
+      c.io.decoders(0).sourceRegisters(0).poke(5.reg)
+      c.io.decoders(0).values(0).expect(123)
     }
   }
 
@@ -37,14 +37,14 @@ class RegisterFileTest extends AnyFlatSpec with ChiselScalatestTester {
 
       c.clock.step()
 
-      c.io.decoders(0).sourceRegister1.poke(0.reg)
-      c.io.decoders(0).value1.expect(0)
+      c.io.decoders(0).sourceRegisters(0).poke(0.reg)
+      c.io.decoders(0).values(0).expect(0)
     }
   }
 
   it should "resolve multiple inputs and outputs" in {
     test(
-      new RegisterFile()(detfaultParams.copy(maxRegisterFileCommitCount = 2))
+      new RegisterFile()(detfaultParams.copy(maxRegisterFileCommitCount = 2)),
     ) { c =>
       c.io.reorderBuffer(0).valid.poke(true)
       c.io.reorderBuffer(0).bits.value.poke(123)
@@ -55,16 +55,16 @@ class RegisterFileTest extends AnyFlatSpec with ChiselScalatestTester {
 
       c.clock.step()
 
-      c.io.decoders(0).sourceRegister1.poke(1.reg)
-      c.io.decoders(0).value1.expect(123)
-      c.io.decoders(0).sourceRegister2.poke(2.reg)
-      c.io.decoders(0).value2.expect(456)
+      c.io.decoders(0).sourceRegisters(0).poke(1.reg)
+      c.io.decoders(0).values(0).expect(123)
+      c.io.decoders(0).sourceRegisters(1).poke(2.reg)
+      c.io.decoders(0).values(1).expect(456)
     }
   }
 
   it should "resolve multiple inputs overlapping" in {
     test(
-      new RegisterFile()(detfaultParams.copy(maxRegisterFileCommitCount = 2))
+      new RegisterFile()(detfaultParams.copy(maxRegisterFileCommitCount = 2)),
     ) { c =>
       c.io.reorderBuffer(0).valid.poke(true)
       c.io.reorderBuffer(0).bits.value.poke(123)
@@ -75,8 +75,8 @@ class RegisterFileTest extends AnyFlatSpec with ChiselScalatestTester {
 
       c.clock.step()
 
-      c.io.decoders(0).sourceRegister1.poke(1.reg)
-      c.io.decoders(0).value1.expect(456)
+      c.io.decoders(0).sourceRegisters(0).poke(1.reg)
+      c.io.decoders(0).values(0).expect(456)
     }
   }
 }

@@ -4,6 +4,7 @@ import b4processor.Parameters
 import b4processor.utils.B4ProcessorWithMemory
 import chiseltest._
 import chiseltest.internal.CachingAnnotation
+import firrtl2.annotations.Annotation
 import org.scalatest.Tag
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.tagobjects.Slow
@@ -29,116 +30,131 @@ class B4ProcessorRISCVTestWrapper()(implicit params: Parameters)
   }
 }
 
-class B4ProcessorRISCVTest extends AnyFlatSpec with ChiselScalatestTester {
-  // デバッグに時間がかかりすぎるのでパラメータを少し下げる。
-  implicit var defaultParams = {
-    Parameters(
-      debug = true,
-      threads = 1,
-      decoderPerThread = 4,
-      tagWidth = 4,
-      loadStoreQueueIndexWidth = 2,
-      maxRegisterFileCommitCount = 2,
-      instructionStart = 0x8000_0000L
-    )
-  }
-  val backendAnnotation = IcarusBackendAnnotation
-  val WriteWaveformAnnotation = WriteFstAnnotation
+abstract class RiscvTest(val testPrefix: String)
+    extends AnyFlatSpec
+    with ChiselScalatestTester {
+  var params = Parameters(
+    debug = true,
+    threads = 1,
+    decoderPerThread = 4,
+    tagWidth = 4,
+    loadStoreQueueIndexWidth = 2,
+    maxRegisterFileCommitCount = 2,
+    instructionStart = 0x8000_0000L,
+//    enablePExt = true
+  )
 
-  behavior of s"RISC-V tests rv64i"
+  val annotation = IcarusBackendAnnotation
+  val writeWaveform = WriteFstAnnotation
 
-  def riscv_test_i(test_name: String, timeout: Int = 2000): Unit = {
+  object RISCVTest extends Tag("RISCVTest")
 
-    it should s"run risc-v test $test_name" taggedAs (RISCVTest, Slow) in {
+  def riscv_test(
+    test_name: String,
+    timeout: Int = 2000,
+    backendAnnotation: Annotation = annotation,
+  ): Unit = {
+
+    it should s"run $test_name" taggedAs (RISCVTest, Slow) in {
       test( // FIXME fromFile8bit
         new B4ProcessorRISCVTestWrapper(
-        )
+        )(this.params),
       )
         .withAnnotations(
-          Seq(WriteWaveformAnnotation, CachingAnnotation, backendAnnotation)
+          Seq(backendAnnotation, CachingAnnotation, this.writeWaveform),
         ) { c =>
           c.clock.setTimeout(timeout)
           c.initialize(
-            s"programs/riscv-tests/share/riscv-tests/isa/rv64ui-p-$test_name"
+            s"programs/riscv-tests/share/riscv-tests/isa/rv64u$testPrefix-p-$test_name",
           )
           c.riscv_test()
         }
     }
   }
+}
 
-  riscv_test_i("add")
-  riscv_test_i("addi")
-  riscv_test_i("addiw")
-  riscv_test_i("addw")
-  riscv_test_i("and")
-  riscv_test_i("andi")
-  riscv_test_i("auipc")
-  riscv_test_i("beq")
-  riscv_test_i("bge")
-  riscv_test_i("bgeu")
-  riscv_test_i("blt")
-  riscv_test_i("bltu")
-  riscv_test_i("bne")
-  riscv_test_i("fence_i")
-  riscv_test_i("jal")
-  riscv_test_i("jalr")
-  riscv_test_i("lb")
-  riscv_test_i("lbu")
-  riscv_test_i("ld")
-  riscv_test_i("lh")
-  riscv_test_i("lhu")
-  riscv_test_i("lui")
-  riscv_test_i("lw")
-  riscv_test_i("lwu")
-  riscv_test_i("or")
-  riscv_test_i("ori")
-  riscv_test_i("sb")
-  riscv_test_i("sd")
-  riscv_test_i("sh")
-  riscv_test_i("sll")
-  riscv_test_i("slli")
-  riscv_test_i("slliw")
-  riscv_test_i("sllw")
-  riscv_test_i("slt")
-  riscv_test_i("slti")
-  riscv_test_i("sltiu")
-  riscv_test_i("sltu")
-  riscv_test_i("sra")
-  riscv_test_i("srai")
-  riscv_test_i("sraiw")
-  riscv_test_i("sraw")
-  riscv_test_i("srl")
-  riscv_test_i("srli")
-  riscv_test_i("srliw")
-  riscv_test_i("srlw")
-  riscv_test_i("sub")
-  riscv_test_i("subw")
-  riscv_test_i("sw")
-  riscv_test_i("xor")
-  riscv_test_i("xori")
+class RiscvTestI extends RiscvTest("i") {
+  behavior of s"riscv_test_i"
 
-  behavior of s"RISC-V tests rv64c"
+  riscv_test("add")
+  riscv_test("addi")
+  riscv_test("addiw")
+  riscv_test("addw")
+  riscv_test("and")
+  riscv_test("andi")
+  riscv_test("auipc")
+  riscv_test("beq")
+  riscv_test("bge")
+  riscv_test("bgeu")
+  riscv_test("blt")
+  riscv_test("bltu")
+  riscv_test("bne")
+  riscv_test("fence_i")
+  riscv_test("jal")
+  riscv_test("jalr")
+  riscv_test("lb")
+  riscv_test("lbu")
+  riscv_test("ld")
+  riscv_test("lh")
+  riscv_test("lhu")
+  riscv_test("lui")
+  riscv_test("lw")
+  riscv_test("lwu")
+  riscv_test("or")
+  riscv_test("ori")
+  riscv_test("sb")
+  riscv_test("sd")
+  riscv_test("sh")
+  riscv_test("sll")
+  riscv_test("slli")
+  riscv_test("slliw")
+  riscv_test("sllw")
+  riscv_test("slt")
+  riscv_test("slti")
+  riscv_test("sltiu")
+  riscv_test("sltu")
+  riscv_test("sra")
+  riscv_test("srai")
+  riscv_test("sraiw")
+  riscv_test("sraw")
+  riscv_test("srl")
+  riscv_test("srli")
+  riscv_test("srliw")
+  riscv_test("srlw")
+  riscv_test("sub")
+  riscv_test("subw")
+  riscv_test("sw")
+  riscv_test("xor")
+  riscv_test("xori")
+}
 
-  object RISCVTest extends Tag("RISCVTests")
+class RiscvTestC extends RiscvTest("c") {
+  behavior of "riscv_test_c"
+  riscv_test("rvc")
+}
 
-  def riscv_test_c(test_name: String, timeout: Int = 2000): Unit = {
+class RiscvTestA extends RiscvTest("a") {
+  behavior of "riscv_test_a"
 
-    it should s"run risc-v test $test_name" taggedAs (RISCVTest, Slow) in {
-      test( // FIXME fromFile8bit
-        new B4ProcessorRISCVTestWrapper(
-        )
-      )
-        .withAnnotations(
-          Seq(WriteWaveformAnnotation, CachingAnnotation, backendAnnotation)
-        ) { c =>
-          c.clock.setTimeout(timeout)
-          c.initialize(
-            s"programs/riscv-tests/share/riscv-tests/isa/rv64uc-p-$test_name"
-          )
-          c.riscv_test()
-        }
-    }
-  }
+  riscv_test("lrsc", timeout = 100000, VerilatorBackendAnnotation)
 
-  riscv_test_c("rvc")
+  riscv_test("amoadd_w")
+  riscv_test("amoand_w")
+  riscv_test("amomax_w")
+  riscv_test("amomaxu_w")
+  riscv_test("amomin_w")
+  riscv_test("amominu_w")
+  riscv_test("amoor_w")
+  riscv_test("amoswap_w")
+  riscv_test("amoxor_w")
+
+  riscv_test("amoadd_d")
+  riscv_test("amoand_d")
+  riscv_test("amomax_d")
+  riscv_test("amomaxu_d")
+  riscv_test("amomin_d")
+  riscv_test("amominu_d")
+  riscv_test("amoor_d")
+  riscv_test("amoswap_d")
+  riscv_test("amoxor_d")
 }

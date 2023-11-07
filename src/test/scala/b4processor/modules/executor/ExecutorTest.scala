@@ -52,7 +52,7 @@ class ExecutorWrapper(implicit params: Parameters) extends Module {
   def expectout(
     values: Option[ExecutorValue],
     valid: Boolean = true,
-    message: String = ""
+    message: String = "",
   ): Unit = {
     val out = this.io.out
     out.valid.expect(valid, message)
@@ -101,11 +101,11 @@ class ExecutorTest
             destinationTag = reg,
             value1 = a,
             value2 = b,
-            operation = ALUOperation.Add
-          )
+            operation = ALUOperation.Add,
+          ),
         )
         c.expectout(values =
-          Some(ExecutorValue(destinationTag = reg, value = a + b))
+          Some(ExecutorValue(destinationTag = reg, value = a + b)),
         )
         c.expectLSQ(None)
         c.expectFetch(values = FetchValue(valid = false, programCounter = 0))
@@ -121,13 +121,13 @@ class ExecutorTest
             destinationTag = reg,
             value1 = a,
             value2 = b,
-            operation = ALUOperation.AddW
-          )
+            operation = ALUOperation.AddW,
+          ),
         )
         c.expectout(values =
           Some(
-            ExecutorValue(destinationTag = reg, value = (a + b).toInt.toLong)
-          )
+            ExecutorValue(destinationTag = reg, value = (a + b).toInt.toLong),
+          ),
         )
         c.expectLSQ(None)
         c.expectFetch(values = FetchValue(valid = false, programCounter = 0))
@@ -143,11 +143,11 @@ class ExecutorTest
             destinationTag = reg,
             value1 = a,
             value2 = b,
-            operation = ALUOperation.Sub
-          )
+            operation = ALUOperation.Sub,
+          ),
         )
         c.expectout(values =
-          Some(ExecutorValue(destinationTag = reg, value = a - b))
+          Some(ExecutorValue(destinationTag = reg, value = a - b)),
         )
         c.expectLSQ(None)
         c.expectFetch(values = FetchValue(valid = false, programCounter = 0))
@@ -163,13 +163,13 @@ class ExecutorTest
             destinationTag = reg,
             value1 = a,
             value2 = b,
-            operation = ALUOperation.SubW
-          )
+            operation = ALUOperation.SubW,
+          ),
         )
         c.expectout(values =
           Some(
-            ExecutorValue(destinationTag = reg, value = (a - b).toInt.toLong)
-          )
+            ExecutorValue(destinationTag = reg, value = (a - b).toInt.toLong),
+          ),
         )
         c.expectLSQ(None)
         c.expectFetch(values = FetchValue(valid = false, programCounter = 0))
@@ -185,11 +185,11 @@ class ExecutorTest
             destinationTag = reg,
             value1 = a,
             value2 = b,
-            operation = ALUOperation.Sll
-          )
+            operation = ALUOperation.Sll,
+          ),
         )
         c.expectout(values =
-          Some(ExecutorValue(destinationTag = reg, value = a << b))
+          Some(ExecutorValue(destinationTag = reg, value = a << b)),
         )
         c.expectLSQ(None)
         c.expectFetch(values = FetchValue(valid = false, programCounter = 0))
@@ -205,11 +205,11 @@ class ExecutorTest
             destinationTag = reg,
             value1 = a,
             value2 = b,
-            operation = ALUOperation.Sra
-          )
+            operation = ALUOperation.Sra,
+          ),
         )
         c.expectout(values =
-          Some(ExecutorValue(destinationTag = reg, value = a >> b))
+          Some(ExecutorValue(destinationTag = reg, value = a >> b)),
         )
         c.expectLSQ(None)
         c.expectFetch(values = FetchValue(valid = false, programCounter = 0))
@@ -225,11 +225,11 @@ class ExecutorTest
             destinationTag = reg,
             value1 = a,
             value2 = b,
-            operation = ALUOperation.Srl
-          )
+            operation = ALUOperation.Srl,
+          ),
         )
         c.expectout(values =
-          Some(ExecutorValue(destinationTag = reg, value = a >>> b))
+          Some(ExecutorValue(destinationTag = reg, value = a >>> b)),
         )
         c.expectLSQ(None)
         c.expectFetch(values = FetchValue(valid = false, programCounter = 0))

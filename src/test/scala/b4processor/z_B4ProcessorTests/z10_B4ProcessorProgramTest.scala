@@ -12,7 +12,13 @@ class z10_B4ProcessorProgramTest
   behavior of "B4Processor test programs"
   // デバッグに時間がかかりすぎるのでパラメータを少し下げる。
   implicit val defaultParams =
-    Parameters(debug = true, tagWidth = 4, threads = 1, decoderPerThread = 1)
+    Parameters(
+      debug = true,
+      tagWidth = 4,
+      threads = 1,
+      decoderPerThread = 1,
+//      enablePExt = true
+    )
   val backendAnnotation = IcarusBackendAnnotation
   val WriteWaveformAnnotation = WriteFstAnnotation
 
@@ -20,11 +26,11 @@ class z10_B4ProcessorProgramTest
   it should "execute branch with no parallel" in {
     test(
       new B4ProcessorWithMemory()(
-        defaultParams.copy(threads = 1, decoderPerThread = 1)
-      )
+        defaultParams.copy(threads = 1, decoderPerThread = 1),
+      ),
     )
       .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
       ) { c =>
         c.initialize("programs/riscv-sample-programs/branch")
         c.checkForRegister(13, 20, 200)
@@ -34,11 +40,11 @@ class z10_B4ProcessorProgramTest
   it should "execute branch with 2 parallel thread" in {
     test(
       new B4ProcessorWithMemory()(
-        defaultParams.copy(threads = 2, decoderPerThread = 1)
-      )
+        defaultParams.copy(threads = 2, decoderPerThread = 1),
+      ),
     )
       .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
       ) { c =>
         c.initialize("programs/riscv-sample-programs/branch")
         c.checkForRegister(13, 20, 200, 0)
@@ -50,11 +56,11 @@ class z10_B4ProcessorProgramTest
   it should "execute fibonacci with no parallel" in {
     test(
       new B4ProcessorWithMemory()(
-        defaultParams.copy(threads = 1, decoderPerThread = 1)
-      )
+        defaultParams.copy(threads = 1, decoderPerThread = 1),
+      ),
     )
       .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
       ) { c =>
         c.initialize("programs/riscv-sample-programs/fibonacci")
         c.checkForRegister(6, 55, 400)
@@ -65,7 +71,7 @@ class z10_B4ProcessorProgramTest
   it should "execute fibonacci with 2 parallel" in {
     test(new B4ProcessorWithMemory())
       .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
       ) { c =>
         c.initialize("programs/riscv-sample-programs/fibonacci")
         c.checkForRegister(6, 55, 400)
@@ -76,11 +82,11 @@ class z10_B4ProcessorProgramTest
   it should "execute fibonacci with 4 parallel" in {
     test(
       new B4ProcessorWithMemory()(
-        defaultParams.copy(threads = 1, decoderPerThread = 4)
-      )
+        defaultParams.copy(threads = 1, decoderPerThread = 4),
+      ),
     )
       .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
       ) { c =>
         c.initialize("programs/riscv-sample-programs/fibonacci")
         c.checkForRegister(6, 55, 200)
@@ -91,7 +97,7 @@ class z10_B4ProcessorProgramTest
   it should "execute call_ret with 2 parallel" in {
     test(new B4ProcessorWithMemory())
       .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
       ) { c =>
         c.initialize("programs/riscv-sample-programs/call_ret")
         c.checkForRegister(5, 1, 100)
@@ -104,11 +110,11 @@ class z10_B4ProcessorProgramTest
   it should "execute many_add with no parallel" in {
     test(
       new B4ProcessorWithMemory()(
-        defaultParams.copy(threads = 1, decoderPerThread = 1)
-      )
+        defaultParams.copy(threads = 1, decoderPerThread = 1),
+      ),
     )
       .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
       ) { c =>
         c.initialize("programs/riscv-sample-programs/many_add")
         c.checkForRegister(1, 8, 100)
@@ -119,11 +125,11 @@ class z10_B4ProcessorProgramTest
   it should "execute many_add with no parallel 2 thread" in {
     test(
       new B4ProcessorWithMemory()(
-        defaultParams.copy(threads = 2, decoderPerThread = 1)
-      )
+        defaultParams.copy(threads = 2, decoderPerThread = 1),
+      ),
     )
       .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
       ) { c =>
         c.initialize("programs/riscv-sample-programs/many_add")
         c.checkForRegister(1, 8, 200, 0)
@@ -135,7 +141,7 @@ class z10_B4ProcessorProgramTest
   it should "execute many_add with 2 parallel" in {
     test(new B4ProcessorWithMemory()(defaultParams.copy(fetchWidth = 8)))
       .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
       ) { c =>
         c.initialize("programs/riscv-sample-programs/many_add")
         c.checkForRegister(1, 8, 100)
@@ -146,11 +152,11 @@ class z10_B4ProcessorProgramTest
   it should "execute many_add with 4 parallel" in {
     test(
       new B4ProcessorWithMemory()(
-        defaultParams.copy(threads = 1, decoderPerThread = 4, fetchWidth = 8)
-      )
+        defaultParams.copy(threads = 1, decoderPerThread = 4, fetchWidth = 8),
+      ),
     )
       .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
       ) { c =>
         c.initialize("programs/riscv-sample-programs/many_add")
         c.checkForRegister(1, 8, 70)
@@ -162,11 +168,11 @@ class z10_B4ProcessorProgramTest
     test(
       new B4ProcessorWithMemory()(
         defaultParams
-          .copy(threads = 1, decoderPerThread = 4, fetchWidth = 8, tagWidth = 2)
-      )
+          .copy(threads = 1, decoderPerThread = 4, fetchWidth = 8, tagWidth = 2),
+      ),
     )
       .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
       ) { c =>
         c.initialize("programs/riscv-sample-programs/many_add")
         c.checkForRegister(1, 8, 70)
@@ -182,12 +188,12 @@ class z10_B4ProcessorProgramTest
           decoderPerThread = 8,
           fetchWidth = 8,
           executors = 4,
-          maxRegisterFileCommitCount = 10
-        )
-      )
+          maxRegisterFileCommitCount = 10,
+        ),
+      ),
     )
       .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
       ) { c =>
         c.initialize("programs/riscv-sample-programs/many_add")
         c.checkForRegister(1, 8, 70)
@@ -204,12 +210,12 @@ class z10_B4ProcessorProgramTest
             threads = 1,
             decoderPerThread = 4,
             fetchWidth = 8,
-            maxRegisterFileCommitCount = 8
-          )
-      )
+            maxRegisterFileCommitCount = 8,
+          ),
+      ),
     )
       .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
       ) { c =>
         c.initialize("programs/riscv-sample-programs/many_add_out_of_order")
         c.clock.step(60)
@@ -248,11 +254,11 @@ class z10_B4ProcessorProgramTest
   it should "run load_store with 2 parallel" in {
     test(
       new B4ProcessorWithMemory()(
-        defaultParams.copy(threads = 1, decoderPerThread = 2)
-      )
+        defaultParams.copy(threads = 1, decoderPerThread = 2),
+      ),
     )
       .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
       ) { c =>
         c.initialize("programs/riscv-sample-programs/load_store")
         c.checkForRegister(3, 10, 200)
@@ -272,12 +278,12 @@ class z10_B4ProcessorProgramTest
           threads = 1,
           decoderPerThread = 1,
           maxRegisterFileCommitCount = 1,
-          loadStoreQueueIndexWidth = 2
-        )
-      )
+          loadStoreQueueIndexWidth = 2,
+        ),
+      ),
     )
       .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
       ) { c =>
         c.initialize("programs/riscv-sample-programs/fibonacci_c")
         c.clock.step(500)
@@ -293,12 +299,12 @@ class z10_B4ProcessorProgramTest
           threads = 1,
           decoderPerThread = 2,
           maxRegisterFileCommitCount = 4,
-          loadStoreQueueIndexWidth = 3
-        )
-      )
+          loadStoreQueueIndexWidth = 3,
+        ),
+      ),
     )
       .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
       ) { c =>
         c.initialize("programs/riscv-sample-programs/fibonacci_c")
         c.checkForRegisterChange(3, 1298777728820984005L, 10000)
@@ -313,12 +319,12 @@ class z10_B4ProcessorProgramTest
           threads = 1,
           decoderPerThread = 4,
           maxRegisterFileCommitCount = 4,
-          loadStoreQueueIndexWidth = 2
-        )
-      )
+          loadStoreQueueIndexWidth = 2,
+        ),
+      ),
     )
       .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
       ) { c =>
         c.initialize("programs/riscv-sample-programs/load_plus_arithmetic")
         c.checkForRegister(2, 20, 50)
@@ -334,12 +340,12 @@ class z10_B4ProcessorProgramTest
           threads = 1,
           decoderPerThread = 4,
           maxRegisterFileCommitCount = 4,
-          loadStoreQueueIndexWidth = 2
-        )
-      )
+          loadStoreQueueIndexWidth = 2,
+        ),
+      ),
     )
       .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
       ) { c =>
         c.initialize("programs/riscv-sample-programs/load_after_store")
         c.checkForRegister(3, 10, 100)
@@ -353,12 +359,12 @@ class z10_B4ProcessorProgramTest
           threads = 1,
           decoderPerThread = 4,
           maxRegisterFileCommitCount = 4,
-          loadStoreQueueIndexWidth = 2
-        )
-      )
+          loadStoreQueueIndexWidth = 2,
+        ),
+      ),
     )
       .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
       ) { c =>
         c.initialize("programs/riscv-sample-programs/enter_c")
         c.checkForRegister(3, 5, 100)
@@ -374,12 +380,12 @@ class z10_B4ProcessorProgramTest
           threads = 1,
           decoderPerThread = 4,
           maxRegisterFileCommitCount = 4,
-          loadStoreQueueIndexWidth = 2
-        )
-      )
+          loadStoreQueueIndexWidth = 2,
+        ),
+      ),
     )
       .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
       ) { c =>
         c.initialize("programs/riscv-sample-programs/calculation_c")
         c.checkForRegister(3, 18, 400)
@@ -394,12 +400,12 @@ class z10_B4ProcessorProgramTest
           threads = 1,
           decoderPerThread = 1,
           maxRegisterFileCommitCount = 1,
-          loadStoreQueueIndexWidth = 2
-        )
-      )
+          loadStoreQueueIndexWidth = 2,
+        ),
+      ),
     )
       .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
       ) { c =>
         c.initialize("programs/riscv-sample-programs/loop_c")
         c.checkForRegister(3, 30, 1000)
@@ -414,12 +420,12 @@ class z10_B4ProcessorProgramTest
           threads = 1,
           decoderPerThread = 4,
           maxRegisterFileCommitCount = 4,
-          loadStoreQueueIndexWidth = 2
-        )
-      )
+          loadStoreQueueIndexWidth = 2,
+        ),
+      ),
     )
       .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
       ) { c =>
         c.initialize("programs/riscv-sample-programs/loop_c")
         c.checkForRegister(3, 30, 2000)
@@ -435,12 +441,12 @@ class z10_B4ProcessorProgramTest
           threads = 1,
           decoderPerThread = 1,
           maxRegisterFileCommitCount = 1,
-          loadStoreQueueIndexWidth = 2
-        )
-      )
+          loadStoreQueueIndexWidth = 2,
+        ),
+      ),
     )
       .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
       ) { c =>
         c.initialize("programs/riscv-sample-programs/many_load_store")
         c.checkForRegister(2, 36)
@@ -456,12 +462,12 @@ class z10_B4ProcessorProgramTest
           threads = 1,
           decoderPerThread = 4,
           maxRegisterFileCommitCount = 4,
-          loadStoreQueueIndexWidth = 2
-        )
-      )
+          loadStoreQueueIndexWidth = 2,
+        ),
+      ),
     )
       .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
       ) { c =>
         c.initialize("programs/riscv-sample-programs/many_load_store")
         c.checkForRegister(2, 36, 100)
@@ -477,12 +483,12 @@ class z10_B4ProcessorProgramTest
           threads = 1,
           decoderPerThread = 1,
           maxRegisterFileCommitCount = 1,
-          loadStoreQueueIndexWidth = 2
-        )
-      )
+          loadStoreQueueIndexWidth = 2,
+        ),
+      ),
     )
       .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
       ) { c =>
         c.initialize("programs/riscv-sample-programs/load_store_cross")
         c.checkForRegister(2, 101, 100)
@@ -499,12 +505,12 @@ class z10_B4ProcessorProgramTest
           threads = 1,
           decoderPerThread = 4,
           maxRegisterFileCommitCount = 4,
-          loadStoreQueueIndexWidth = 2
-        )
-      )
+          loadStoreQueueIndexWidth = 2,
+        ),
+      ),
     )
       .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
       ) { c =>
         c.initialize("programs/riscv-sample-programs/load_store_cross")
         c.checkForRegister(2, 101, 100)
@@ -520,12 +526,12 @@ class z10_B4ProcessorProgramTest
           threads = 1,
           decoderPerThread = 1,
           maxRegisterFileCommitCount = 2,
-          loadStoreQueueIndexWidth = 2
-        )
-      )
+          loadStoreQueueIndexWidth = 2,
+        ),
+      ),
     )
       .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
       ) { c =>
         c.initialize("programs/riscv-sample-programs/csrtest")
         c.checkForRegister(17, 10)
@@ -543,12 +549,12 @@ class z10_B4ProcessorProgramTest
           threads = 1,
           decoderPerThread = 1,
           maxRegisterFileCommitCount = 2,
-          loadStoreQueueIndexWidth = 2
-        )
-      )
+          loadStoreQueueIndexWidth = 2,
+        ),
+      ),
     )
       .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation)
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
       ) { c =>
         c.initialize("programs/riscv-sample-programs/illegal_inst")
         c.checkForRegister(10, 10)
@@ -557,6 +563,98 @@ class z10_B4ProcessorProgramTest
       }
   }
 
+  it should "run io_test" in {
+    test(
+      new B4ProcessorWithMemory(
+      )(
+        defaultParams.copy(
+          threads = 1,
+          decoderPerThread = 1,
+          maxRegisterFileCommitCount = 2,
+          loadStoreQueueIndexWidth = 2,
+        ),
+      ),
+    )
+      .withAnnotations(
+        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
+      ) { c =>
+        c.initialize("programs/riscv-sample-programs/io_test")
+        for (p <- "ABCDEFGHIJK")
+          c.checkForOutput(p)
+        c.checkForOutput('O')
+      }
+  }
+
+  it should "run bench" in {
+    val p = defaultParams.copy(
+      threads = 1,
+      decoderPerThread = 2,
+      maxRegisterFileCommitCount = 2,
+      loadStoreQueueIndexWidth = 3,
+      tagWidth = 5,
+      executors = 4,
+      instructionStart = 0x8000_0000L,
+    )
+    test(
+      new B4ProcessorWithMemory(
+      )(p),
+    )
+      .withAnnotations(
+        Seq(
+          WriteWaveformAnnotation,
+          VerilatorBackendAnnotation,
+          CachingAnnotation,
+        ),
+      ) { c =>
+        c.initialize("programs/riscv-sample-programs/bench")
+        c.io.simulationIO.output.ready.poke(true)
+        for (_ <- 0 until p.threads)
+          c.checkForOutputAny(2000, print_value = true)
+        for (_ <- "OK!\n")
+          c.checkForOutputAny(2000, print_value = true)
+        for (p <- "took ")
+          c.checkForOutput(p, 20000, print_value = true)
+        var end = false
+        while (!end) {
+          val p = c.getOutput(2000)
+          print(p)
+          if (p == ' ') {
+            end = true
+          }
+        }
+        for (p <- "cycles\n")
+          c.checkForOutput(p, 1000, print_value = true)
+
+        for (n <- Seq(1, 2, 3, 5, 8, 13, 21, 34, 55))
+          for (p <- n.toString + "\n")
+            c.checkForOutput(p, 2000, print_value = true)
+      }
+  }
+
+  it should "run pext_test" in {
+    test(
+      new B4ProcessorWithMemory(
+      )(
+        defaultParams.copy(
+          threads = 1,
+          decoderPerThread = 1,
+          maxRegisterFileCommitCount = 1,
+          loadStoreQueueIndexWidth = 2,
+          enablePExt = true,
+        ),
+      ),
+    )
+      .withAnnotations(
+        Seq(
+          WriteWaveformAnnotation,
+          VerilatorBackendAnnotation,
+          CachingAnnotation,
+        ),
+      ) { c =>
+        c.initialize("programs/riscv-sample-programs/pext_test")
+        c.clock.step(300)
+      }
+  }
   it should "run vector configuration" in {
     test(
       new B4ProcessorWithMemory()(

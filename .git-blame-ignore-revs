@@ -6,3 +6,6 @@
 
 # Scala Steward: Reformat with scalafmt 3.7.3
 0f767ec5bb8551b91206c4b103a5326d550a0ce2
+
+# Add trailing comma
+b2935c8f3397d716a41e8bf685c3665efa8e29f6

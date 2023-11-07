@@ -7,34 +7,10 @@ import _root_.circt.stage.ChiselStage
 class PassthroughBuffer[T <: Data](t: T) extends Module {
   val io = IO(new Bundle {
     val input = Flipped(Decoupled(t))
-    val output = Decoupled(t)
+    val output = Irrevocable(t)
   })
 
-  val buf = Reg(t)
-  val bufSet = RegInit(false.B)
-
-  io.output.valid := false.B
-  io.output.bits := 0.U.asTypeOf(t)
-  io.input.ready := false.B
-
-  when(!bufSet) {
-    io.input.ready := true.B
-    when(io.input.valid) {
-      io.output.valid := true.B
-      io.output.bits := io.input.bits
-      when(!io.output.ready) {
-        buf := io.input.bits
-        bufSet := true.B
-      }
-    }
-  }.otherwise {
-    io.output.valid := true.B
-    io.output.bits := buf
-    when(!io.input.valid && io.output.ready) {
-      buf := 0.U.asTypeOf(t)
-      bufSet := false.B
-    }
-  }
+  io.output <> PassthroughBuffer(io.input)
 }
 
 object PassthroughBuffer extends App {
@@ -44,7 +20,40 @@ object PassthroughBuffer extends App {
     Array(
       "--disable-mem-randomization",
       "--disable-reg-randomization",
-      "--disable-all-randomization"
-    )
+      "--disable-all-randomization",
+    ),
   )
+
+  def apply[T <: Data](input: ReadyValidIO[T]): IrrevocableIO[T] = {
+    val t: T = input.bits.cloneType
+    val output = Wire(new IrrevocableIO[T](t))
+
+    val buf = Reg(t)
+    val bufSet = RegInit(false.B)
+
+    output.valid := false.B
+    output.bits := 0.U.asTypeOf(t)
+    input.ready := false.B
+
+    when(!bufSet) {
+      input.ready := true.B
+      when(input.valid) {
+        output.valid := true.B
+        output.bits := input.bits
+        when(!output.ready) {
+          buf := input.bits
+          bufSet := true.B
+        }
+      }
+    }.otherwise {
+      output.valid := true.B
+      output.bits := buf
+      when(!input.valid && output.ready) {
+        buf := 0.U.asTypeOf(t)
+        bufSet := false.B
+      }
+    }
+
+    output
+  }
 }

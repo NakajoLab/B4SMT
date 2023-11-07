@@ -5,11 +5,19 @@ import b4processor.structures.memoryAccess.MemoryAccessInfo
 import b4processor.structures.memoryAccess.MemoryAccessType._
 import b4processor.structures.memoryAccess.MemoryAccessWidth._
 import b4processor.utils.operations.{LoadStoreOperation, LoadStoreWidth}
-import b4processor.utils.{DecodeEnqueue, LSQ2Memory, LSQfromALU, Tag}
+import b4processor.utils.{
+  DecodeEnqueue,
+  FormalBackendOption,
+  LSQ2Memory,
+  LSQfromALU,
+  SymbiYosysFormal,
+  Tag,
+}
 import chisel3._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chisel3.util.{BitPat, DecoupledIO}
 import chiseltest._
+import chiseltest.formal._
 import org.scalatest.flatspec.AnyFlatSpec
 
 class LoadStoreQueueWrapper(implicit params: Parameters)
@@ -32,7 +40,7 @@ class LoadStoreQueueWrapper(implicit params: Parameters)
   }
 
   def setDecoder(
-    values: Seq[Option[DecodeEnqueue]] = Seq.fill(params.decoderPerThread)(None)
+    values: Seq[Option[DecodeEnqueue]] = Seq.fill(params.decoderPerThread)(None),
   ): Unit = {
     for (i <- 0 until params.decoderPerThread) {
       val decoder = this.io.decoders(i)
@@ -53,7 +61,7 @@ class LoadStoreQueueWrapper(implicit params: Parameters)
 
   def setReorderBuffer(
     DestinationTags: Seq[Int] = Seq.fill(params.maxRegisterFileCommitCount)(0),
-    valids: Seq[Boolean] = Seq.fill(params.maxRegisterFileCommitCount)(false)
+    valids: Seq[Boolean] = Seq.fill(params.maxRegisterFileCommitCount)(false),
   ): Unit = {
     for (i <- 0 until params.maxRegisterFileCommitCount) {
       val tag = DestinationTags(i)
@@ -76,14 +84,17 @@ class LoadStoreQueueWrapper(implicit params: Parameters)
 
 }
 
-class LoadStoreQueueTest extends AnyFlatSpec with ChiselScalatestTester {
+class LoadStoreQueueTest
+    extends AnyFlatSpec
+    with ChiselScalatestTester
+    with SymbiYosysFormal {
   behavior of "Load Store Queue"
   implicit val defaultParams = Parameters(
     tagWidth = 4,
     threads = 1,
     decoderPerThread = 2,
     maxRegisterFileCommitCount = 2,
-    debug = true
+    debug = true,
   )
 
   it should "Both Of Instructions Enqueue LSQ" in {
@@ -101,8 +112,8 @@ class LoadStoreQueueTest extends AnyFlatSpec with ChiselScalatestTester {
               storeDataTag = 5,
               storeData = None,
               operation = LoadStoreOperation.Load,
-              operationWidth = LoadStoreWidth.Byte
-            )
+              operationWidth = LoadStoreWidth.Byte,
+            ),
           ),
           Some(
             DecodeEnqueue(
@@ -110,10 +121,10 @@ class LoadStoreQueueTest extends AnyFlatSpec with ChiselScalatestTester {
               storeDataTag = 6,
               storeData = None,
               operation = LoadStoreOperation.Load,
-              operationWidth = LoadStoreWidth.Byte
-            )
-          )
-        )
+              operationWidth = LoadStoreWidth.Byte,
+            ),
+          ),
+        ),
       )
       c.clock.step(1)
 
@@ -123,6 +134,16 @@ class LoadStoreQueueTest extends AnyFlatSpec with ChiselScalatestTester {
       c.clock.step(2)
     }
   }
+
+  it should "check formal" in {
+    symbiYosysCheck(
+      new LoadStoreQueueWrapper()(
+        defaultParams.copy(loadStoreQueueIndexWidth = 2),
+      ),
+      depth = 10,
+    )
+  }
+
 // TODO: もとに戻す
 //  it should "load check" in {
 //    // runParallel = 1, maxRegisterFileCommitCount = 1

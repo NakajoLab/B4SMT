@@ -10,7 +10,7 @@ class VerilogAXI(
   val userWriteAddressWidth: Int = 0,
   val userWriteResponseWidth: Int = 0,
   val userReadAddressWidth: Int = 0,
-  val userReadWidth: Int = 0
+  val userReadWidth: Int = 0,
 ) extends Bundle {
   val awid = Output(UInt(idWidth.W))
   val awaddr = Output(UInt(addressWidth.W))

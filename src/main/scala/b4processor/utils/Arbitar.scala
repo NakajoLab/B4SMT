@@ -49,7 +49,7 @@ abstract class B4LockingArbiterLike[T <: Data](
   gen: T,
   n: Int,
   count: Int,
-  needsLock: Option[T => Bool]
+  needsLock: Option[T => Bool],
 ) extends Module {
   def grant: Seq[Bool]
   def choice: UInt
@@ -83,7 +83,7 @@ class B4LockingRRArbiter[T <: Data](
   gen: T,
   n: Int,
   count: Int,
-  needsLock: Option[T => Bool] = None
+  needsLock: Option[T => Bool] = None,
 ) extends B4LockingArbiterLike[T](gen, n, count, needsLock) {
   lazy val lastGrant = util.RegEnable(io.chosen, 0.U, io.out.fire)
   lazy val grantMask = (0 until n).map(_.asUInt > lastGrant)
@@ -92,7 +92,7 @@ class B4LockingRRArbiter[T <: Data](
 
   override def grant: Seq[Bool] = {
     val ctrl = B4ArbiterCtrl(
-      (0 until n).map(i => validMask(i)) ++ io.in.map(_.valid)
+      (0 until n).map(i => validMask(i)) ++ io.in.map(_.valid),
     )
     (0 until n).map(i => ctrl(i) && grantMask(i) || ctrl(i + n))
   }
@@ -108,7 +108,7 @@ class B4LockingArbiter[T <: Data](
   gen: T,
   n: Int,
   count: Int,
-  needsLock: Option[T => Bool] = None
+  needsLock: Option[T => Bool] = None,
 ) extends B4LockingArbiterLike[T](gen, n, count, needsLock) {
   def grant: Seq[Bool] = B4ArbiterCtrl(io.in.map(_.valid))
 

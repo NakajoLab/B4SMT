@@ -46,7 +46,7 @@ class SimpleAXIMemory(sizeBytes: Int = 1024 * 1024) extends Module {
       when(simulationSource.input.valid) {
         mem.write(
           sourceWriteIndex,
-          simulationSource.input.bits.asTypeOf(Vec(8, UInt(8.W)))
+          simulationSource.input.bits.asTypeOf(Vec(8, UInt(8.W))),
         )
         sourceWriteIndex := sourceWriteIndex + 1.U
       }
@@ -64,7 +64,6 @@ class SimpleAXIMemory(sizeBytes: Int = 1024 * 1024) extends Module {
   writeState.input.valid := false.B
   writeState.output.ready := false.B
   writeState.input.bits := DontCare
-  writeState.flush := false.B
 
   val writeResponseState = Module(new FIFO(2)(new Bundle() {
     val isError = Bool()
@@ -72,7 +71,6 @@ class SimpleAXIMemory(sizeBytes: Int = 1024 * 1024) extends Module {
   writeResponseState.input.valid := false.B
   writeResponseState.output.ready := false.B
   writeResponseState.input.bits := DontCare
-  writeResponseState.flush := false.B
 
   val burstLen = RegInit(0.U(8.W))
 
@@ -91,7 +89,7 @@ class SimpleAXIMemory(sizeBytes: Int = 1024 * 1024) extends Module {
         mem.write(
           writeState.output.bits.address(63, 3) + burstLen,
           axi.write.bits.DATA.asTypeOf(Vec(8, UInt(8.W))),
-          axi.write.bits.STRB.asBools
+          axi.write.bits.STRB.asBools,
         )
         burstLen := burstLen + 1.U
         when(burstLen === writeState.output.bits.burstLength) {
@@ -119,7 +117,6 @@ class SimpleAXIMemory(sizeBytes: Int = 1024 * 1024) extends Module {
   readState.input.valid := false.B
   readState.output.ready := false.B
   readState.input.bits := DontCare
-  readState.flush := false.B
 
   val readBurstLen = RegInit(0.U(8.W))
   val readDone = RegInit(false.B)

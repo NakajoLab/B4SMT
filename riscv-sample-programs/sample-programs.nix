@@ -9,6 +9,7 @@
   installPhase = "
     mkdir $out
     cp -fv **/*.{hex,bin,dump} $out
+    cp -fv ${./bench.hex.generated} $out/bench.hex
   ";
   fixupPhase = "true";
 }

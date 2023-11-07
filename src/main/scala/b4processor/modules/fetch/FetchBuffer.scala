@@ -14,7 +14,7 @@ class FetchBuffer(implicit params: Parameters) extends Module {
   })
 
   val buffer = Reg(
-    Vec(pow(2, params.decoderPerThread + 1).toInt, new BufferEntry)
+    Vec(pow(2, params.decoderPerThread + 1).toInt, new BufferEntry),
   )
 
   val head = RegInit(0.U((params.decoderPerThread + 1).W))
@@ -30,7 +30,7 @@ class FetchBuffer(implicit params: Parameters) extends Module {
       when(valid) {
         buffer(nextHead) := BufferEntry.validEntry(
           d.bits.instruction,
-          d.bits.programCounter
+          d.bits.programCounter,
         )
       }
       nextHead = Mux(valid, nextHead + 1.U, nextHead)

@@ -16,7 +16,10 @@ SUBDIRS := fibonacci \
 			csrtest \
 			simple_loader_hello \
 			illegal_inst \
+			io_test \
+			pext_test \
 			vsetvl \
+      vectorBranch
 #			simple_loader_uart \
 
 all: $(SUBDIRS)

@@ -24,4 +24,6 @@ SECTIONS{
     PROVIDE(__BINARY_END_ = .);
 	} > RAM
 
+	PROVIDE(__IO_ADDR_ = 0x10000000);
+
 }

@@ -2,7 +2,11 @@ package b4processor.modules.cache
 
 import b4processor.Parameters
 import b4processor.connections.InstructionCache2Fetch
-import b4processor.modules.memory.{InstructionResponse, MemoryReadTransaction}
+import b4processor.modules.memory.{
+  InstructionResponse,
+  MemoryReadChannel,
+  MemoryReadRequest,
+}
 import chisel3._
 import chisel3.util._
 import _root_.circt.stage.ChiselStage
@@ -17,10 +21,7 @@ class InstructionMemoryCache(implicit params: Parameters) extends Module {
     /** フェッチ */
     val fetch = Vec(params.decoderPerThread, new InstructionCache2Fetch)
 
-    val memory = new Bundle {
-      val request = Irrevocable(new MemoryReadTransaction())
-      val response = Flipped(Valid(new InstructionResponse))
-    }
+    val memory = new MemoryReadChannel()
 
     val threadId = Input(UInt(log2Up(params.threads).W))
   })
@@ -40,6 +41,8 @@ class InstructionMemoryCache(implicit params: Parameters) extends Module {
     }
   }
   private val buf = RegInit(VecInit(Seq.fill(4)(CacheBufferEntry.default)))
+
+  io.memory.response.ready := false.B
 
   private val request = WireDefault(0.U(60.W))
   private var didRequest = false.B
@@ -83,7 +86,7 @@ class InstructionMemoryCache(implicit params: Parameters) extends Module {
   private val state = RegInit(waiting)
   private val readIndex = Reg(UInt(1.W))
   private val requested = RegInit(0.U(60.W))
-  private val transaction = Reg(new MemoryReadTransaction)
+  private val transaction = Reg(new MemoryReadRequest)
   private val requestDone = Reg(Bool())
 
   when(didRequest && state === waiting) {
@@ -93,11 +96,7 @@ class InstructionMemoryCache(implicit params: Parameters) extends Module {
     requested := request
 
     val tmp_transaction =
-      MemoryReadTransaction.ReadInstruction(
-        Cat(request, 0.U(4.W)),
-        2,
-        io.threadId
-      )
+      MemoryReadRequest.ReadInstruction(Cat(request, 0.U(4.W)), 2, io.threadId)
     transaction := tmp_transaction
     io.memory.request.valid := true.B
     io.memory.request.bits := tmp_transaction
@@ -108,6 +107,7 @@ class InstructionMemoryCache(implicit params: Parameters) extends Module {
   io.memory.request.bits := DontCare
   private val head = RegInit(0.U(2.W))
   when(state === requesting) {
+    io.memory.response.ready := true.B
     when(!requestDone) {
       io.memory.request.valid := true.B
       io.memory.request.bits := transaction
@@ -120,7 +120,7 @@ class InstructionMemoryCache(implicit params: Parameters) extends Module {
       buf(head).valid := false.B
       for (i <- 0 until 4) {
         buf(head).data(readIndex ## i.U(2.W)) := io.memory.response.bits
-          .inner(i * 16 + 15, i * 16)
+          .value(i * 16 + 15, i * 16)
       }
       readIndex := readIndex + 1.U
       when(readIndex === 1.U) {

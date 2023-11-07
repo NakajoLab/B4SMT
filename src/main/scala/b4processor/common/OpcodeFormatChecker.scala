@@ -39,6 +39,6 @@ class OpcodeFormatChecker extends Module {
       "b1010111".U -> OpcodeFormat.Vector, // ベクタ拡張
       "b0000111".U -> OpcodeFormat.Vector, // ベクタ拡張（メモリロード）
       "b0100111".U -> OpcodeFormat.Vector, // ベクタ拡張（メモリストア）
-    )
+    ),
   )
 }

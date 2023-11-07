@@ -15,7 +15,7 @@ object BranchOutput {
     (new BranchOutput).Lit(_.threadId -> 0.U, _.programCounterOffset -> 0.S)
 
   def branch(threadId: UInt, offset: SInt)(implicit
-    params: Parameters
+    params: Parameters,
   ): BranchOutput =
     (new BranchOutput)
       .Lit(_.threadId -> threadId, _.programCounterOffset -> offset)

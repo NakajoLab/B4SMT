@@ -6,5 +6,5 @@ case class DecoderValue(
   source2: RVRegister = RVRegister(0),
   destination: RVRegister = RVRegister(0),
   programCounter: Int = 0,
-  isPrediction: Boolean = false
+  isPrediction: Boolean = false,
 )

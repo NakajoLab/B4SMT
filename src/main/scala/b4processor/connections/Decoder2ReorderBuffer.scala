@@ -11,8 +11,7 @@ import chisel3.util._
   *   パラメータ
   */
 class Decoder2ReorderBuffer(implicit params: Parameters) extends Bundle {
-  val source1 = new SourceRegister()
-  val source2 = new SourceRegister()
+  val sources = Vec(3, new SourceRegister())
   val destination = new DestinationRegister()
   val programCounter = Output(UInt(64.W))
   val isDecodeError = Output(Bool())
@@ -29,7 +28,7 @@ class Decoder2ReorderBuffer(implicit params: Parameters) extends Bundle {
   class DestinationRegister extends Bundle {
     val destinationRegister = Output(new RVRegister())
     val destinationTag = Input(new Tag)
-    val storeSign = Output(Bool())
+    val operationInorder = Output(Bool())
   }
 
   class SourceVectorRegister extends Bundle {

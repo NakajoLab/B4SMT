@@ -31,4 +31,6 @@ object BranchType extends ChiselEnum {
 
   /** ebreak */
   val Ebreak = Value
+
+  val Wfi = Value
 }

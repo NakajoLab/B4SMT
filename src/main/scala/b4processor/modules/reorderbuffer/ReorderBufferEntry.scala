@@ -22,8 +22,7 @@ class ReorderBufferEntry(implicit params: Parameters) extends Bundle {
   /** プログラムカウンタ */
   val programCounter = UInt(64.W)
 
-  /** 該当のbufferがStore命令かどうか */
-  val storeSign = Bool()
+  val operationInorder = Bool()
 
   /** isError */
   val isError = Bool()
@@ -43,12 +42,6 @@ object ReorderBufferEntry {
       _.isError -> false.B,
       _.value -> 0.U,
       _.programCounter -> 0.U,
-      _.storeSign -> false.B,
-      _.vecCsrBypass.vtype.vill -> true.B,
-      _.vecCsrBypass.vtype.vsew -> 0.U,
-      _.vecCsrBypass.vtype.vlmul -> 0.U,
-      _.vecCsrBypass.vtype.vma -> false.B,
-      _.vecCsrBypass.vtype.vta -> false.B,
-      _.vecCsrBypass.vl -> 0.U,
+      _.operationInorder -> false.B,
     )
 }

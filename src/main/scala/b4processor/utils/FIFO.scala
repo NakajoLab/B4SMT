@@ -11,7 +11,7 @@ class FIFO[T <: Data](width: Int)(t: T, flow: Boolean = false) extends Module {
   val output = IO(Irrevocable(t))
   val full = IO(Output(Bool()))
   val empty = IO(Output(Bool()))
-  val flush = IO(Input(Bool()))
+//  val flush = IO(Input(Bool()))
 
   private val queue = Module(
     new Queue(
@@ -19,9 +19,9 @@ class FIFO[T <: Data](width: Int)(t: T, flow: Boolean = false) extends Module {
       t,
       pow(2, width).toInt,
       useSyncReadMem = true,
-      hasFlush = true,
-      flow = flow
-    )
+//      hasFlush = true,
+//      flow = flow
+    ),
   )
   //  queue.io.enq.bits := input.bits.asUInt
   queue.io.enq.bits := input.bits
@@ -35,7 +35,7 @@ class FIFO[T <: Data](width: Int)(t: T, flow: Boolean = false) extends Module {
 
   full := !queue.io.enq.ready
   empty := !queue.io.deq.valid
-  queue.flush := flush
+//  queue.flush := flush
 }
 
 object FIFO extends App {
@@ -84,8 +84,8 @@ object MyFIFO extends App {
     Array(
       "--disable-mem-randomization",
       "--disable-reg-randomization",
-      "--disable-all-randomization"
-    )
+      "--disable-all-randomization",
+    ),
   )
 }
 
@@ -130,7 +130,7 @@ object MyFIFO2 extends App {
     Array(
       "--disable-mem-randomization",
       "--disable-reg-randomization",
-      "--disable-all-randomization"
-    )
+      "--disable-all-randomization",
+    ),
   )
 }

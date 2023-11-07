@@ -23,7 +23,7 @@ class InstructionMemory(memoryInit: => Seq[UInt])(implicit params: Parameters)
       memory(address + (i * 4 + 3).U),
       memory(address + (i * 4 + 2).U),
       memory(address + (i * 4 + 1).U),
-      memory(address + (i * 4).U)
+      memory(address + (i * 4).U),
     )
   }
 }

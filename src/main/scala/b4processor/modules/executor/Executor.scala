@@ -57,8 +57,8 @@ class Executor(implicit params: Parameters) extends Module {
           SraW -> (a(31, 0).asSInt >> b(4, 0)).asSInt.pad(64).asUInt,
           SubW -> (a(31, 0).asSInt - b(31, 0).asSInt).pad(64).asUInt,
           AddJAL -> (b + nextOffset.asUInt),
-          AddJALR -> (b + nextOffset.asUInt)
-        )
+          AddJALR -> (b + nextOffset.asUInt),
+        ),
       )
   }
 
@@ -68,14 +68,14 @@ class Executor(implicit params: Parameters) extends Module {
     BranchLessThan,
     BranchLessThanUnsigned,
     BranchGreaterThanOrEqual,
-    BranchGreaterThanOrEqualUnsigned
+    BranchGreaterThanOrEqualUnsigned,
   ).map(_ === operation).reduce(_ || _)
   val branchedOffset = MuxCase(
     0.S,
     Seq(
       isBranch -> (io.reservationStation.bits.branchOffset ## 0.S(1.W)).asSInt,
-      (operation === AddJALR) -> (a.asSInt - b.asSInt + io.reservationStation.bits.branchOffset)
-    )
+      (operation === AddJALR) -> (a.asSInt - b.asSInt + io.reservationStation.bits.branchOffset),
+    ),
   )
 
   val fetchOffset = Wire(SInt(64.W))
@@ -92,8 +92,8 @@ class Executor(implicit params: Parameters) extends Module {
           Mux(a < b, branchedOffset, nextOffset),
         BranchGreaterThanOrEqualUnsigned ->
           Mux(a >= b, branchedOffset, nextOffset),
-        AddJALR -> branchedOffset
-      )
+        AddJALR -> branchedOffset,
+      ),
     )
   }
 

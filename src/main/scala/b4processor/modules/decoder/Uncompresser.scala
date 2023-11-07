@@ -25,7 +25,7 @@ object FormatI {
     operation: (UInt, UInt, UInt),
     rd: UInt,
     rs1: UInt,
-    imm: UInt
+    imm: UInt,
   ): UInt = {
     require(operation._1.getWidth == 7)
     require(operation._2.getWidth == 3)
@@ -71,7 +71,7 @@ object FormatB {
     operation: (UInt, UInt),
     src1: UInt,
     src2: UInt,
-    offset: UInt
+    offset: UInt,
   ): UInt = {
     require(operation._1.getWidth == 7)
     require(operation._2.getWidth == 3)
@@ -120,7 +120,7 @@ object FormatR {
     operation: (UInt, UInt, UInt),
     rd: UInt,
     rs1: UInt,
-    rs2: UInt
+    rs2: UInt,
   ): UInt = {
     require(operation._1.getWidth == 7)
     require(operation._2.getWidth == 3)
@@ -149,7 +149,7 @@ object SignExtend {
     w := Mux(
       !data(data.getWidth - 1),
       data,
-      ~0.U((width - data.getWidth).W) ## data
+      ~0.U((width - data.getWidth).W) ## data,
     )
     w
   }
@@ -192,12 +192,12 @@ class Uncompresser extends Module {
                   instruction(12, 11),
                   instruction(5),
                   instruction(6),
-                  0.U(2.W)
+                  0.U(2.W),
                 ),
-                12
-              )
+                12,
+              ),
             ),
-            0.U
+            0.U,
           ),
           "b010".U -> FormatI(
             FormatI.lw,
@@ -208,10 +208,10 @@ class Uncompresser extends Module {
                 instruction(5),
                 instruction(12, 10),
                 instruction(6),
-                0.U(2.W)
+                0.U(2.W),
               ),
-              12
-            )
+              12,
+            ),
           ),
           "b011".U -> FormatI(
             FormatI.ld,
@@ -219,8 +219,8 @@ class Uncompresser extends Module {
             "b01".U(2.W) ## instruction(9, 7),
             ZeroExtend(
               Cat(instruction(6, 5), instruction(12, 10), 0.U(3.W)),
-              12
-            )
+              12,
+            ),
           ),
           "b110".U -> FormatS(
             FormatS.sw,
@@ -231,10 +231,10 @@ class Uncompresser extends Module {
                 instruction(5),
                 instruction(12, 10),
                 instruction(6),
-                0.U(2.W)
+                0.U(2.W),
               ),
-              12
-            )
+              12,
+            ),
           ),
           "b111".U -> FormatS(
             FormatS.sd,
@@ -242,10 +242,10 @@ class Uncompresser extends Module {
             "b01".U(2.W) ## instruction(4, 2),
             ZeroExtend(
               Cat(instruction(6, 5), instruction(12, 10), 0.U(3.W)),
-              12
-            )
-          )
-        )
+              12,
+            ),
+          ),
+        ),
       ),
       "b01".U -> MuxLookup(instruction(15, 13), 0.U)(
         Seq(
@@ -256,8 +256,8 @@ class Uncompresser extends Module {
               FormatI.addi,
               instruction(11, 7),
               instruction(11, 7),
-              SignExtend(instruction(12) ## instruction(6, 2), 12)
-            )
+              SignExtend(instruction(12) ## instruction(6, 2), 12),
+            ),
           ),
           "b001".U -> Mux(
             instruction(11, 7) === 0.U,
@@ -266,8 +266,8 @@ class Uncompresser extends Module {
               FormatI.addiw,
               instruction(11, 7),
               instruction(11, 7),
-              SignExtend(instruction(12) ## instruction(6, 2), 12)
-            )
+              SignExtend(instruction(12) ## instruction(6, 2), 12),
+            ),
           ),
           "b010".U -> Mux(
             instruction(11, 7) === 0.U,
@@ -276,8 +276,8 @@ class Uncompresser extends Module {
               FormatI.addi,
               instruction(11, 7),
               0.U(5.W),
-              SignExtend(instruction(12) ## instruction(6, 2), 12)
-            )
+              SignExtend(instruction(12) ## instruction(6, 2), 12),
+            ),
           ),
           "b011".U -> MuxCase(
             0.U,
@@ -293,17 +293,17 @@ class Uncompresser extends Module {
                     instruction(5),
                     instruction(2),
                     instruction(6),
-                    0.U(4.W)
+                    0.U(4.W),
                   ),
-                  12
-                )
+                  12,
+                ),
               ),
               (instruction(11, 7) =/= 2.U) -> FormatU(
                 FormatU.lui,
                 instruction(11, 7),
-                SignExtend(Cat(instruction(12), instruction(6, 2)), 20)
-              )
-            )
+                SignExtend(Cat(instruction(12), instruction(6, 2)), 20),
+              ),
+            ),
           ),
           "b100".U -> MuxLookup(instruction(11, 10), 0.U)(
             Seq(
@@ -311,19 +311,19 @@ class Uncompresser extends Module {
                 FormatI.srli,
                 "b01".U(2.W) ## instruction(9, 7),
                 "b01".U(2.W) ## instruction(9, 7),
-                ZeroExtend(Cat(instruction(12), instruction(6, 2)), 6)
+                ZeroExtend(Cat(instruction(12), instruction(6, 2)), 6),
               ),
               "b01".U -> FormatI(
                 FormatI.srai,
                 "b01".U(2.W) ## instruction(9, 7),
                 "b01".U(2.W) ## instruction(9, 7),
-                ZeroExtend(Cat(instruction(12), instruction(6, 2)), 6)
+                ZeroExtend(Cat(instruction(12), instruction(6, 2)), 6),
               ),
               "b10".U -> FormatI(
                 FormatI.andi,
                 "b01".U(2.W) ## instruction(9, 7),
                 "b01".U(2.W) ## instruction(9, 7),
-                SignExtend(Cat(instruction(12), instruction(6, 2)), 12)
+                SignExtend(Cat(instruction(12), instruction(6, 2)), 12),
               ),
               "b11".U -> Mux(
                 instruction(12),
@@ -333,15 +333,15 @@ class Uncompresser extends Module {
                       FormatR.subw,
                       "b01".U(2.W) ## instruction(9, 7),
                       "b01".U(2.W) ## instruction(9, 7),
-                      "b01".U(2.W) ## instruction(4, 2)
+                      "b01".U(2.W) ## instruction(4, 2),
                     ),
                     "b01".U -> FormatR(
                       FormatR.addw,
                       "b01".U(2.W) ## instruction(9, 7),
                       "b01".U(2.W) ## instruction(9, 7),
-                      "b01".U(2.W) ## instruction(4, 2)
-                    )
-                  )
+                      "b01".U(2.W) ## instruction(4, 2),
+                    ),
+                  ),
                 ),
                 MuxLookup(instruction(6, 5), 0.U)(
                   Seq(
@@ -349,30 +349,30 @@ class Uncompresser extends Module {
                       FormatR.sub,
                       "b01".U(2.W) ## instruction(9, 7),
                       "b01".U(2.W) ## instruction(9, 7),
-                      "b01".U(2.W) ## instruction(4, 2)
+                      "b01".U(2.W) ## instruction(4, 2),
                     ),
                     "b01".U -> FormatR(
                       FormatR.xor,
                       "b01".U(2.W) ## instruction(9, 7),
                       "b01".U(2.W) ## instruction(9, 7),
-                      "b01".U(2.W) ## instruction(4, 2)
+                      "b01".U(2.W) ## instruction(4, 2),
                     ),
                     "b10".U -> FormatR(
                       FormatR.or,
                       "b01".U(2.W) ## instruction(9, 7),
                       "b01".U(2.W) ## instruction(9, 7),
-                      "b01".U(2.W) ## instruction(4, 2)
+                      "b01".U(2.W) ## instruction(4, 2),
                     ),
                     "b11".U -> FormatR(
                       FormatR.and,
                       "b01".U(2.W) ## instruction(9, 7),
                       "b01".U(2.W) ## instruction(9, 7),
-                      "b01".U(2.W) ## instruction(4, 2)
-                    )
-                  )
-                )
-              )
-            )
+                      "b01".U(2.W) ## instruction(4, 2),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
           "b101".U -> FormatJ(
             FormatJ.jal,
@@ -387,10 +387,10 @@ class Uncompresser extends Module {
                 instruction(2),
                 instruction(11),
                 instruction(5, 3),
-                0.U(1.W)
+                0.U(1.W),
               ),
-              22
-            )
+              22,
+            ),
           ),
           "b110".U -> FormatB(
             FormatB.beq,
@@ -403,10 +403,10 @@ class Uncompresser extends Module {
                 instruction(2),
                 instruction(11, 10),
                 instruction(4, 3),
-                0.U(1.W)
+                0.U(1.W),
               ),
-              13
-            )
+              13,
+            ),
           ),
           "b111".U -> FormatB(
             FormatB.bne,
@@ -419,12 +419,12 @@ class Uncompresser extends Module {
                 instruction(2),
                 instruction(11, 10),
                 instruction(4, 3),
-                0.U(1.W)
+                0.U(1.W),
               ),
-              13
-            )
-          )
-        )
+              13,
+            ),
+          ),
+        ),
       ),
       "b10".U -> MuxLookup(instruction(15, 13), 0.U)(
         Seq(
@@ -432,7 +432,7 @@ class Uncompresser extends Module {
             FormatI.slli,
             instruction(11, 7),
             instruction(11, 7),
-            ZeroExtend(Cat(instruction(12), instruction(6, 2)), 6)
+            ZeroExtend(Cat(instruction(12), instruction(6, 2)), 6),
           ),
           "b010".U -> FormatI(
             FormatI.lw,
@@ -443,10 +443,10 @@ class Uncompresser extends Module {
                 instruction(3, 2),
                 instruction(12),
                 instruction(6, 4),
-                0.U(2.W)
+                0.U(2.W),
               ),
-              12
-            )
+              12,
+            ),
           ),
           "b011".U -> FormatI(
             FormatI.ld,
@@ -457,10 +457,10 @@ class Uncompresser extends Module {
                 instruction(4, 2),
                 instruction(12),
                 instruction(6, 5),
-                0.U(3.W)
+                0.U(3.W),
               ),
-              12
-            )
+              12,
+            ),
           ),
           "b100".U -> Mux(
             !instruction(12),
@@ -471,8 +471,8 @@ class Uncompresser extends Module {
                 FormatI.addi,
                 instruction(11, 7),
                 instruction(6, 2),
-                0.U(12.W)
-              )
+                0.U(12.W),
+              ),
             ),
             Mux(
               instruction(11, 7) === 0.U,
@@ -484,16 +484,16 @@ class Uncompresser extends Module {
                   FormatR.add,
                   instruction(11, 7),
                   instruction(11, 7),
-                  instruction(6, 2)
-                )
-              )
-            )
+                  instruction(6, 2),
+                ),
+              ),
+            ),
           ),
           "b110".U -> FormatS( // swsp
             FormatS.sw,
             2.U(5.W),
             instruction(6, 2),
-            ZeroExtend(Cat(instruction(8, 7), instruction(12, 9), 0.U(2.W)), 12)
+            ZeroExtend(Cat(instruction(8, 7), instruction(12, 9), 0.U(2.W)), 12),
           ),
           "b111".U -> FormatS( // sdsp
             FormatS.sd,
@@ -501,13 +501,13 @@ class Uncompresser extends Module {
             instruction(6, 2),
             ZeroExtend(
               Cat(instruction(9, 7), instruction(12, 10), 0.U(3.W)),
-              12
-            )
-          )
-        )
+              12,
+            ),
+          ),
+        ),
       ),
-      "b11".U -> instruction
-    )
+      "b11".U -> instruction,
+    ),
   )
 }
 
