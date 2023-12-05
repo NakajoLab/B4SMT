@@ -5,7 +5,7 @@ import b4processor.connections.{
   CollectedOutput,
   Decoder2LoadStoreQueue,
   LoadStoreQueue2Memory,
-  LoadStoreQueue2ReorderBuffer,
+  ReorderBufferStatusBroadcast,
 }
 import chisel3._
 import chisel3.util._
@@ -23,12 +23,7 @@ class LoadStoreQueue(implicit params: Parameters)
         Flipped(Decoupled(new Decoder2LoadStoreQueue())),
       )
     val outputCollector = Flipped(new CollectedOutput)
-    val reorderBuffer = Flipped(
-      Vec(
-        params.maxRegisterFileCommitCount,
-        Valid(new LoadStoreQueue2ReorderBuffer),
-      ),
-    )
+    val reorderBuffer = new ReorderBufferStatusBroadcast
     val memory = Decoupled(new LoadStoreQueue2Memory)
     val empty = Output(Bool())
     val full = Output(Bool())
@@ -109,7 +104,7 @@ class LoadStoreQueue(implicit params: Parameters)
     }
   }
 
-  for (rb <- io.reorderBuffer) {
+  for (rb <- io.reorderBuffer.instructions) {
     when(rb.valid) {
       for (buf <- buffer) {
         when(buf.valid && (rb.bits.destinationTag === buf.destinationTag)) {

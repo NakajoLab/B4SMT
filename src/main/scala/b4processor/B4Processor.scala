@@ -132,11 +132,12 @@ class B4Processor(implicit params: Parameters) extends Module {
   for (tid <- 0 until params.threads) {
     amo.io.collectedOutput := outputCollector.io.outputs
     amo.io.output <> outputCollector.io.amo
-    amo.io.reorderBuffer(tid) <> reorderBuffer(tid).io.loadStoreQueue
+    amo.io.reorderBuffer(tid) <> reorderBuffer(tid).io.statusBroadcast
 
     csrReservationStation(tid).io.reorderBuffer <>
-      reorderBuffer(tid).io.loadStoreQueue
-    csrReservationStation(tid).io.isError := reorderBuffer(tid).io.isError
+      reorderBuffer(tid).io.statusBroadcast
+    csrReservationStation(tid).io.isError :=
+      reorderBuffer(tid).io.statusBroadcast.isError
 
     csr(tid).io.threadId := tid.U
     instructionCache(tid).io.threadId := tid.U
@@ -164,8 +165,10 @@ class B4Processor(implicit params: Parameters) extends Module {
     fetch(tid).io.csrReservationStationEmpty :=
       csrReservationStation(tid).io.empty
 
-    branchAddressCollector.io.isError(tid) := reorderBuffer(tid).io.isError
-    fetch(tid).io.isError := reorderBuffer(tid).io.isError
+    branchAddressCollector.io.isError(tid) :=
+      reorderBuffer(tid).io.statusBroadcast.isError
+    fetch(tid).io.isError :=
+      reorderBuffer(tid).io.statusBroadcast.isError
 
     /** フェッチとデコーダの接続 */
     for (d <- 0 until params.decoderPerThread) {
@@ -237,7 +240,9 @@ class B4Processor(implicit params: Parameters) extends Module {
     reorderBuffer(tid).io.collectedOutputs := outputCollector.io.outputs(tid)
 
     /** リオーダバッファとLSQ */
-    reorderBuffer(tid).io.loadStoreQueue <> loadStoreQueue(tid).io.reorderBuffer
+    reorderBuffer(tid).io.statusBroadcast <> loadStoreQueue(
+      tid,
+    ).io.reorderBuffer
 
     /** 命令メモリと命令キャッシュを接続 */
     externalMemoryInterface.io.instruction(tid) <>
@@ -269,10 +274,10 @@ class B4ProcessorFixedPorts(implicit params: Parameters) extends RawModule {
 
 object B4Processor extends App {
   implicit val params = Parameters(
-    threads = 1,
-    executors = 1,
-    decoderPerThread = 1,
-    maxRegisterFileCommitCount = 1,
+    threads = 2,
+    executors = 2,
+    decoderPerThread = 2,
+    maxRegisterFileCommitCount = 2,
     tagWidth = 4,
     parallelOutput = 1,
     instructionStart = 0x2000_0000L,

@@ -6,9 +6,10 @@ import b4processor.connections.{
   BranchPrediction2ReorderBuffer,
   CollectedOutput,
   Decoder2ReorderBuffer,
-  LoadStoreQueue2ReorderBuffer,
+  InstructionStatus,
   ReorderBuffer2CSR,
   ReorderBuffer2RegisterFile,
+  ReorderBufferStatusBroadcast,
 }
 import b4processor.riscv.{CSRs, Causes}
 import b4processor.utils.RVRegister.{AddRegConstructor, AddUIntRegConstructor}
@@ -47,14 +48,10 @@ class ReorderBuffer(implicit params: Parameters) extends Module {
         params.maxRegisterFileCommitCount,
         Valid(new ReorderBuffer2RegisterFile()),
       )
-    val loadStoreQueue = Vec(
-      params.maxRegisterFileCommitCount,
-      Valid(new LoadStoreQueue2ReorderBuffer),
-    )
+    val statusBroadcast = new ReorderBufferStatusBroadcast
     val isEmpty = Output(Bool())
     val csr = new ReorderBuffer2CSR
 
-    val isError = Output(Bool())
     val threadId = Input(UInt(log2Up(params.threads).W))
 
     val head = if (params.debug) Some(Output(UInt(tagWidth.W))) else None
@@ -65,6 +62,8 @@ class ReorderBuffer(implicit params: Parameters) extends Module {
 
   val head = RegInit(0.U(tagWidth.W))
   val tail = RegInit(0.U(tagWidth.W))
+  val flushing = RegInit(false.B)
+
   val buffer = RegInit(
     VecInit(Seq.fill(math.pow(2, tagWidth).toInt)(ReorderBufferEntry.default)),
   )
@@ -112,25 +111,33 @@ class ReorderBuffer(implicit params: Parameters) extends Module {
   private val previousDecoderMap =
     Seq.fill(params.decoderPerThread - 1)(WireDefault(DecoderMap.default))
   // レジスタファイルへの書き込み
-  io.isError := false.B
   private var lastValid = true.B
-  for (lsq <- io.loadStoreQueue) {
+  for (lsq <- io.statusBroadcast.instructions) {
     lsq.valid := false.B
-    lsq.bits := 0.U.asTypeOf(new LoadStoreQueue2ReorderBuffer)
+    lsq.bits := 0.U.asTypeOf(new ReorderBufferStatusBroadcast)
   }
-  for (((rf, lsq), i) <- io.registerFile.zip(io.loadStoreQueue).zipWithIndex) {
+  io.statusBroadcast.isError := false.B
+  for (
+    ((rf, status), i) <- io.registerFile
+      .zip(io.statusBroadcast.instructions)
+      .zipWithIndex
+  ) {
     prefix(s"to_rf$i") {
       val index = tail + i.U
       val biVal = buffer(index)
 
       if (i == 0) when(biVal.operationInorder) {
-        lsq.valid := true.B
-        lsq.bits.destinationTag.id := index
-        lsq.bits.destinationTag.threadId := io.threadId
+        status.valid := true.B
+        status.bits.destinationTag.id := index
+        status.bits.destinationTag.threadId := io.threadId
+        status.bits.status := InstructionStatus.Confirmed
         biVal.operationInorder := false.B
       }
 
       val isError = biVal.isError
+      val canceled = biVal.canceled
+      val isBranch = biVal.isBranch
+
       val instructionOk =
         (biVal.valueReady || isError) && !biVal.operationInorder
       val canCommit = lastValid && index =/= head && instructionOk
@@ -139,23 +146,45 @@ class ReorderBuffer(implicit params: Parameters) extends Module {
       rf.bits.value := 0.U
       rf.bits.destinationRegister := 0.reg
       when(canCommit) {
-        when(!isError) {
-          rf.bits.value := biVal.value
-          rf.bits.destinationRegister := biVal.destinationRegister
-          when(
-            index === registerTagMap(biVal.destinationRegister.inner).tagId,
-          ) {
-            registerTagMap(biVal.destinationRegister.inner) :=
-              RegisterTagMapContent.default
-          }
+        when(isBranch){
+          
         }.otherwise {
-          io.csr.mcause.valid := true.B
-          io.csr.mcause.bits := biVal.value
-          io.csr.mepc.valid := true.B
-          io.csr.mepc.bits := biVal.programCounter
-          io.isError := true.B
+          when(!isError) {
+            rf.bits.value := biVal.value
+            rf.bits.destinationRegister := biVal.destinationRegister
+            when(
+              index === registerTagMap(biVal.destinationRegister.inner).tagId,
+            ) {
+              registerTagMap(biVal.destinationRegister.inner) :=
+                RegisterTagMapContent.default
+            }
+            status.valid := true.B
+            status.bits.destinationTag.id := index
+            status.bits.destinationTag.threadId := io.threadId
+            status.bits.status := InstructionStatus.Done
+          }.elsewhen(canceled) {
+            status.valid := true.B
+            status.bits.destinationTag.id := index
+            status.bits.destinationTag.threadId := io.threadId
+            status.bits.status := InstructionStatus.Canceled
+          }.elsewhen(isError) {
+            io.csr.mcause.valid := true.B
+            io.csr.mcause.bits := biVal.value
+            io.csr.mepc.valid := true.B
+            io.csr.mepc.bits := biVal.programCounter
+            status.valid := true.B
+            status.bits.destinationTag.id := index
+            status.bits.destinationTag.threadId := io.threadId
+            status.bits.status := InstructionStatus.Canceled
+            io.statusBroadcast.isError := true.B
+            for (b <- buffer) {
+              b.canceled := true.B
+            }
+          }.otherwise {
+            assert(false.B, "unreachable")
+          }
+          biVal := ReorderBufferEntry.default
         }
-        biVal := ReorderBufferEntry.default
       }
       lastValid = canCommit
     }
@@ -249,8 +278,17 @@ class ReorderBuffer(implicit params: Parameters) extends Module {
     }
   }
   head := insertIndex
-  tail := Mux(io.isError, insertIndex, tail + tailDelta)
-  io.csr.retireCount := Mux(io.isError, 0.U, tailDelta)
+  tail := tail + tailDelta
+  io.csr.retireCount := PopCount(
+    io.statusBroadcast.instructions.map(i =>
+      i.valid && i.bits.status === InstructionStatus.Done,
+    ),
+  )
+  io.csr.cancelCount := PopCount(
+    io.statusBroadcast.instructions.map(i =>
+      i.valid && i.bits.status === InstructionStatus.Canceled,
+    ),
+  )
   io.isEmpty := head === tail
 
   // 出力の読み込み

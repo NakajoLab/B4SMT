@@ -37,4 +37,5 @@ case class Parameters(
   debug: Boolean = false,
   enablePExt: Boolean = false,
   pextExecutors: Int = 1,
+  branchBufferSize: Int = 8,
 )

@@ -66,8 +66,8 @@ class LoadStoreQueueWrapper(implicit params: Parameters)
     for (i <- 0 until params.maxRegisterFileCommitCount) {
       val tag = DestinationTags(i)
       val v = valids(i)
-      io.reorderBuffer(i).bits.destinationTag.poke(Tag(0, tag))
-      io.reorderBuffer(i).valid.poke(v)
+      io.reorderBuffer.instructions(i).bits.destinationTag.poke(Tag(0, tag))
+      io.reorderBuffer.instructions(i).valid.poke(v)
     }
   }
 

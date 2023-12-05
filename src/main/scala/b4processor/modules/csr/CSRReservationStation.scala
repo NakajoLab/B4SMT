@@ -6,7 +6,8 @@ import b4processor.connections.{
   CSRReservationStation2CSR,
   CollectedOutput,
   Decoder2CSRReservationStation,
-  LoadStoreQueue2ReorderBuffer,
+  InstructionStatus,
+  ReorderBufferStatusBroadcast,
 }
 import chisel3._
 import chisel3.util._
@@ -21,12 +22,7 @@ class CSRReservationStation(implicit params: Parameters) extends Module {
     val toCSR =
       Decoupled(new CSRReservationStation2CSR())
     val output = Flipped(new CollectedOutput())
-    val reorderBuffer = Flipped(
-      Vec(
-        params.maxRegisterFileCommitCount,
-        Valid(new LoadStoreQueue2ReorderBuffer),
-      ),
-    )
+    val reorderBuffer = new ReorderBufferStatusBroadcast
     val empty = Output(Bool())
     val isError = Input(Bool())
   })
@@ -54,7 +50,7 @@ class CSRReservationStation(implicit params: Parameters) extends Module {
         w.ready := d.bits.ready
         w.address := d.bits.address
         w.operation := d.bits.operation
-        w.committed := false.B
+        w.status := InstructionStatus.Running
         w
       }
     }
@@ -63,13 +59,18 @@ class CSRReservationStation(implicit params: Parameters) extends Module {
   head := insertIndex
 
   val bufTail = buf(tail)
-  when(tail =/= head && bufTail.ready && bufTail.committed && !io.isError) {
-    io.toCSR.valid := true.B
-    io.toCSR.bits.value := bufTail.value
-    io.toCSR.bits.address := bufTail.address
-    io.toCSR.bits.destinationTag := bufTail.destinationTag
-    io.toCSR.bits.operation := bufTail.operation
-    when(io.toCSR.ready) {
+  when(tail =/= head && bufTail.ready && !io.isError) {
+    when(bufTail.status === InstructionStatus.Confirmed) {
+      io.toCSR.valid := true.B
+      io.toCSR.bits.value := bufTail.value
+      io.toCSR.bits.address := bufTail.address
+      io.toCSR.bits.destinationTag := bufTail.destinationTag
+      io.toCSR.bits.operation := bufTail.operation
+      when(io.toCSR.ready) {
+        tail := tail + 1.U
+        bufTail.valid := false.B
+      }
+    }.elsewhen(bufTail.status === InstructionStatus.Canceled) {
       tail := tail + 1.U
       bufTail.valid := false.B
     }
@@ -86,11 +87,11 @@ class CSRReservationStation(implicit params: Parameters) extends Module {
     }
   }
 
-  for (r <- io.reorderBuffer) {
+  for (r <- io.reorderBuffer.instructions) {
     when(r.valid) {
       for (b <- buf) {
         when(b.valid && r.bits.destinationTag === b.destinationTag) {
-          b.committed := true.B
+          b.status := r.bits.status
         }
       }
     }

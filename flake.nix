@@ -103,7 +103,9 @@
             quick = sbtTest ''sbt "testOnly * -- -l org.scalatest.tags.Slow"'';
 #            programs = sbtTest ''sbt "testOnly *ProgramTest*"'';
           };
+
         formatter = pkgs.nixpkgs-fmt;
+
         devShells.default = pkgs.mkShell {
           name = "processor-shell";
           buildInputs = with pkgs;[

@@ -1,6 +1,7 @@
 package b4processor.modules.csr
 
 import b4processor.Parameters
+import b4processor.connections.InstructionStatus
 import b4processor.utils.Tag
 import b4processor.utils.operations.CSROperation
 import chisel3._
@@ -13,7 +14,7 @@ class CSRReservationStationEntry(implicit params: Parameters) extends Bundle {
   val destinationTag = new Tag
   val address = UInt(12.W)
   val operation = CSROperation()
-  val committed = Bool()
+  val status = InstructionStatus()
 }
 
 object CSRReservationStationEntry {

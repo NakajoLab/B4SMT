@@ -3,8 +3,9 @@ package b4processor.modules
 import b4processor.Parameters
 import b4processor.connections.{
   CollectedOutput,
-  LoadStoreQueue2ReorderBuffer,
+  InstructionStatus,
   OutputValue,
+  ReorderBufferStatusBroadcast,
 }
 import chisel3._
 import chisel3.util._
@@ -41,7 +42,7 @@ class Decoder2AtomicLSU(implicit params: Parameters) extends Bundle {
   val srcValue = UInt(64.W)
   val srcValid = Bool()
 
-  val storeOk = Bool()
+  val status = InstructionStatus()
 }
 
 class AtomicLSU(implicit params: Parameters) extends Module {
@@ -53,15 +54,8 @@ class AtomicLSU(implicit params: Parameters) extends Module {
     val collectedOutput = Flipped(Vec(params.threads, new CollectedOutput()))
     val output = Decoupled(new OutputValue)
     val memory = new MemoryAccessChannels()
-    val reorderBuffer = Flipped(
-      Vec(
-        params.threads,
-        Vec(
-          params.maxRegisterFileCommitCount,
-          Valid(new LoadStoreQueue2ReorderBuffer),
-        ),
-      ),
-    )
+    val reorderBuffer =
+      Flipped(Vec(params.threads, new ReorderBufferStatusBroadcast))
   })
 
   io.output.valid := false.B
@@ -106,14 +100,15 @@ class AtomicLSU(implicit params: Parameters) extends Module {
       }
     }
   }
+
   for (t <- 0 until params.threads) {
     val rb = io.reorderBuffer(t)
     val tbuf = buffer(t)
-    for (r <- rb) {
+    for (r <- rb.instructions) {
       when(r.valid) {
         for (b <- tbuf) {
           when(b.destinationTag === r.bits.destinationTag) {
-            b.storeOk := true.B
+            b.status := r.bits.status
           }
         }
       }
@@ -156,17 +151,20 @@ class AtomicLSU(implicit params: Parameters) extends Module {
     arb.valid := false.B
     arb.bits := 0.U.asTypeOf(new AMOIssue)
 
-    when(
-      heads(t) =/= tails(t) && buf.srcValid && buf.addressValid && buf.storeOk,
-    ) {
-      arb.valid := true.B
-      arb.bits.operation := buf.operation
-      arb.bits.ordering := buf.ordering
-      arb.bits.operationWidth := buf.operationWidth
-      arb.bits.destinationTag := buf.destinationTag
-      arb.bits.addressValue := buf.addressValue
-      arb.bits.srcValue := buf.srcValue
-      when(arb.ready) {
+    when(heads(t) =/= tails(t) && buf.srcValid && buf.addressValid) {
+      when(buf.status === InstructionStatus.Confirmed) {
+        arb.valid := true.B
+        arb.bits.operation := buf.operation
+        arb.bits.ordering := buf.ordering
+        arb.bits.operationWidth := buf.operationWidth
+        arb.bits.destinationTag := buf.destinationTag
+        arb.bits.addressValue := buf.addressValue
+        arb.bits.srcValue := buf.srcValue
+        when(arb.ready) {
+          buf := 0.U.asTypeOf(new Decoder2AtomicLSU())
+          tails(t) := tails(t) + 1.U
+        }
+      }.elsewhen(buf.status === InstructionStatus.Canceled) {
         buf := 0.U.asTypeOf(new Decoder2AtomicLSU())
         tails(t) := tails(t) + 1.U
       }
