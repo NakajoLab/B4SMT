@@ -1,31 +1,49 @@
-ThisBuild / version := "0.1.0-SNAPSHOT"
+addCommandAlias("fmt", "; scalafmtAll ; scalafmtSbt")
+addCommandAlias("fmtCheck", "; scalafmtCheckAll ; scalafmtSbtCheck")
 
-lazy val root = (project in file("."))
-  .settings(name := "B4-processor")
+name := "B4SMT-project"
+scalaVersion := "2.13.14"
 
-scalacOptions ++= Seq(
-  "-deprecation",
-  "-encoding",
-  "UTF-8",
-  "-feature",
-  "-unchecked",
-  "-language:reflectiveCalls",
-  "-Ymacro-annotations",
-  "-JXss512m",
-  "-JXmx2G",
-//  "-quickfix:any"
+val chiselVersion = "6.4.0"
+val chiselTestVersion = "6.0.0"
+
+val commonSettings = Seq(
+  scalaVersion := "2.13.13",
+  scalacOptions := Seq(
+    "-deprecation",
+    "-encoding",
+    "UTF-8",
+    "-feature",
+    "-unchecked",
+    "-language:reflectiveCalls",
+    "-Ymacro-annotations",
+    "-JXss512m",
+    "-JXmx2G",
+  ),
+//  resolvers ++= Resolver.sonatypeOssRepos("snapshots"),
+  libraryDependencies := Seq("org.chipsalliance" %% "chisel" % chiselVersion),
+  addCompilerPlugin(
+    "org.chipsalliance" % "chisel-plugin" % chiselVersion cross CrossVersion.full,
+  ),
+  Test / logBuffered := false,
+  Test / parallelExecution := false,
 )
 
-Test / logBuffered := false
-Test / parallelExecution := false
+lazy val pextExecutor = (project in file("pext"))
+  .settings(commonSettings, name := "B4SMT-PExtentiosnExecutor")
+  .dependsOn(chiselFormal)
 
-scalaVersion := "2.13.13"
+lazy val chiselFormal = (project in file("chisel-formal"))
+  .settings(
+    commonSettings,
+    name := "B4SMT-ChiselFormal",
+    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.18",
+  )
 
-addCompilerPlugin(
-  "org.chipsalliance" % "chisel-plugin" % "6.2.0" cross CrossVersion.full,
-)
-libraryDependencies ++= Seq(
-  "org.chipsalliance" %% "chisel" % "6.2.0",
-  "edu.berkeley.cs" %% "chiseltest" % "6.0.0" % "test",
-  "org.scalatest" %% "scalatest" % "3.2.18",
-)
+lazy val b4smt = (project in file("b4smt"))
+  .settings(
+    commonSettings,
+    name := "B4SMT",
+    libraryDependencies += "edu.berkeley.cs" %% "chiseltest" % chiselTestVersion % "test",
+  )
+  .dependsOn(pextExecutor, chiselFormal)

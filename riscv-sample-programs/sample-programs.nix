@@ -1,4 +1,6 @@
-{ pkgsCross, stdenv, nix-filter }: stdenv.mkDerivation {
+{ pkgsCross, stdenvNoCC, nix-filter }:
+
+stdenvNoCC.mkDerivation {
   name = "riscv-sample-programs";
   src = nix-filter {
     root = ./.;

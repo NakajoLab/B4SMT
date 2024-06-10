@@ -1,6 +1,6 @@
 int func(){
-    int a = 5;
-    int b = 3;
+    volatile int a = 5;
+    volatile int b = 3;
     int c = a+b;
     int d = a-b;
     int e = a & b;

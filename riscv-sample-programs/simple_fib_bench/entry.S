@@ -1,11 +1,9 @@
 #include "../common.h"
 
-.extern __BINARY_END_
-
 .section .text.init
 .global _start
 _start:
-    init_all_regs
+init_threads
     la sp, __BINARY_END_
     la a0, _start
     csrw mtvec, a0

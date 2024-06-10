@@ -1,20 +1,11 @@
 #include "../common.h"
 
-.extern __BINARY_END_
-
 .section .text.init
 .global _start
 _start:
-    init_all_regs
-    la sp, __BINARY_END_
+init_threads
     la a0, _start
     csrw mtvec, a0
-    csrr a0, mhartid
-.L_LOOP:
-    addi sp,sp,1024
-    beq a0,zero,.L_PROGRAM
-    addi a0,a0,-1
-    j .L_LOOP
 .L_PROGRAM:
     rdcycle t0
     rdinstret t1

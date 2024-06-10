@@ -3,7 +3,7 @@
 .section .text.init
 .global _start
 _start:
-    init_all_regs
+init_threads
     la sp, __BINARY_END_
     mv a0,tp
 .L_update_sp:

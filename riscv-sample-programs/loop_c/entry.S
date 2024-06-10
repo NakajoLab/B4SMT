@@ -3,13 +3,10 @@
 .section .text.init
 .global _start
 _start:
-    init_all_regs
-    li sp, 1
-    slli sp, sp, 31
-    addi sp, sp, 512
+    init_threads
 
     la a0, loop_count;
-    lw a0,0(a0);
+    lw a0, 0(a0);
     call main
 
     mv x3,a0

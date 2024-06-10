@@ -1,10 +1,10 @@
-{ llvmPackages_16, pkgsCross, autoreconfHook, stdenv, riscv-test-src }:
-stdenv.mkDerivation {
+{ llvmPackages_16, pkgsCross, autoreconfHook, stdenvNoCC, riscv-test-src }:
+stdenvNoCC.mkDerivation {
   name = "riscv-tests";
   src = riscv-test-src;
   configureFlags = [ "target_alias=riscv64-none-elf" ];
   enableParallelBuilding = true;
-  buildInputs = [
+  nativeBuildInputs = [
     llvmPackages_16.bintools
     pkgsCross.riscv64-embedded.stdenv.cc
     autoreconfHook

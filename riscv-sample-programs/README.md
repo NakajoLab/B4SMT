@@ -17,4 +17,4 @@
 
 ## テストで使う
 
-B4ProcessorTest参照
+B4SMTTest参照

@@ -10,8 +10,13 @@ project/plugins/project/
 .lib/
 .direnv
 
+/out
 /.idea
 /.bsp
+.bloop
+/.vscode
+/.metals
+project/project
 
 /test_run_dir
 /formal
@@ -26,3 +31,5 @@ project/plugins/project/
 
 stats*.jsonl
 stats*.csv
+
+update-tmp

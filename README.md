@@ -1,14 +1,8 @@
-[![scala-CI](https://github.com/NakajoLab/B4SMT/actions/workflows/scala.yml/badge.svg?branch=main)](https://github.com/NakajoLab/B4SMT/actions/workflows/scala.yml)
+[![Scala CI](https://github.com/NakajoLab/B4-Processor/actions/workflows/scala.yml/badge.svg)](https://github.com/NakajoLab/B4-Processor/actions/workflows/scala.yml)
 
-# B4SMT
+# B4SMT Core
 
-RISC-V OoO SMTプロセッサ
-
-Chiselで実装されています
-
-## 作者
-- @pineapplehunter
-- @michiya-kato
+OoOのプロセッサ
 
 ## 準備
 これらのソフトウェアをインストールしておく必要があります。
@@ -17,6 +11,12 @@ Chiselで実装されています
 * [Nix][Nix download]
 
 Nixについては[Nix]の公式サイトや[Zero to Nix]を参考にしてみてください。
+
+次のコマンドでこのプロジェクトのキャッシュを有効にしておくと多くのパッケージのビルドを省略できます。
+
+```shell
+$ nix shell "nixpkgs#cachix" -c cachix use b4smt
+```
 
 [Nix download]: https://zero-to-nix.com/start/install
 [Nix]: https://nixos.org/
@@ -72,26 +72,9 @@ $ sbt test
 ### 依存関係周りを編集したらプロセッサが生成できない
 
 コンパイル中に依存関係周りで問題が発生していれば、Nixの依存関係のキャッシュに問題がある場合があります。
-その場合は`./flake.nix`を次のように編集します。
-```diff
-diff --git a/flake.nix b/flake.nix
-index 726feaa..478b09e 100644
---- a/flake.nix
-+++ b/flake.nix
-@@ -37,7 +37,7 @@
-             ];
-           };
-           buildInputs = with pkgs; [ circt ];
----        depsSha256 = "sha256-W1Kgoc58kruhLW0CDzvuUgAjuRZbT4QqStJLAAnPuhc=";
-+++        depsSha256 = "";
-           buildPhase = ''
-             sbt "runMain b4processor.B4Processor"
-           '';
+その場合は次のコマンドを実行してください。
+```sh
+$ nix run ".#update-hash"
 ```
-また一度makeすると次のエラーメッセージが出てきます。
-```text
-error: hash mismatch in fixed-output derivation '/nix/store/01ghymlaf8f1r9ssqvdhn4j5kz3gk153-B4Processor-sbt-dependencies.tar.zst.drv':
-         specified: sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
-            got:    sha256-W1Kgoc58kruhLW0CDzvuUgAjuRZbT4QqStJLAAnPuhc=
-```
-ここで出てきたハッシュ(例:`sha256-W1Kgoc58kruhLW0CDzvuUgAjuRZbT4QqStJLAAnPuhc=`)に置き換えてmakeするとうまくビルドされると思います。
+
+このコマンドでnixの依存関係をを管理するHashを更新できます。

@@ -1,9 +1,7 @@
 {
   description = "riscv test flake";
 
-  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-  # Blocked by chiseltest until 6.0.0
-  inputs.nixpkgs-old-circt.url = "github:NixOS/nixpkgs/f4f8e7c13d3e3b33e9a43f1e1ff97d1697ec6240";
+  inputs.nixpkgs.url = "github:nixos/nixpkgs?ref=nixpkgs-unstable";
   inputs.flake-utils.url = "github:numtide/flake-utils";
   inputs.nix-filter.url = "github:numtide/nix-filter";
   inputs.sbt-derivation = {
@@ -19,12 +17,15 @@
   };
 
   outputs = { self, nixpkgs, ... }@inputs:
-    inputs.flake-utils.lib.eachSystem [ "x86_64-linux" ] (system:
+    inputs.flake-utils.lib.eachDefaultSystem (system:
       let
         overlays = final: prev: {
           verilator_4 = final.callPackage ./nix/verilator_4.nix { };
-          b4smtGen = final.callPackage ./nix { riscv-programs = self.packages.${system}.default; };
-          b4smt = final.b4smtGen { hash = "sha256-u90j84uEfVBq9QpKMJvY87jEBujJGXvm6UClGXG6XJc="; };
+          b4smtGen = final.callPackage ./nix/b4smtgen.nix {
+            riscv-programs = self.packages.${system}.default;
+          };
+          b4smt = final.b4smtGen { hash = "sha256-zQBZlFNFLPZL1O31+p2ICGV1AKahRwYtXZhqCsrkrCo="; };
+          sbt = prev.sbt.override { jre = final.jre_headless; };
         };
         pkgs = import nixpkgs {
           inherit system;
@@ -33,9 +34,11 @@
             inputs.sbt-derivation.overlays.default
             overlays
           ];
-          config.allowUnfree = true;
+          config.allowUnfreePredicate = pkg: builtins.elem (nixpkgs.lib.getName pkg) [
+            "espresso"
+          ];
         };
-
+        inherit (nixpkgs) lib;
       in
       {
         packages = rec {
@@ -46,38 +49,39 @@
             { name = "riscv-tests"; path = riscv-tests; }
             { name = "riscv-sample-programs"; path = riscv-sample-programs; }
           ];
-          slowChecks = pkgs.b4smt.sbtTest ''sbt "testOnly * -- -n org.scalatest.tags.Slow"'';
+          slowChecks = pkgs.b4smt.sbtTest "slow" ''sbt "testOnly * -- -n org.scalatest.tags.Slow"'';
           verilator = pkgs.verilator_4;
+          format = pkgs.b4smt.sbtTest "format" ''sbt fmtCheck'';
         };
 
         checks =
           {
-            quick = pkgs.b4smt.sbtTest ''sbt "testOnly * -- -l org.scalatest.tags.Slow"'';
-            #            programs = sbtTest ''sbt "testOnly *ProgramTest*"'';
+            quick = pkgs.b4smt.sbtTest "quick" ''sbt "testOnly * -- -l org.scalatest.tags.Slow"'';
+            # programs = sbtTest ''sbt "testOnly *ProgramTest*"'';
           };
 
         formatter = pkgs.nixpkgs-fmt;
 
-        devShells.default = pkgs.mkShell {
-          name = "b4smt-dev";
-          packages = with pkgs;[
-            circt
-            rustfilt
-            pkgsCross.riscv64.stdenv.cc
-            sbt
-            jdk
-            verilog
-            verilator_4
-            zlib
-            yosys
-            graphviz
-            xdot
-            espresso
-            z3
-            symbiyosys
-            yices
-          ];
-          CHISEL_FIRTOOL_PATH = "${pkgs.circt}/bin";
+        devShells.default = pkgs.callPackage ./nix/shell.nix {
+          verilator = pkgs.verilator_4;
+        };
+
+        apps.update-hash = {
+          type = "app";
+          program = let
+            script = pkgs.writeShellScript "update-hash" ''
+              echo updating-hash
+              set -xe
+              export hash=$(nix eval ".#processor.dependencies.outputHash" --json | ${lib.getExe pkgs.jq} -r)
+              sed -i "s|$hash|${lib.fakeHash}|" flake.nix
+              echo this is a temporary file for updating the hash > update-tmp
+              nix build ".#processor.dependencies" --no-link -L |& tee -a update-tmp
+              export new_hash=$(grep "got:" update-tmp | tail -n1 | awk '{print $2}')
+              sed -i "s|${lib.fakeHash}|$new_hash|" flake.nix
+              rm update-tmp
+              echo "changed hash from:$hash to:$new_hash"
+            '';
+          in "${script}";
         };
       });
 }

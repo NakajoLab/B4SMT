@@ -31,3 +31,16 @@ li x29, 0
 li x30, 0
 li x31, 0
 .endm
+
+.macro init_threads
+    init_all_regs
+    la sp, __BINARY_END_
+    csrr a0, mhartid
+    mv a1,a0
+0:
+    addi sp, sp, 1024
+    beqz a1, 1f
+    addi a1, a1, -1
+    j 0b
+1:
+.endm

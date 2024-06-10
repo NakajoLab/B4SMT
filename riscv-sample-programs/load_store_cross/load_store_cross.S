@@ -2,8 +2,7 @@
 
 _start:
     init_all_regs
-    addi x1, x0, 1
-    slli x1, x1, 31
+    la x1, scratch
 
     li x2, 100
     li x3, 200
@@ -43,3 +42,6 @@ _start:
     addi x3,x3,1
 
     j .
+
+.section .data
+scratch:
