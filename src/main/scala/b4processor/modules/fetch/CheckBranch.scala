@@ -25,24 +25,30 @@ class CheckBranch extends Module {
     list.map(_ === input).reduce(_ || _)
 
   private val branchTypeAndOffset: Seq[(Bool, (BranchType.Type, SInt))] = Seq(
-    (instruction === CType("C_J")) -> (BranchType.JAL, Cat(
-      io.instruction(12),
-      io.instruction(8),
-      io.instruction(10, 9),
-      io.instruction(6),
-      io.instruction(7),
-      io.instruction(2),
-      io.instruction(11),
-      io.instruction(5, 3),
-      0.U(1.W),
-    ).asSInt),
-    (instruction === IType("JAL")) -> (BranchType.JAL, Cat(
-      io.instruction(31),
-      io.instruction(19, 12),
-      io.instruction(20),
-      io.instruction(30, 21),
-      0.U(1.W),
-    ).asSInt),
+    (instruction === CType("C_J")) -> (
+      BranchType.JAL,
+      Cat(
+        io.instruction(12),
+        io.instruction(8),
+        io.instruction(10, 9),
+        io.instruction(6),
+        io.instruction(7),
+        io.instruction(2),
+        io.instruction(11),
+        io.instruction(5, 3),
+        0.U(1.W),
+      ).asSInt,
+    ),
+    (instruction === IType("JAL")) -> (
+      BranchType.JAL,
+      Cat(
+        io.instruction(31),
+        io.instruction(19, 12),
+        io.instruction(20),
+        io.instruction(30, 21),
+        0.U(1.W),
+      ).asSInt,
+    ),
     (instruction === IType("JALR")) -> (BranchType.JALR, 0.S),
     (instruction === CType("C_JALR")) -> (BranchType.JALR, 0.S),
     (instruction === CType("C_JR")) -> (BranchType.JALR, 0.S),
