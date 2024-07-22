@@ -22,10 +22,10 @@ Test / parallelExecution := false
 scalaVersion := "2.13.13"
 
 addCompilerPlugin(
-  "org.chipsalliance" % "chisel-plugin" % "6.2.0" cross CrossVersion.full,
+  "org.chipsalliance" % "chisel-plugin" % "6.5.0" cross CrossVersion.full,
 )
 libraryDependencies ++= Seq(
-  "org.chipsalliance" %% "chisel" % "6.2.0",
+  "org.chipsalliance" %% "chisel" % "6.5.0",
   "edu.berkeley.cs" %% "chiseltest" % "6.0.0" % "test",
   "org.scalatest" %% "scalatest" % "3.2.18",
 )
