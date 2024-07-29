@@ -9,3 +9,5 @@
 
 # Add trailing comma
 b2935c8f3397d716a41e8bf685c3665efa8e29f6
+# Scala Steward: Reformat with scalafmt 3.8.3
+93c3bd154d0482082b4425d7ecd37c1156faa6ca
