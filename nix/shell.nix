@@ -1,9 +1,8 @@
 { mkShell
 , circt
-, rustfilt
 , pkgsCross
 , sbt
-, verilog
+, iverilog
 , verilator
 , zlib
 , yosys
@@ -11,7 +10,7 @@
 , xdot
 , espresso
 , z3
-, symbiyosys
+, sby
 , yices
 }:
 
@@ -19,10 +18,9 @@ mkShell {
   name = "b4smt-dev";
   packages = [
     circt
-    rustfilt
     pkgsCross.riscv64.stdenv.cc
     sbt
-    verilog
+    iverilog
     verilator
     zlib
     yosys
@@ -30,7 +28,7 @@ mkShell {
     # xdot
     espresso
     z3
-    symbiyosys
+    sby
     yices
   ];
   CHISEL_FIRTOOL_PATH = "${circt}/bin";

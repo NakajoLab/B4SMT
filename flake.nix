@@ -2,6 +2,8 @@
   description = "riscv test flake";
 
   inputs.nixpkgs.url = "github:nixos/nixpkgs?ref=nixpkgs-unstable";
+  # Older RISC-V tests require legacy CSR aliases removed by newer binutils.
+  inputs.nixpkgs-riscv.url = "github:nixos/nixpkgs/cd18e2ae9ab8e2a0a8d715b60c91b54c0ac35ff9";
   inputs.flake-utils.url = "github:numtide/flake-utils";
   inputs.nix-filter.url = "github:numtide/nix-filter";
   inputs.sbt-derivation = {
@@ -21,10 +23,11 @@
       let
         overlays = final: prev: {
           verilator_4 = final.callPackage ./nix/verilator_4.nix { };
+          circt = final.callPackage ./nix/firtool.nix { };
           b4smtGen = final.callPackage ./nix/b4smtgen.nix {
             riscv-programs = self.packages.${system}.default;
           };
-          b4smt = final.b4smtGen { hash = "sha256-zQBZlFNFLPZL1O31+p2ICGV1AKahRwYtXZhqCsrkrCo="; };
+          b4smt = final.b4smtGen { hash = "sha256-tBD2gT5yOAssshRrh2Ky+XL7kPC6MxS2X4HhKqk+y30="; };
           sbt = prev.sbt.override { jre = final.jre_headless; };
         };
         pkgs = import nixpkgs {
@@ -42,8 +45,13 @@
       in
       {
         packages = rec {
-          riscv-tests = pkgs.callPackage ./riscv-tests-files { inherit (inputs) riscv-test-src; };
-          riscv-sample-programs = pkgs.callPackage ./riscv-sample-programs/sample-programs.nix { };
+          riscv-tests = pkgs.callPackage ./riscv-tests-files {
+            inherit (inputs) riscv-test-src;
+            riscvCompiler = (import inputs.nixpkgs-riscv { inherit system; }).pkgsCross.riscv64-embedded.stdenv.cc;
+          };
+          riscv-sample-programs = pkgs.callPackage ./riscv-sample-programs/sample-programs.nix {
+            riscvCompiler = (import inputs.nixpkgs-riscv { inherit system; }).pkgsCross.riscv64-embedded.stdenv.cc;
+          };
           processor = pkgs.b4smt;
           default = pkgs.linkFarm "processor test programs" [
             { name = "riscv-tests"; path = riscv-tests; }

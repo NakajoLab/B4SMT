@@ -8,5 +8,7 @@ verilator.overrideAttrs (old: rec {
     sha256 = "sha256-ToYad8cvBF3Mio5fuT4Ce4zXbWxFxd6smqB1TxvlHao=";
   };
   patches = [ ];
+  # The current nixpkgs postPatch targets files and code from Verilator 5.
+  postPatch = "";
   doCheck = false;
 })

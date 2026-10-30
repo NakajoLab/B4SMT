@@ -1,4 +1,4 @@
-{ pkgsCross, stdenvNoCC, nix-filter }:
+{ riscvCompiler, stdenvNoCC, nix-filter }:
 
 stdenvNoCC.mkDerivation {
   name = "riscv-sample-programs";
@@ -10,7 +10,7 @@ stdenvNoCC.mkDerivation {
     ];
   };
   nativeBuildInputs = [
-    pkgsCross.riscv64-embedded.stdenv.cc
+    riscvCompiler
   ];
   enableParallelBuilding = true;
   installPhase = "

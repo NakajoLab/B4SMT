@@ -1,9 +1,9 @@
-{ b4smt, verilog, verilator_4, stdenv, zlib, circt, yosys, yices, espresso, z3, symbiyosys }:
+{ b4smt, iverilog, verilator_4, stdenv, zlib, circt, yosys, yices, espresso, z3, sby }:
 name: testCommand:
 b4smt.mkDerivation {
   name = "${name}-b4smt-test";
   nativeBuildInputs = [
-    verilog
+    iverilog
     verilator_4
     stdenv.cc
     zlib
@@ -12,7 +12,7 @@ b4smt.mkDerivation {
     yices
     espresso
     z3
-    symbiyosys
+    sby
   ];
   buildPhase = ''
     ln -s ${b4smt.riscv-programs} programs
