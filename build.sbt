@@ -4,7 +4,7 @@ addCommandAlias("fmtCheck", "; scalafmtCheckAll ; scalafmtSbtCheck")
 name := "B4SMT-project"
 scalaVersion := "2.13.14"
 
-val chiselVersion = "6.4.0"
+val chiselVersion = "6.7.0"
 val chiselTestVersion = "6.0.0"
 
 val commonSettings = Seq(

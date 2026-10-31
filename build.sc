@@ -7,7 +7,7 @@ import scalalib._
 // support BSP
 import mill.bsp._
 
-val chiselVersion = "6.3.0"
+val chiselVersion = "6.7.0"
 val chiselTestVersion = "6.0.0"
 
 object b4smt_formal extends SbtModule { m =>
