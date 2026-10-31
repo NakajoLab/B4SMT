@@ -1,0 +1,523 @@
+diff --git a/benchmarks/Makefile b/benchmarks/Makefile
+index 8c65579..9c905f2 100644
+--- a/benchmarks/Makefile
++++ b/benchmarks/Makefile
+@@ -26,6 +26,11 @@ instbasedir = $(UCB_VLSI_HOME)/install
+ 
+ base_bmarks = \
+ 	median \
++	median-mt \
++	median-p \
++	median-p-mt \
++	median-p-byte \
++	median-p-mt-byte \
+ 	qsort \
+ 	rsort \
+ 	towers \
+@@ -58,6 +63,8 @@ RISCV_GCC_OPTS ?= -U_FORTIFY_SOURCE -DPREALLOCATE=1 -mcmodel=medany -static -std
+ RISCV_LINK ?= $(RISCV_GCC) -T $(src_dir)/common/test.ld $(incs)
+ RISCV_LINK_OPTS ?= -static -nostdlib -nostartfiles -lm -lgcc -T $(src_dir)/common/test.ld
+ RISCV_OBJDUMP ?= $(RISCV_PREFIX)objdump --disassemble-all --disassemble-zeroes --section=.text --section=.text.startup --section=.text.init --section=.data
++RISCV_OBJCOPY ?= $(RISCV_PREFIX)objcopy
++OBJDUMP_LLVM ?= llvm-objdump --disassemble-all --disassemble-zeroes --section=.text --section=.text.startup --section=.text.init --section=.data -M numeric
+ RISCV_MARCH ?= rv$(XLEN)gc
+ RISCV_VMARCH ?= rv$(XLEN)gcv
+ RISCV_SIM ?= spike --isa=rv$(XLEN)gcv
+@@ -77,6 +84,9 @@ $(foreach bmark,$(vec_bmarks),$(eval $(call compile_template,$(bmark),$(RISCV_VM
+ # Build and run benchmarks on riscv simulator
+ 
+ bmarks_riscv_bin  = $(addsuffix .riscv,  $(bmarks))
++bmarks_riscv_hex = $(addsuffix .hex, $(bmarks))
++bmarks_riscv_hex64 = $(addsuffix .64.hex, $(bmarks))
++bmarks_riscv_dump_llvm = $(addsuffix .riscv.llvm.dump, $(bmarks))
+ bmarks_riscv_dump = $(addsuffix .riscv.dump, $(bmarks))
+ bmarks_riscv_out  = $(addsuffix .riscv.out,  $(bmarks))
+ 
+@@ -86,7 +96,19 @@ $(bmarks_riscv_dump): %.riscv.dump: %.riscv
+ $(bmarks_riscv_out): %.riscv.out: %.riscv
+ 	$(RISCV_SIM) $< > $@
+ 
+-riscv: $(bmarks_riscv_dump)
++$(bmarks_riscv_dump_llvm): %.riscv.llvm.dump: %.riscv
++	$(OBJDUMP_LLVM) $< > $@
++
++%.binary: %.riscv
++	$(RISCV_OBJCOPY) $< -O binary $@
++
++%.hex: %.binary
++	od -An -t x1 $< -w1 -v | tr -d " " > $@
++
++%.64.hex: %.binary
++	od -An -t x8 $< -w8 -v | tr -d " " > $@
++
++riscv: $(bmarks_riscv_dump) $(bmarks_riscv_hex) $(bmarks_riscv_hex64) $(bmarks_riscv_dump_llvm)
+ run: $(bmarks_riscv_out)
+ 
+ junk += $(bmarks_riscv_bin) $(bmarks_riscv_dump) $(bmarks_riscv_hex) $(bmarks_riscv_out)
+diff --git a/benchmarks/common/crt.S b/benchmarks/common/crt.S
+index 33e45ec..c38b883 100644
+--- a/benchmarks/common/crt.S
++++ b/benchmarks/common/crt.S
+@@ -123,8 +123,8 @@ _start:
+   # get core id
+   csrr a0, mhartid
+   # for now, assume only 1 core
+-  li a1, 1
+-1:bgeu a0, a1, 1b
++  # li a1, 1
++# 1:bgeu a0, a1, 1b
+ 
+   # give each core 128KB of stack + TLS
+ #define STKSHIFT 17
+diff --git a/benchmarks/common/syscalls.c b/benchmarks/common/syscalls.c
+index 2a2a8f3..4979572 100644
+--- a/benchmarks/common/syscalls.c
++++ b/benchmarks/common/syscalls.c
+@@ -49,8 +49,10 @@ void setStats(int enable)
+     counters[i++] = csr; \
+   } while (0)
+ 
+-  READ_CTR(mcycle);
+-  READ_CTR(minstret);
++  if (read_csr(mhartid) == 0) {
++    READ_CTR(mcycle);
++    READ_CTR(minstret);
++  }
+ 
+ #undef READ_CTR
+ }
+@@ -121,7 +123,8 @@ void _init(int cid, int nc)
+     if (counters[i])
+       pbuf += sprintf(pbuf, "%s = %lu\n", counter_names[i], counters[i]);
+   if (pbuf != buf)
+-    printstr(buf);
++    printf("%s\n", buf);
++  printf("end\n");
+ 
+   exit(ret);
+ }
+diff --git a/benchmarks/common/util.h b/benchmarks/common/util.h
+index f33b1d1..71623d5 100644
+--- a/benchmarks/common/util.h
++++ b/benchmarks/common/util.h
+@@ -26,6 +26,40 @@ static int verify(int n, const volatile int* test, const int* verify)
+   return 0;
+ }
+ 
++static int verifyShort(short n, const volatile short *test,
++                       const short *verify) {
++  int i;
++  // Unrolled for faster verification
++  for (i = 0; i < n / 2 * 2; i += 2) {
++    int t0 = test[i], t1 = test[i + 1];
++    int v0 = verify[i], v1 = verify[i + 1];
++    if (t0 != v0)
++      return i + 1;
++    if (t1 != v1)
++      return i + 2;
++  }
++  if (n % 2 != 0 && test[n - 1] != verify[n - 1])
++    return n;
++  return 0;
++}
++
++static int verifyByte(short n, const volatile char *test,
++                       const char *verify) {
++  int i;
++  // Unrolled for faster verification
++  for (i = 0; i < n / 2 * 2; i += 2) {
++    int t0 = test[i], t1 = test[i + 1];
++    int v0 = verify[i], v1 = verify[i + 1];
++    if (t0 != v0)
++      return i + 1;
++    if (t1 != v1)
++      return i + 2;
++  }
++  if (n % 2 != 0 && test[n - 1] != verify[n - 1])
++    return n;
++  return 0;
++}
++
+ static int verifyDouble(int n, const volatile double* test, const double* verify)
+ {
+   int i;
+diff --git a/benchmarks/median/dataset1.h b/benchmarks/median/dataset1.h
+index b1e1491..49c23a2 100644
+--- a/benchmarks/median/dataset1.h
++++ b/benchmarks/median/dataset1.h
+@@ -1,53 +1,63 @@
+ // See LICENSE for license details.
+ 
++#include "median.h"
+ 
+ #define DATA_SIZE 400
+ 
+-int input_data[DATA_SIZE] =
+-{
+-   41, 454, 833, 335, 564,   1, 187, 989, 749, 365, 350, 572, 132,  64, 949, 153, 584, 216, 805, 140,
+-  621, 210,   6, 572, 931, 339, 890, 593, 392, 898, 694, 228, 961,  12, 110, 883, 116, 750, 296, 646,
+-  426, 500, 314, 436, 659, 701, 774, 812, 319, 981, 678, 150, 875, 696, 376, 564, 474, 272, 938, 258,
+-  539, 647, 569, 509, 203,  88, 280, 703, 759, 669, 606, 375, 511, 551, 657, 936, 195, 592,  81, 569,
+-  267, 952, 229, 800, 337, 584, 944, 643, 902, 368, 241, 489, 913, 328, 826, 313, 933, 592, 985, 388,
+-  195, 543, 960, 649, 566, 979, 350, 997, 649, 814, 657,  79, 181, 208, 111, 998, 859, 629,  65, 847,
+-  288, 704, 349, 997, 141, 253, 905, 715, 886, 430, 264, 415, 576, 538, 979, 700, 761,   4, 241, 494,
+-  478, 100, 499, 864, 403, 693, 222, 416, 444, 296, 721, 285, 676, 620, 317,  78, 224, 351, 937, 540,
+-  288, 646, 119, 169, 615, 527, 606, 289, 389, 796, 351, 801, 455, 720, 278, 758, 367, 745, 358,  92,
+-  584, 989,  62, 271, 985, 853, 403, 788, 346, 531, 517, 222, 559, 461, 908, 241, 775, 358, 255, 332,
+-  778, 684, 598, 740, 143, 446,  33, 311, 125, 743, 941, 557, 933, 479, 799, 557, 553, 925, 431, 796,
+-  648, 357, 952, 891, 287, 666,  19, 514,  49, 557,  86, 870,  95, 853, 441, 440, 587,  61, 614, 678,
+-  382, 396, 280,   9, 808,  17, 971, 170, 819, 291, 344, 380, 450, 536, 512, 185, 965, 917, 347, 539,
+-  808, 983, 882, 887, 537,  54, 946, 612, 701, 951, 356, 479, 567, 151, 891,   7,  22, 641, 568, 335,
+-  665, 730, 423,  95, 434, 728, 158, 280,   2, 395,  84, 688, 247, 911,  49, 476, 435, 815, 792, 729,
+-  869, 265, 486, 127, 414, 236, 369, 214, 548, 180, 518,   6, 888, 503, 682, 596, 284, 173, 264, 643,
+-  499, 346, 290, 599, 897,  68, 215, 849, 731, 658, 688, 619, 251, 121, 786, 131, 555, 828, 302, 667,
+-  528, 433, 544, 487, 322, 753, 947, 125, 287, 626, 824,  14, 304,  10, 788, 403, 733, 106, 959, 703,
+-  366, 818, 722, 964, 294, 406, 975, 874, 653, 856, 748,  86,  91,  60, 378, 660, 105, 667, 102, 153,
+-  381, 121, 651,  98, 825, 412, 840, 236, 356,  12, 148, 423,  54, 965, 140, 216, 955, 621, 343, 361
+-};
+-
+-int verify_data[DATA_SIZE] =
+-{
+-    0, 454, 454, 564, 335, 187, 187, 749, 749, 365, 365, 350, 132, 132, 153, 584, 216, 584, 216, 621,
+-  210, 210, 210, 572, 572, 890, 593, 593, 593, 694, 694, 694, 228, 110, 110, 116, 750, 296, 646, 426,
+-  500, 426, 436, 436, 659, 701, 774, 774, 812, 678, 678, 678, 696, 696, 564, 474, 474, 474, 272, 539,
+-  539, 569, 569, 509, 203, 203, 280, 703, 703, 669, 606, 511, 511, 551, 657, 657, 592, 195, 569, 267,
+-  569, 267, 800, 337, 584, 584, 643, 902, 643, 368, 368, 489, 489, 826, 328, 826, 592, 933, 592, 388,
+-  388, 543, 649, 649, 649, 566, 979, 649, 814, 657, 657, 181, 181, 181, 208, 859, 859, 629, 629, 288,
+-  704, 349, 704, 349, 253, 253, 715, 886, 715, 430, 415, 415, 538, 576, 700, 761, 700, 241, 241, 478,
+-  478, 478, 499, 499, 693, 403, 416, 416, 416, 444, 296, 676, 620, 620, 317, 224, 224, 351, 540, 540,
+-  540, 288, 169, 169, 527, 606, 527, 389, 389, 389, 796, 455, 720, 455, 720, 367, 745, 367, 358, 358,
+-  584, 584, 271, 271, 853, 853, 788, 403, 531, 517, 517, 517, 461, 559, 461, 775, 358, 358, 332, 332,
+-  684, 684, 684, 598, 446, 143, 311, 125, 311, 743, 743, 933, 557, 799, 557, 557, 557, 553, 796, 648,
+-  648, 648, 891, 891, 666, 287, 514,  49, 514,  86, 557,  95, 853, 441, 441, 441, 440, 587, 614, 614,
+-  396, 382, 280, 280,  17, 808, 170, 819, 291, 344, 344, 380, 450, 512, 512, 512, 917, 917, 539, 539,
+-  808, 882, 887, 882, 537, 537, 612, 701, 701, 701, 479, 479, 479, 567, 151,  22,  22, 568, 568, 568,
+-  665, 665, 423, 423, 434, 434, 280, 158, 280,  84, 395, 247, 688, 247, 476, 435, 476, 792, 792, 792,
+-  729, 486, 265, 414, 236, 369, 236, 369, 214, 518, 180, 518, 503, 682, 596, 596, 284, 264, 264, 499,
+-  499, 346, 346, 599, 599, 215, 215, 731, 731, 688, 658, 619, 251, 251, 131, 555, 555, 555, 667, 528,
+-  528, 528, 487, 487, 487, 753, 753, 287, 287, 626, 626, 304,  14, 304, 403, 733, 403, 733, 703, 703,
+-  703, 722, 818, 722, 406, 406, 874, 874, 856, 748, 748,  91,  86,  91, 378, 378, 660, 105, 153, 153,
+-  153, 381, 121, 651, 412, 825, 412, 356, 236, 148, 148, 148, 423, 140, 216, 216, 621, 621, 361,   0
+-};
++DTYPE input_data[DATA_SIZE] = {
++    41,  454, 833, 335, 564, 1,   187, 989, 749, 365, 350, 572, 132, 64,  949,
++    153, 584, 216, 805, 140, 621, 210, 6,   572, 931, 339, 890, 593, 392, 898,
++    694, 228, 961, 12,  110, 883, 116, 750, 296, 646, 426, 500, 314, 436, 659,
++    701, 774, 812, 319, 981, 678, 150, 875, 696, 376, 564, 474, 272, 938, 258,
++    539, 647, 569, 509, 203, 88,  280, 703, 759, 669, 606, 375, 511, 551, 657,
++    936, 195, 592, 81,  569, 267, 952, 229, 800, 337, 584, 944, 643, 902, 368,
++    241, 489, 913, 328, 826, 313, 933, 592, 985, 388, 195, 543, 960, 649, 566,
++    979, 350, 997, 649, 814, 657, 79,  181, 208, 111, 998, 859, 629, 65,  847,
++    288, 704, 349, 997, 141, 253, 905, 715, 886, 430, 264, 415, 576, 538, 979,
++    700, 761, 4,   241, 494, 478, 100, 499, 864, 403, 693, 222, 416, 444, 296,
++    721, 285, 676, 620, 317, 78,  224, 351, 937, 540, 288, 646, 119, 169, 615,
++    527, 606, 289, 389, 796, 351, 801, 455, 720, 278, 758, 367, 745, 358, 92,
++    584, 989, 62,  271, 985, 853, 403, 788, 346, 531, 517, 222, 559, 461, 908,
++    241, 775, 358, 255, 332, 778, 684, 598, 740, 143, 446, 33,  311, 125, 743,
++    941, 557, 933, 479, 799, 557, 553, 925, 431, 796, 648, 357, 952, 891, 287,
++    666, 19,  514, 49,  557, 86,  870, 95,  853, 441, 440, 587, 61,  614, 678,
++    382, 396, 280, 9,   808, 17,  971, 170, 819, 291, 344, 380, 450, 536, 512,
++    185, 965, 917, 347, 539, 808, 983, 882, 887, 537, 54,  946, 612, 701, 951,
++    356, 479, 567, 151, 891, 7,   22,  641, 568, 335, 665, 730, 423, 95,  434,
++    728, 158, 280, 2,   395, 84,  688, 247, 911, 49,  476, 435, 815, 792, 729,
++    869, 265, 486, 127, 414, 236, 369, 214, 548, 180, 518, 6,   888, 503, 682,
++    596, 284, 173, 264, 643, 499, 346, 290, 599, 897, 68,  215, 849, 731, 658,
++    688, 619, 251, 121, 786, 131, 555, 828, 302, 667, 528, 433, 544, 487, 322,
++    753, 947, 125, 287, 626, 824, 14,  304, 10,  788, 403, 733, 106, 959, 703,
++    366, 818, 722, 964, 294, 406, 975, 874, 653, 856, 748, 86,  91,  60,  378,
++    660, 105, 667, 102, 153, 381, 121, 651, 98,  825, 412, 840, 236, 356, 12,
++    148, 423, 54,  965, 140, 216, 955, 621, 343, 361};
+ 
++DTYPE verify_data[DATA_SIZE] = {
++    0,   454, 454, 564, 335, 187, 187, 749, 749, 365, 365, 350, 132, 132, 153,
++    584, 216, 584, 216, 621, 210, 210, 210, 572, 572, 890, 593, 593, 593, 694,
++    694, 694, 228, 110, 110, 116, 750, 296, 646, 426, 500, 426, 436, 436, 659,
++    701, 774, 774, 812, 678, 678, 678, 696, 696, 564, 474, 474, 474, 272, 539,
++    539, 569, 569, 509, 203, 203, 280, 703, 703, 669, 606, 511, 511, 551, 657,
++    657, 592, 195, 569, 267, 569, 267, 800, 337, 584, 584, 643, 902, 643, 368,
++    368, 489, 489, 826, 328, 826, 592, 933, 592, 388, 388, 543, 649, 649, 649,
++    566, 979, 649, 814, 657, 657, 181, 181, 181, 208, 859, 859, 629, 629, 288,
++    704, 349, 704, 349, 253, 253, 715, 886, 715, 430, 415, 415, 538, 576, 700,
++    761, 700, 241, 241, 478, 478, 478, 499, 499, 693, 403, 416, 416, 416, 444,
++    296, 676, 620, 620, 317, 224, 224, 351, 540, 540, 540, 288, 169, 169, 527,
++    606, 527, 389, 389, 389, 796, 455, 720, 455, 720, 367, 745, 367, 358, 358,
++    584, 584, 271, 271, 853, 853, 788, 403, 531, 517, 517, 517, 461, 559, 461,
++    775, 358, 358, 332, 332, 684, 684, 684, 598, 446, 143, 311, 125, 311, 743,
++    743, 933, 557, 799, 557, 557, 557, 553, 796, 648, 648, 648, 891, 891, 666,
++    287, 514, 49,  514, 86,  557, 95,  853, 441, 441, 441, 440, 587, 614, 614,
++    396, 382, 280, 280, 17,  808, 170, 819, 291, 344, 344, 380, 450, 512, 512,
++    512, 917, 917, 539, 539, 808, 882, 887, 882, 537, 537, 612, 701, 701, 701,
++    479, 479, 479, 567, 151, 22,  22,  568, 568, 568, 665, 665, 423, 423, 434,
++    434, 280, 158, 280, 84,  395, 247, 688, 247, 476, 435, 476, 792, 792, 792,
++    729, 486, 265, 414, 236, 369, 236, 369, 214, 518, 180, 518, 503, 682, 596,
++    596, 284, 264, 264, 499, 499, 346, 346, 599, 599, 215, 215, 731, 731, 688,
++    658, 619, 251, 251, 131, 555, 555, 555, 667, 528, 528, 528, 487, 487, 487,
++    753, 753, 287, 287, 626, 626, 304, 14,  304, 403, 733, 403, 733, 703, 703,
++    703, 722, 818, 722, 406, 406, 874, 874, 856, 748, 748, 91,  86,  91,  378,
++    378, 660, 105, 153, 153, 153, 381, 121, 651, 412, 825, 412, 356, 236, 148,
++    148, 148, 423, 140, 216, 216, 621, 621, 361, 0};
+diff --git a/benchmarks/median/median.c b/benchmarks/median/median.c
+index 1999185..6e1df5c 100644
+--- a/benchmarks/median/median.c
++++ b/benchmarks/median/median.c
+@@ -4,39 +4,92 @@
+ // Median filter (c version)
+ //--------------------------------------------------------------------------
+ 
+-void median( int n, int input[], int results[] )
+-{
++#include "median.h"
++#include "encoding.h"
++
++void median1(int n, DTYPE input[], DTYPE results[]) {
+   int A, B, C, i;
+ 
+   // Zero the ends
+-  results[0]   = 0;
+-  results[n-1] = 0;
++  results[0] = 0;
++  results[n - 1] = 0;
+ 
+   // Do the filter
+-  for ( i = 1; i < (n-1); i++ ) {
++  for (i = 1; i < (n - 1); i++) {
+ 
+-    A = input[i-1];
++    A = input[i - 1];
+     B = input[i];
+-    C = input[i+1];
++    C = input[i + 1];
+ 
+-    if ( A < B ) {
+-      if ( B < C )
++    if (A < B) {
++      if (B < C)
+         results[i] = B;
+-      else if ( C < A )
++      else if (C < A)
+         results[i] = A;
+       else
+         results[i] = C;
+     }
+ 
+     else {
+-      if ( A < C )
++      if (A < C)
+         results[i] = A;
+-      else if ( C < B )
++      else if (C < B)
++        results[i] = B;
++      else
++        results[i] = C;
++    }
++  }
++}
++
++static volatile int finish_count = 0;
++
++const int from_arr[4] = {1, 100, 200, 300};
++const int to_arr[4] = {100, 200, 300, 399};
++
++void median2(int n, DTYPE input[], DTYPE results[]) {
++  int threadid = read_csr(mhartid);
++
++  int from = from_arr[threadid];
++  int to = to_arr[threadid];
++
++  // Zero the ends
++  results[0] = 0;
++  results[n - 1] = 0;
++
++  // Do the filter
++  for (int i = from; i < to; i++) {
++
++    int A = input[i - 1];
++    int B = input[i];
++    int C = input[i + 1];
++
++    if (A < B) {
++      if (B < C)
+         results[i] = B;
++      else if (C < A)
++        results[i] = A;
+       else
+         results[i] = C;
+     }
+ 
++    else {
++      if (A < C)
++        results[i] = A;
++      else if (C < B)
++        results[i] = B;
++      else
++        results[i] = C;
++    }
+   }
+ 
++  int one = 1;
++  asm("amoadd.w zero,%[one],(%[ptr])"
++      :
++      : [one] "r"(one), [ptr] "r"(&finish_count));
++
++  while (finish_count != CORE_COUNT)
++    ;
++  return;
+ }
++
++const int elements_at_once = 64 / sizeof(DTYPE);
+diff --git a/benchmarks/median/median.h b/benchmarks/median/median.h
+index 7f9791c..9591049 100644
+--- a/benchmarks/median/median.h
++++ b/benchmarks/median/median.h
+@@ -4,8 +4,20 @@
+ // Median filters
+ //--------------------------------------------------------------------------
+ 
++#define DTYPE short
++#define CORE_COUNT 4
++
+ // Simple C version
+-void median( int n, int input[], int results[] );
++void median1(int n, DTYPE input[], DTYPE results[]);
++
++// C with multi-threading version
++void median2(int n, DTYPE input[], DTYPE results[]);
++
++// C with P-Extension version
++void median3(int n, DTYPE input[], DTYPE results[]);
++
++// C with P-Extension and threading version
++void median4(int n, DTYPE input[], DTYPE results[]);
+ 
+ // Simple assembly version
+-void median_asm( int n, int input[], int results[] );
++void median_asm(int n, DTYPE input[], DTYPE results[]);
+diff --git a/benchmarks/median/median_main.c b/benchmarks/median/median_main.c
+index b62ecd1..99ebf3b 100644
+--- a/benchmarks/median/median_main.c
++++ b/benchmarks/median/median_main.c
+@@ -21,20 +21,41 @@
+ //--------------------------------------------------------------------------
+ // Main
+ 
+-int main( int argc, char* argv[] )
+-{
+-  int results_data[DATA_SIZE];
++static short results_data[DATA_SIZE];
+ 
+-#if PREALLOCATE
+-  // If needed we preallocate everything in the caches
+-  median( DATA_SIZE, input_data, results_data );
+-#endif
++int main(int argc, char *argv[]) {
++
++  // #if PREALLOCATE
++  //   // If needed we preallocate everything in the caches
++  //   median2(DATA_SIZE, input_data, results_data);
++  // #endif
+ 
+   // Do the filter
+   setStats(1);
+-  median( DATA_SIZE, input_data, results_data );
++  median1(DATA_SIZE, input_data, results_data);
+   setStats(0);
+ 
++  int threadid = read_csr(mhartid);
++  if (threadid == 0)
++    printf("median done\n");
++
+   // Check the results
+-  return verify( DATA_SIZE, results_data, verify_data );
++  if (threadid == 0) {
++    for (int i = 0; i < 20; i++) {
++      for (int j = 0; j < 20; j++)
++        printf("%d, ", results_data[i * 20 + j]);
++      printf("\n");
++    }
++    int res = verifyShort(DATA_SIZE, results_data, verify_data);
++    printf("verify done with %d\n", res);
++    return res;
++  } else {
++    while (1)
++      ;
++  }
++}
++
++void thread_entry(int cid, int nc) {
++  while (cid != 0)
++    ;
+ }
+diff --git a/isa/Makefile b/isa/Makefile
+index 50cf00a..cde4015 100644
+--- a/isa/Makefile
++++ b/isa/Makefile
+@@ -64,10 +64,10 @@ default: all
+ #--------------------------------------------------------------------
+ 
+ RISCV_PREFIX ?= riscv$(XLEN)-unknown-elf-
+-ifeq ($(shell which $(RISCV_PREFIX)gcc 2> /dev/null),)
++ifeq ($(shell command -v $(RISCV_PREFIX)gcc 2> /dev/null),)
+ 	ALT_XLEN := $(if $(call eq,$(XLEN),64),32,64)
+   RISCV_PREFIX := riscv$(ALT_XLEN)-unknown-elf-
+-  ifeq ($(shell which $(RISCV_PREFIX)gcc 2> /dev/null),)
++  ifeq ($(shell command -v $(RISCV_PREFIX)gcc 2> /dev/null),)
+     $(error couldn't find gcc)
+   endif
+ endif
+@@ -76,6 +76,8 @@ RISCV_PREFIX ?= riscv$(XLEN)-unknown-elf-
+ RISCV_GCC ?= $(RISCV_PREFIX)gcc
+ RISCV_GCC_OPTS ?= -static -mcmodel=medany -fvisibility=hidden -nostdlib -nostartfiles
+ RISCV_OBJDUMP ?= $(RISCV_PREFIX)objdump --disassemble-all --disassemble-zeroes --section=.text --section=.text.startup --section=.text.init --section=.data
++OBJDUMP_LLVM ?= llvm-objdump --disassemble-all --disassemble-zeroes --section=.text --section=.text.startup --section=.text.init --section=.data
++RISCV_OBJCOPY ?= $(RISCV_PREFIX)objcopy
+ RISCV_SIM ?= spike
+ 
+ vpath %.S $(src_dir)
+@@ -86,12 +88,24 @@ vpath %.S $(src_dir)
+ %.dump: %
+ 	$(RISCV_OBJDUMP) $< > $@
+ 
++%.llvm.dump: %
++	$(OBJDUMP_LLVM) $< > $@
++
+ %.out: %
+ 	$(RISCV_SIM) --isa=rv64gch_ziccid_zfh_zicboz_svnapot_zicntr_zba_zbb_zbkb_zbkx_zbc_zbs_zicond_zicclsm_zacas_zabha_zalasr $< 2> $@
+ 
+ %.out32: %
+ 	$(RISCV_SIM) --isa=rv32gc_ziccid_zfh_zicboz_svnapot_zicntr_zba_zbb_zbkb_zbkx_zbc_zbs_zicond_zicclsm_zacas_zabha_zalasr $< 2> $@
+ 
++%.binary: %
++	$(RISCV_OBJCOPY) $< -O binary $@
++
++%.hex: %.binary
++	od -An -t x1 $< -w1 -v | tr -d " " > $@
++
++%.64.hex: %.binary
++	od -An -t x8 $< -w8 -v | tr -d " " > $@
++
+ define compile_template
+ 
+ $$($(1)_p_tests): $(1)-p-%: $(1)/%.S
+@@ -169,18 +183,20 @@ $(eval $(call compile_template,rv32mi,-march=rv32g -mabi=ilp32))
+ endif
+ 
+ tests_dump = $(addsuffix .dump, $(tests))
++tests_llvm_dump = $(addsuffix .llvm.dump, $(tests))
+ tests_hex = $(addsuffix .hex, $(tests))
++tests_hex64 = $(addsuffix .64.hex, $(tests))
+ tests_out = $(addsuffix .out, $(filter rv64%,$(tests)))
+ tests32_out = $(addsuffix .out32, $(filter rv32%,$(tests)))
+ 
+ run: $(tests_out) $(tests32_out)
+ 
+-junk += $(tests) $(tests_dump) $(tests_hex) $(tests_out) $(tests32_out)
++junk += $(tests) $(tests_dump) $(tests_hex) $(tests_hex64) $(tests_out) $(tests32_out)
+ 
+ #------------------------------------------------------------
+ # Default
+ 
+-all: $(tests_dump)
++all: $(tests_dump) $(tests_llvm_dump) $(tests_hex) $(tests_hex64)
+ 
+ #------------------------------------------------------------
+ # Clean up

@@ -49,38 +49,22 @@
         "type": "github"
       }
     },
-    "nixpkgs-riscv": {
-      "locked": {
-        "lastModified": 1717868076,
-        "narHash": "sha256-c83Y9t815Wa34khrux81j8K8ET94ESmCuwORSKm2bQY=",
-        "owner": "nixos",
-        "repo": "nixpkgs",
-        "rev": "cd18e2ae9ab8e2a0a8d715b60c91b54c0ac35ff9",
-        "type": "github"
-      },
-      "original": {
-        "owner": "nixos",
-        "repo": "nixpkgs",
-        "rev": "cd18e2ae9ab8e2a0a8d715b60c91b54c0ac35ff9",
-        "type": "github"
-      }
-    },
     "riscv-test-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1697111278,
-        "narHash": "sha256-ffrX4XqUfrOqvQsmd8cz+VF5MNcasG5Wb42/BgDd65k=",
+        "lastModified": 1792447720,
+        "narHash": "sha256-XU20YSGR1prAPK23i+ilU9ACyTTT4P5Kwq0D/z/rkgg=",
         "ref": "refs/heads/master",
-        "rev": "03cb19cbae8496b36eae846e51f796770437ac82",
-        "revCount": 953,
+        "rev": "3df703cd52d5f0d8224e3c50bf03c6cb70efff98",
+        "revCount": 1095,
         "submodules": true,
         "type": "git",
-        "url": "https://github.com/pineapplehunter/riscv-tests"
+        "url": "https://github.com/riscv-software-src/riscv-tests"
       },
       "original": {
         "submodules": true,
         "type": "git",
-        "url": "https://github.com/pineapplehunter/riscv-tests"
+        "url": "https://github.com/riscv-software-src/riscv-tests"
       }
     },
     "root": {
@@ -88,7 +72,6 @@
         "flake-utils": "flake-utils",
         "nix-filter": "nix-filter",
         "nixpkgs": "nixpkgs",
-        "nixpkgs-riscv": "nixpkgs-riscv",
         "riscv-test-src": "riscv-test-src",
         "sbt-derivation": "sbt-derivation"
       }
