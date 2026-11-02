@@ -1,35 +1,14 @@
 package b4smt.B4SMT_Full_Tests
 
 import b4smt.Parameters
-import b4smt.utils.B4SMTCoreWithMemory
-import chisel3._
-import chisel3.simulator.scalatest.ChiselSim
+import b4smt.simulator.StandaloneTests
 import org.scalatest.Tag
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.tagobjects.Slow
 
-class B4SMTCoreRISCVTestWrapper()(implicit params: Parameters)
-    extends B4SMTCoreWithMemory() {
-  def riscv_test(timeout: Int): Unit = {
-    checkForRegister(17, 93, timeout)
-    val reg3_value = this.io.registerFileContents.get(0)(3).peek().litValue
-    val fail_num = reg3_value >> 1
-    val error_message =
-      s"failed on test $fail_num\n" + this.io.registerFileContents
-        .get(0)
-        .map(_.peek().litValue)
-        .zipWithIndex
-        .map { case (n, i) => f"x$i%-2d = ($n%016X) $n" }
-        .reduce(_ + "\n" + _)
-    this.io.registerFileContents
-      .get(0)(3)
-      .expect(1.U, error_message)
-  }
-}
-
 abstract class RiscvTest(val testPrefix: String)
     extends AnyFlatSpec
-    with ChiselSim {
+    with StandaloneTests {
 
   var params = Parameters(
     debug = true,
@@ -47,14 +26,14 @@ abstract class RiscvTest(val testPrefix: String)
   def riscv_test(test_name: String, timeout: Int = 4000): Unit = {
 
     it should s"run $test_name" taggedAs (RISCVTest, Slow) in {
-      simulate( // FIXME fromFile8bit
-        new B4SMTCoreRISCVTestWrapper(
-        )(this.params),
-      ) { c =>
+      standalone(this.params) { c =>
         c.initialize(
           s"programs/riscv-tests/share/riscv-tests/isa/rv64u$testPrefix-p-$test_name",
         )
-        c.riscv_test(timeout)
+        c.checkForRegister(17, 93, timeout)
+        c.dumpRegisters()
+        // x3 >> 1 identifies the failing ISA test in the register dump.
+        c.expectRegister(3, 1)
       }
     }
   }

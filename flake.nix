@@ -47,6 +47,7 @@
           riscv-tests = pkgs.callPackage ./riscv-tests-files { inherit (inputs) riscv-test-src; };
           riscv-sample-programs = pkgs.callPackage ./riscv-sample-programs/sample-programs.nix { };
           processor = pkgs.b4smt;
+          simulator = pkgs.callPackage ./nix/b4smt_simulator.nix { };
           default = pkgs.linkFarm "processor test programs" [
             { name = "riscv-tests"; path = riscv-tests; }
             { name = "riscv-sample-programs"; path = riscv-sample-programs; }
@@ -59,6 +60,34 @@
         checks =
           {
             quick = pkgs.b4smt.millTest "quick" ''mill --no-daemon --offline b4smt.test.testOnly '*' -- -l org.scalatest.tags.Slow'';
+            simulator = pkgs.runCommand "b4smt-simulator-smoke" { } ''
+              sim=${self.packages.${system}.simulator}/bin/b4smt-sim
+              samples=${self.packages.${system}.riscv-sample-programs}
+              "$sim" --program "$samples/branch.hex" --max-cycles 200 --expect-register 13 20
+              "$sim" --program "$samples/fibonacci.hex" --max-cycles 400 --expect-register 6 55
+              if "$sim" --program "$samples/branch.hex" --max-cycles 1 --expect-register 13 20; then
+                echo "expected timeout did not fail" >&2
+                exit 1
+              fi
+              printf 'wait 0 13 20 200\nexpect 0 13 20\n' > valid.plan
+              "$sim" --program "$samples/branch.hex" --plan valid.plan
+              reject_plan() {
+                if "$sim" --program "$samples/branch.hex" --plan "$1" > failure.log 2>&1; then
+                  echo "invalid plan unexpectedly passed: $1" >&2
+                  exit 1
+                fi
+                grep -F "$2" failure.log
+              }
+              mkdir unreadable.plan
+              reject_plan unreadable.plan 'cannot read plan'
+              touch empty.plan
+              reject_plan empty.plan 'plan contains no actions'
+              printf 'uart 500 0 4294967295\n' > invalid-uart.plan
+              reject_plan invalid-uart.plan 'UART expectation must be a byte'
+              printf 'search 500 0 1 1 256\n' > invalid-search.plan
+              reject_plan invalid-search.plan 'UART search value must be a byte'
+              touch "$out"
+            '';
           };
 
         formatter = treefmt.config.build.wrapper;

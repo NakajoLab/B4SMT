@@ -1,12 +1,11 @@
 package b4smt.B4SMT_Full_Tests
 
 import b4smt.Parameters
-import b4smt.utils.B4SMTCoreWithMemory
-import chisel3.simulator.scalatest.ChiselSim
+import b4smt.simulator.StandaloneTests
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.tagobjects.Slow
 
-class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselSim {
+class B4SMTCoreProgramTest extends AnyFlatSpec with StandaloneTests {
 
   behavior of "B4SMT test programs"
   // デバッグに時間がかかりすぎるのでパラメータを少し下げる。
@@ -21,22 +20,14 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselSim {
 
   // branchプログラムが実行できる
   it should "execute branch with no parallel" in {
-    simulate(
-      new B4SMTCoreWithMemory()(
-        defaultParams.copy(threads = 1, decoderPerThread = 1),
-      ),
-    ) { c =>
+    standalone(defaultParams.copy(threads = 1, decoderPerThread = 1)) { c =>
       c.initialize("programs/riscv-sample-programs/branch")
       c.checkForRegister(13, 20, 200)
     }
   }
   // branchプログラムが実行できる
   it should "execute branch with 2 parallel thread" in {
-    simulate(
-      new B4SMTCoreWithMemory()(
-        defaultParams.copy(threads = 2, decoderPerThread = 1),
-      ),
-    ) { c =>
+    standalone(defaultParams.copy(threads = 2, decoderPerThread = 1)) { c =>
       c.initialize("programs/riscv-sample-programs/branch")
       c.checkForRegister(13, 20, 200, 0)
       c.checkForRegister(13, 20, 200, 1)
@@ -45,11 +36,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselSim {
 
   // フィボナッチ数列の計算が同時発行数1でできる
   it should "execute fibonacci with no parallel" in {
-    simulate(
-      new B4SMTCoreWithMemory()(
-        defaultParams.copy(threads = 1, decoderPerThread = 1),
-      ),
-    ) { c =>
+    standalone(defaultParams.copy(threads = 1, decoderPerThread = 1)) { c =>
       c.initialize("programs/riscv-sample-programs/fibonacci")
       c.checkForRegister(6, 55, 400)
     }
@@ -57,7 +44,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselSim {
 
   // フィボナッチ数列の計算が同時発行数2でできる
   it should "execute fibonacci with 2 parallel" in {
-    simulate(new B4SMTCoreWithMemory()) { c =>
+    standalone(defaultParams) { c =>
       c.initialize("programs/riscv-sample-programs/fibonacci")
       c.checkForRegister(6, 55, 400)
     }
@@ -65,11 +52,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselSim {
 
   // フィボナッチ数列の計算が同時発行数4でできる
   it should "execute fibonacci with 4 parallel" in {
-    simulate(
-      new B4SMTCoreWithMemory()(
-        defaultParams.copy(threads = 1, decoderPerThread = 4),
-      ),
-    ) { c =>
+    standalone(defaultParams.copy(threads = 1, decoderPerThread = 4)) { c =>
       c.initialize("programs/riscv-sample-programs/fibonacci")
       c.checkForRegister(6, 55, 200)
     }
@@ -77,7 +60,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselSim {
 
   // call(JALRを使った関数呼び出し)とret(JALRを使った関数からのリターン)がうまく実行できる
   it should "execute call_ret with 2 parallel" in {
-    simulate(new B4SMTCoreWithMemory()) { c =>
+    standalone(defaultParams) { c =>
       c.initialize("programs/riscv-sample-programs/call_ret")
       c.checkForRegister(5, 1, 100)
       c.checkForRegister(6, 2, 20)
@@ -87,11 +70,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselSim {
 
   // 並列実行できそうな大量のadd命令を同時発行数1で試す
   it should "execute many_add with no parallel" in {
-    simulate(
-      new B4SMTCoreWithMemory()(
-        defaultParams.copy(threads = 1, decoderPerThread = 1),
-      ),
-    ) { c =>
+    standalone(defaultParams.copy(threads = 1, decoderPerThread = 1)) { c =>
       c.initialize("programs/riscv-sample-programs/many_add")
       c.checkForRegister(1, 8, 100)
     }
@@ -99,11 +78,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselSim {
 
   // 並列実行できそうな大量のadd命令を同時発行数1で試す
   it should "execute many_add with no parallel 2 thread" in {
-    simulate(
-      new B4SMTCoreWithMemory()(
-        defaultParams.copy(threads = 2, decoderPerThread = 1),
-      ),
-    ) { c =>
+    standalone(defaultParams.copy(threads = 2, decoderPerThread = 1)) { c =>
       c.initialize("programs/riscv-sample-programs/many_add")
       c.checkForRegister(1, 8, 200, 0)
       c.checkForRegister(1, 8, 70, 1)
@@ -112,19 +87,16 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselSim {
 
   // 並列実行できそうな大量のadd命令を同時発行数2で試す
   it should "execute many_add with 2 parallel" in {
-    simulate(new B4SMTCoreWithMemory()(defaultParams.copy(fetchWidth = 8))) {
-      c =>
-        c.initialize("programs/riscv-sample-programs/many_add")
-        c.checkForRegister(1, 8, 100)
+    standalone(defaultParams.copy(fetchWidth = 8)) { c =>
+      c.initialize("programs/riscv-sample-programs/many_add")
+      c.checkForRegister(1, 8, 100)
     }
   }
 
   // 並列実行できそうな大量のadd命令を同時発行数4で試す
   it should "execute many_add with 4 parallel" in {
-    simulate(
-      new B4SMTCoreWithMemory()(
-        defaultParams.copy(threads = 1, decoderPerThread = 4, fetchWidth = 8),
-      ),
+    standalone(
+      defaultParams.copy(threads = 1, decoderPerThread = 4, fetchWidth = 8),
     ) { c =>
       c.initialize("programs/riscv-sample-programs/many_add")
       c.checkForRegister(1, 8, 70)
@@ -133,11 +105,9 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselSim {
 
   // タグ幅をとても小さくする（すべてのデコーダが使えない）ような状況でもうまく動作する
   it should "execute many_add with 4 parallel with very low tag width" in {
-    simulate(
-      new B4SMTCoreWithMemory()(
-        defaultParams
-          .copy(threads = 1, decoderPerThread = 4, fetchWidth = 8, tagWidth = 2),
-      ),
+    standalone(
+      defaultParams
+        .copy(threads = 1, decoderPerThread = 4, fetchWidth = 8, tagWidth = 2),
     ) { c =>
       c.initialize("programs/riscv-sample-programs/many_add")
       c.checkForRegister(1, 8, 70)
@@ -146,15 +116,13 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselSim {
 
   // 並列実行できそうな大量のadd命令を同時発行数8で試す
   it should "execute many_add with 8 parallel" in {
-    simulate(
-      new B4SMTCoreWithMemory()(
-        defaultParams.copy(
-          threads = 1,
-          decoderPerThread = 8,
-          fetchWidth = 8,
-          executors = 4,
-          maxRegisterFileCommitCount = 10,
-        ),
+    standalone(
+      defaultParams.copy(
+        threads = 1,
+        decoderPerThread = 8,
+        fetchWidth = 8,
+        executors = 4,
+        maxRegisterFileCommitCount = 10,
       ),
     ) { c =>
       c.initialize("programs/riscv-sample-programs/many_add")
@@ -164,42 +132,35 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselSim {
 
   // アウトオブオーダでできそうな命令を同時発行数4で試す
   it should "execute out_of_order with 4 parallel" in {
-    simulate(
-      new B4SMTCoreWithMemory(
-      )(
-        defaultParams
-          .copy(
-            threads = 1,
-            decoderPerThread = 4,
-            fetchWidth = 8,
-            maxRegisterFileCommitCount = 8,
-          ),
-      ),
+    standalone(
+      defaultParams
+        .copy(
+          threads = 1,
+          decoderPerThread = 4,
+          fetchWidth = 8,
+          maxRegisterFileCommitCount = 8,
+        ),
     ) { c =>
       c.initialize("programs/riscv-sample-programs/many_add_out_of_order")
-      c.clock.step(60)
-      c.io.registerFileContents.get(0)(1).expect(1)
-      c.io.registerFileContents.get(0)(2).expect(2)
-      c.io.registerFileContents.get(0)(3).expect(3)
-      c.io.registerFileContents.get(0)(4).expect(4)
-      c.io.registerFileContents.get(0)(5).expect(1)
-      c.io.registerFileContents.get(0)(6).expect(2)
-      c.io.registerFileContents.get(0)(7).expect(3)
-      c.io.registerFileContents.get(0)(8).expect(4)
-      c.io.registerFileContents.get(0)(9).expect(1)
-      c.io.registerFileContents.get(0)(10).expect(2)
-      c.io.registerFileContents.get(0)(11).expect(3)
-      c.io.registerFileContents.get(0)(12).expect(4)
+      c.step(60)
+      c.expectRegister(1, 1, 0)
+      c.expectRegister(2, 2, 0)
+      c.expectRegister(3, 3, 0)
+      c.expectRegister(4, 4, 0)
+      c.expectRegister(5, 1, 0)
+      c.expectRegister(6, 2, 0)
+      c.expectRegister(7, 3, 0)
+      c.expectRegister(8, 4, 0)
+      c.expectRegister(9, 1, 0)
+      c.expectRegister(10, 2, 0)
+      c.expectRegister(11, 3, 0)
+      c.expectRegister(12, 4, 0)
     }
   }
 
   // 単純な値をストアしてロードするプログラム同時発行数2
   it should "run load_store with 2 parallel" in {
-    simulate(
-      new B4SMTCoreWithMemory()(
-        defaultParams.copy(threads = 1, decoderPerThread = 2),
-      ),
-    ) { c =>
+    standalone(defaultParams.copy(threads = 1, decoderPerThread = 2)) { c =>
       c.initialize("programs/riscv-sample-programs/load_store")
       c.checkForRegister(3, 10, 200)
       // address could change
@@ -207,39 +168,33 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselSim {
       //          .get(0)(1)
       //          .expect(defaultParams.instructionStart + 0x58 + 16)
       //          .expect(defaultParams.instructionStart + 0x58 + 16)
-      c.io.registerFileContents.get(0)(2).expect(10)
-      c.io.registerFileContents.get(0)(3).expect(10)
+      c.expectRegister(2, 10, 0)
+      c.expectRegister(3, 10, 0)
     }
   }
 
   it should "run fibonacci_c" in {
-    simulate(
-      new B4SMTCoreWithMemory(
-      )(
-        defaultParams.copy(
-          threads = 1,
-          decoderPerThread = 1,
-          maxRegisterFileCommitCount = 1,
-          loadStoreQueueIndexWidth = 2,
-        ),
+    standalone(
+      defaultParams.copy(
+        threads = 1,
+        decoderPerThread = 1,
+        maxRegisterFileCommitCount = 1,
+        loadStoreQueueIndexWidth = 2,
       ),
     ) { c =>
       c.initialize("programs/riscv-sample-programs/fibonacci_c")
-      c.clock.step(500)
+      c.step(500)
       c.checkForRegisterChange(3, 1298777728820984005L, 10000)
     }
   }
 
   it should "run fibonacci_c with 2 parallel" in {
-    simulate(
-      new B4SMTCoreWithMemory(
-      )(
-        defaultParams.copy(
-          threads = 1,
-          decoderPerThread = 2,
-          maxRegisterFileCommitCount = 4,
-          loadStoreQueueIndexWidth = 3,
-        ),
+    standalone(
+      defaultParams.copy(
+        threads = 1,
+        decoderPerThread = 2,
+        maxRegisterFileCommitCount = 4,
+        loadStoreQueueIndexWidth = 3,
       ),
     ) { c =>
       c.initialize("programs/riscv-sample-programs/fibonacci_c")
@@ -248,15 +203,12 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselSim {
   }
 
   it should "run load_plus_arithmetic" in {
-    simulate(
-      new B4SMTCoreWithMemory(
-      )(
-        defaultParams.copy(
-          threads = 1,
-          decoderPerThread = 4,
-          maxRegisterFileCommitCount = 4,
-          loadStoreQueueIndexWidth = 2,
-        ),
+    standalone(
+      defaultParams.copy(
+        threads = 1,
+        decoderPerThread = 4,
+        maxRegisterFileCommitCount = 4,
+        loadStoreQueueIndexWidth = 2,
       ),
     ) { c =>
       c.initialize("programs/riscv-sample-programs/load_plus_arithmetic")
@@ -266,15 +218,12 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselSim {
   }
 
   it should "run load_after_store" in {
-    simulate(
-      new B4SMTCoreWithMemory(
-      )(
-        defaultParams.copy(
-          threads = 1,
-          decoderPerThread = 4,
-          maxRegisterFileCommitCount = 4,
-          loadStoreQueueIndexWidth = 2,
-        ),
+    standalone(
+      defaultParams.copy(
+        threads = 1,
+        decoderPerThread = 4,
+        maxRegisterFileCommitCount = 4,
+        loadStoreQueueIndexWidth = 2,
       ),
     ) { c =>
       c.initialize("programs/riscv-sample-programs/load_after_store")
@@ -283,14 +232,12 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselSim {
   }
 
   it should "run enter_c" in {
-    simulate(
-      new B4SMTCoreWithMemory()(
-        defaultParams.copy(
-          threads = 1,
-          decoderPerThread = 4,
-          maxRegisterFileCommitCount = 4,
-          loadStoreQueueIndexWidth = 2,
-        ),
+    standalone(
+      defaultParams.copy(
+        threads = 1,
+        decoderPerThread = 4,
+        maxRegisterFileCommitCount = 4,
+        loadStoreQueueIndexWidth = 2,
       ),
     ) { c =>
       c.initialize("programs/riscv-sample-programs/enter_c")
@@ -300,15 +247,12 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselSim {
   }
 
   it should "run calculation_c" in {
-    simulate(
-      new B4SMTCoreWithMemory(
-      )(
-        defaultParams.copy(
-          threads = 1,
-          decoderPerThread = 4,
-          maxRegisterFileCommitCount = 4,
-          loadStoreQueueIndexWidth = 2,
-        ),
+    standalone(
+      defaultParams.copy(
+        threads = 1,
+        decoderPerThread = 4,
+        maxRegisterFileCommitCount = 4,
+        loadStoreQueueIndexWidth = 2,
       ),
     ) { c =>
       c.initialize("programs/riscv-sample-programs/calculation_c")
@@ -318,14 +262,12 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselSim {
   }
 
   it should "run loop_c" in {
-    simulate(
-      new B4SMTCoreWithMemory()(
-        defaultParams.copy(
-          threads = 1,
-          decoderPerThread = 1,
-          maxRegisterFileCommitCount = 1,
-          loadStoreQueueIndexWidth = 2,
-        ),
+    standalone(
+      defaultParams.copy(
+        threads = 1,
+        decoderPerThread = 1,
+        maxRegisterFileCommitCount = 1,
+        loadStoreQueueIndexWidth = 2,
       ),
     ) { c =>
       c.initialize("programs/riscv-sample-programs/loop_c")
@@ -335,14 +277,12 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselSim {
   }
 
   it should "run loop_c with 4 parallel" in {
-    simulate(
-      new B4SMTCoreWithMemory()(
-        defaultParams.copy(
-          threads = 1,
-          decoderPerThread = 4,
-          maxRegisterFileCommitCount = 4,
-          loadStoreQueueIndexWidth = 2,
-        ),
+    standalone(
+      defaultParams.copy(
+        threads = 1,
+        decoderPerThread = 4,
+        maxRegisterFileCommitCount = 4,
+        loadStoreQueueIndexWidth = 2,
       ),
     ) { c =>
       c.initialize("programs/riscv-sample-programs/loop_c")
@@ -352,15 +292,12 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselSim {
   }
 
   it should "run many_load_store" in {
-    simulate(
-      new B4SMTCoreWithMemory(
-      )(
-        defaultParams.copy(
-          threads = 1,
-          decoderPerThread = 1,
-          maxRegisterFileCommitCount = 1,
-          loadStoreQueueIndexWidth = 2,
-        ),
+    standalone(
+      defaultParams.copy(
+        threads = 1,
+        decoderPerThread = 1,
+        maxRegisterFileCommitCount = 1,
+        loadStoreQueueIndexWidth = 2,
       ),
     ) { c =>
       c.initialize("programs/riscv-sample-programs/many_load_store")
@@ -370,15 +307,12 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselSim {
   }
 
   it should "run many_load_store with 4 parallel" in {
-    simulate(
-      new B4SMTCoreWithMemory(
-      )(
-        defaultParams.copy(
-          threads = 1,
-          decoderPerThread = 4,
-          maxRegisterFileCommitCount = 4,
-          loadStoreQueueIndexWidth = 2,
-        ),
+    standalone(
+      defaultParams.copy(
+        threads = 1,
+        decoderPerThread = 4,
+        maxRegisterFileCommitCount = 4,
+        loadStoreQueueIndexWidth = 2,
       ),
     ) { c =>
       c.initialize("programs/riscv-sample-programs/many_load_store")
@@ -388,15 +322,12 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselSim {
   }
 
   it should "run load_store_cross" in {
-    simulate(
-      new B4SMTCoreWithMemory(
-      )(
-        defaultParams.copy(
-          threads = 1,
-          decoderPerThread = 1,
-          maxRegisterFileCommitCount = 1,
-          loadStoreQueueIndexWidth = 2,
-        ),
+    standalone(
+      defaultParams.copy(
+        threads = 1,
+        decoderPerThread = 1,
+        maxRegisterFileCommitCount = 1,
+        loadStoreQueueIndexWidth = 2,
       ),
     ) { c =>
       c.initialize("programs/riscv-sample-programs/load_store_cross")
@@ -406,15 +337,12 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselSim {
   }
 
   it should "run load_store_cross with 4 parallel" in {
-    simulate(
-      new B4SMTCoreWithMemory(
-      )(
-        defaultParams.copy(
-          threads = 1,
-          decoderPerThread = 4,
-          maxRegisterFileCommitCount = 4,
-          loadStoreQueueIndexWidth = 2,
-        ),
+    standalone(
+      defaultParams.copy(
+        threads = 1,
+        decoderPerThread = 4,
+        maxRegisterFileCommitCount = 4,
+        loadStoreQueueIndexWidth = 2,
       ),
     ) { c =>
       c.initialize("programs/riscv-sample-programs/load_store_cross")
@@ -424,54 +352,45 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselSim {
   }
 
   it should "run csrtest" in {
-    simulate(
-      new B4SMTCoreWithMemory(
-      )(
-        defaultParams.copy(
-          threads = 1,
-          decoderPerThread = 1,
-          maxRegisterFileCommitCount = 2,
-          loadStoreQueueIndexWidth = 2,
-        ),
+    standalone(
+      defaultParams.copy(
+        threads = 1,
+        decoderPerThread = 1,
+        maxRegisterFileCommitCount = 2,
+        loadStoreQueueIndexWidth = 2,
       ),
     ) { c =>
       c.initialize("programs/riscv-sample-programs/csrtest")
       c.checkForRegister(17, 10)
       c.checkForRegister(17, 20)
       c.checkForRegister(17, 30)
-      c.clock.step(20)
+      c.step(20)
     }
   }
 
   it should "run illegal_inst" in {
-    simulate(
-      new B4SMTCoreWithMemory(
-      )(
-        defaultParams.copy(
-          threads = 1,
-          decoderPerThread = 1,
-          maxRegisterFileCommitCount = 2,
-          loadStoreQueueIndexWidth = 2,
-        ),
+    standalone(
+      defaultParams.copy(
+        threads = 1,
+        decoderPerThread = 1,
+        maxRegisterFileCommitCount = 2,
+        loadStoreQueueIndexWidth = 2,
       ),
     ) { c =>
       c.initialize("programs/riscv-sample-programs/illegal_inst")
       c.checkForRegister(10, 10)
       c.checkForRegister(10, 40)
-      c.clock.step(20)
+      c.step(20)
     }
   }
 
   it should "run io_test" in {
-    simulate(
-      new B4SMTCoreWithMemory(
-      )(
-        defaultParams.copy(
-          threads = 1,
-          decoderPerThread = 1,
-          maxRegisterFileCommitCount = 2,
-          loadStoreQueueIndexWidth = 2,
-        ),
+    standalone(
+      defaultParams.copy(
+        threads = 1,
+        decoderPerThread = 1,
+        maxRegisterFileCommitCount = 2,
+        loadStoreQueueIndexWidth = 2,
       ),
     ) { c =>
       c.initialize("programs/riscv-sample-programs/io_test")
@@ -491,29 +410,16 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselSim {
       executors = 4,
       instructionStart = 0x8000_0000L,
     )
-    simulate(
-      new B4SMTCoreWithMemory(
-      )(p),
-    ) { c =>
+    standalone(p) { c =>
       c.initialize("programs/riscv-sample-programs/bench")
-      c.io.simulationIO.output.ready.poke(true)
+      c.outputReady(true)
       for (_ <- 0 until p.threads)
         c.checkForOutputAny(2000, print_value = true)
       for (_ <- "OK!\n")
         c.checkForOutputAny(2000, print_value = true)
       for (p <- "took ")
         c.checkForOutput(p, 20000, print_value = true)
-      var end = false
-      var characters = 0
-      while (!end && characters < 32) {
-        characters += 1
-        val p = c.getOutput(2000)
-        print(p)
-        if (p == ' ') {
-          end = true
-        }
-      }
-      assert(end, "cycle count did not terminate within 32 characters")
+      c.outputUntilSuffix(" ", 2000, 32, print = true)
       for (p <- "cycles\n")
         c.checkForOutput(p, 1000, print_value = true)
 
@@ -524,44 +430,38 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselSim {
   }
 
   it should "run pext_test" in {
-    simulate(
-      new B4SMTCoreWithMemory(
-      )(
-        defaultParams.copy(
-          threads = 1,
-          decoderPerThread = 1,
-          maxRegisterFileCommitCount = 1,
-          loadStoreQueueIndexWidth = 2,
-          enablePExt = true,
-        ),
+    standalone(
+      defaultParams.copy(
+        threads = 1,
+        decoderPerThread = 1,
+        maxRegisterFileCommitCount = 1,
+        loadStoreQueueIndexWidth = 2,
+        enablePExt = true,
       ),
     ) { c =>
       c.initialize("programs/riscv-sample-programs/pext_test")
-      c.clock.step(300)
+      c.step(300)
     }
   }
 
   it should "run testhex" taggedAs Slow in {
-    simulate(
-      new B4SMTCoreWithMemory()(
-        defaultParams.copy(
-          threads = 16,
-          tagWidth = 6,
-          reservationStationWidth = 5,
-          decoderPerThread = 2,
-          executors = 8,
-          maxRegisterFileCommitCount = 2,
-          loadStoreQueueIndexWidth = 4,
-          enablePExt = true,
-          pextExecutors = 1,
-          parallelOutput = 1,
-        ),
+    standalone(
+      defaultParams.copy(
+        threads = 16,
+        tagWidth = 6,
+        reservationStationWidth = 5,
+        decoderPerThread = 2,
+        executors = 8,
+        maxRegisterFileCommitCount = 2,
+        loadStoreQueueIndexWidth = 4,
+        enablePExt = true,
+        pextExecutors = 1,
+        parallelOutput = 1,
       ),
     ) { c =>
       // This long-running test intentionally does not dump waveforms.
-      disableWaves()
       c.initialize("test")
-      c.io.simulationIO.output.ready.poke(true)
+      c.outputReady(true)
       c.checkForOutputString("START", 10000, print_value = true)
       c.checkForOutputString("END", 100000000, print_value = true)
     }

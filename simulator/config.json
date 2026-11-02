@@ -1,0 +1,7 @@
+{
+  "threads": 1,
+  "decoderPerThread": 1,
+  "tagWidth": 4,
+  "debug": true,
+  "instructionStart": "0x80100000"
+}

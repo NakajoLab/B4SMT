@@ -3,7 +3,7 @@
 let
   src = nix-filter {
     root = ../.;
-    include = [ "b4smt" "pext" "chisel-formal" "build.mill" ".scalafmt.conf" ];
+    include = [ "b4smt" "pext" "chisel-formal" "simulator" "build.mill" ".scalafmt.conf" ];
   };
   dependencies = stdenv.mkDerivation {
     pname = "b4smt-mill-dependencies";
