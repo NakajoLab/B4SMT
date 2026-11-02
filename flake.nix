@@ -60,6 +60,10 @@
         checks =
           {
             quick = pkgs.b4smt.millTest "quick" ''mill --no-daemon --offline b4smt.test.testOnly '*' -- -l org.scalatest.tags.Slow'';
+            format = self.packages.${system}.format;
+            processor = self.packages.${system}.processor;
+            programs = self.packages.${system}.default;
+            dev-shell = self.devShells.${system}.default;
             simulator = pkgs.runCommand "b4smt-simulator-smoke" { } ''
               sim=${self.packages.${system}.simulator}/bin/b4smt-sim
               samples=${self.packages.${system}.riscv-sample-programs}

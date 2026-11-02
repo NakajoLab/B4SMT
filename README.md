@@ -170,6 +170,17 @@ package directory containing `bin/b4smt-sim` and
 `share/b4smt-simulator/config.json` (as installed by `.#simulator`); a configuration
 mismatch fails explicitly. There is no cross-JVM compilation cache.
 
+## Continuous integration
+
+GitHub Actions runs `nix flake check` on x86-64 Linux.
+Checks cover the quick test suite, standalone simulator smoke tests, formatting,
+processor generation, test-program builds, and the development shell. Slow tests
+are not included. Generated processor sources are uploaded as a CI artifact.
+
+CI uses the niks3 cache at `https://niks3.s.ihavenojob.work` with GitHub OIDC;
+no `CACHIX_AUTH_TOKEN` secret is needed. Uploads require the cache server to
+allow this repository's OIDC identity. Fork pull requests use read-only caching.
+
 ## Formatting
 
 Format Scala and Mill sources through Mill's Scalafmt task, and Nix files with

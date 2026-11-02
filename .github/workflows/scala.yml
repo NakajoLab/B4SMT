@@ -1,100 +1,62 @@
-name: scala-CI
+name: CI
 
+# Keep actions pinned to commit hashes; update the accompanying version comments.
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
-  group: ${{ github.head_ref || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  cache-nix:
-    name: nix依存関係のキャッシュ
-    timeout-minutes: 30
+  check-and-cache:
+    name: Nix checks (x86_64-linux)
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: setup nix
-        uses: cachix/install-nix-action@v25
-
-      - name: setup cachix
-        uses: cachix/cachix-action@v14
-        with:
-          name: b4smt
-          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
-
-      - name: make all
-        run: make
-
-      - name: make develop environment
-        run: nix develop --profile develop-profile -c true
-
-      - name: upload artifacts to cache
-        run: |
-          nix derivation show -r ./processor | jq '.[].outputs[].path' -r | while IFS= read -r line; do [ -e "$line" ] && echo "$line"; done | cachix push b4smt
-          nix derivation show -r ./programs | jq '.[].outputs[].path' -r | while IFS= read -r line; do [ -e "$line" ] && echo "$line"; done | cachix push b4smt
-          nix derivation show -r ./develop-profile | jq '.[].outputs[].path' -r | while IFS= read -r line; do [ -e "$line" ] && echo "$line"; done | cachix push b4smt
-
-      - name: upload processor source as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: processor
-          path: processor
-
-
-  format:
-    name: ソースコードのフォーマット確認
-    timeout-minutes: 5
-    needs: [cache-nix]
-
-    runs-on: ubuntu-latest
+    timeout-minutes: 120
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out sources
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: setup nix
-        uses: cachix/install-nix-action@v25
-
-      - name: setup cachix
-        uses: cachix/cachix-action@v14
-        with:
-          name: b4smt
-          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
-
-      - name: check format
-        run: make check-format
-      
-      - name: upload check cache
+      - name: Enable unprivileged user namespaces
         run: |
-          nix derivation show -r ./result | jq '.[].outputs[].path' -r | while IFS= read -r line; do [ -e "$line" ] && echo "$line"; done | cachix push b4smt
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          sudo sysctl -w kernel.unprivileged_userns_clone=1
 
-  test-all:
-    name: B4プロセッサのテスト
-    timeout-minutes: 60
-    needs: [cache-nix]
+      - name: Free disk space for Nix builds
+        uses: wimpysworld/nothing-but-nix@687c797a730352432950c707ab493fcc951818d7 # v10
 
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: setup nix
-        uses: cachix/install-nix-action@v25
-
-      - name: setup cachix
-        uses: cachix/cachix-action@v14
+      - name: Install Nix
+        uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # v31.11.3
         with:
-          name: b4smt
-          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
+          extra_nix_config: |
+            fallback = true
+            accept-flake-config = true
+            max-jobs = 1
+            system = x86_64-linux
 
-      - name: test all
-        run: make check-artifacts
-      
-      - name: upload check cache
-        run: |
-          nix derivation show -r ./result | jq '.[].outputs.[].path' -r | while IFS= read -r line; do [ -e "$line" ] && echo "$line"; done | cachix push b4smt
+      # The action configures cache reads and uploads completed derivations via OIDC.
+      # Fork pull requests can read the cache without receiving upload credentials.
+      - name: Configure the niks3 binary cache
+        uses: Mic92/niks3-action@12d3e320b2a99b7938f9634bd337cd9fec104609 # v1.1.0
+        with:
+          server-url: https://niks3.s.ihavenojob.work
+
+      - name: Run Nix checks
+        run: nix flake check --print-build-logs
+
+      - name: Collect generated processor sources
+        run: nix build .#processor --out-link processor --print-build-logs
+
+      - name: Upload generated processor sources
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: processor-x86_64-linux
+          path: processor/
+          if-no-files-found: error
