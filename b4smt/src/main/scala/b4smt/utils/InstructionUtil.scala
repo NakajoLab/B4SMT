@@ -4,79 +4,51 @@ import chisel3._
 
 import java.nio.file.{Files, Paths}
 import scala.io.Source
+import scala.util.Using
 
 object InstructionUtil {
-  def fromFile32bit(filename: String): Seq[UInt] = {
-    val file = Source.fromFile(filename)
-    val output = fromStringSeq32bit(file.getLines().filter(_.nonEmpty).toSeq)
-    file.close()
-    output
-  }
-
-  def fromFile64bit(filename: String): Seq[UInt] = {
-    val file = Source.fromFile(filename)
-    val output = fromStringSeq64bit(file.getLines().filter(_.nonEmpty).toSeq)
-    file.close()
-    output
-  }
-
-  def fromStringSeq32bit(seq: Seq[String]): Seq[UInt] = {
-    var bytes = Seq[String]()
-    for (s <- seq) {
-      var offset = 0
-      if (s.startsWith("x"))
-        offset = 1
-      for (i <- (0 until 4).reverse)
-        bytes = bytes :+ s.slice(i * 2 + offset, i * 2 + 2 + offset)
+  private def readLines(filename: String): Seq[String] =
+    Using.resource(Source.fromFile(filename)) { file =>
+      file.getLines().filter(_.nonEmpty).toVector
     }
-    fromStringSeq8bit(bytes)
-  }
 
-  def fromStringSeq64bit(seq: Seq[String]): Seq[UInt] = {
-    var bytes = Seq[String]()
-    for (s <- seq) {
-      var offset = 0
-      if (s.startsWith("x"))
-        offset = 1
-      for (i <- (0 until 8).reverse)
-        bytes = bytes :+ s.slice(i * 2 + offset, i * 2 + 2 + offset)
-    }
-    fromStringSeq8bit(bytes)
-  }
+  def fromFile32bit(filename: String): Seq[UInt] =
+    fromStringSeq32bit(readLines(filename))
 
-  def fromBinaryFile(filename: String): Seq[UInt] = {
-    val bytes = Files.readAllBytes(Paths.get(filename))
-    val s = bytes.map("%02X" format _).toSeq
-    val output = fromStringSeq8bit(s)
-    output
-  }
+  def fromFile64bit(filename: String): Seq[UInt] =
+    fromStringSeq64bit(readLines(filename))
 
-  def fromFile8bit(filename: String): Seq[UInt] = {
-    val file = Source.fromFile(filename)
-    val output = fromStringSeq8bit(file.getLines().filter(_.nonEmpty).toSeq)
-    file.close()
-    output
-  }
+  def fromStringSeq32bit(seq: Seq[String]): Seq[UInt] =
+    fromStringSeq8bit(seq.flatMap { s =>
+      val offset = if (s.startsWith("x")) 1 else 0
+      (0 until 4).reverse.map(i => s.slice(i * 2 + offset, i * 2 + 2 + offset))
+    })
 
-  def fromStringSeq8bit(seq: Seq[String]): Seq[UInt] = {
-    var output = Seq[String]()
-    for (s <- seq) {
-      var offset = 0
-      if (s.startsWith("x"))
-        offset = 1
-      output = output :+ s.slice(offset, offset + 2)
-    }
-    var output64 = Seq[String]()
-    for (i <- 0 until math.ceil(output.length.toDouble / 8).toInt) {
-      output64 = output64 :+ (0 until 8)
-        .map(k => i * 8 + k)
-        .map(p =>
-          if (p < output.length) { output(p) }
-          else { "00" },
-        )
-        .reverse
-        .reduce(_ + _)
-    }
-    output64.map(n => s"x$n".U(64.W))
-  }
+  def fromStringSeq64bit(seq: Seq[String]): Seq[UInt] =
+    fromStringSeq8bit(seq.flatMap { s =>
+      val offset = if (s.startsWith("x")) 1 else 0
+      (0 until 8).reverse.map(i => s.slice(i * 2 + offset, i * 2 + 2 + offset))
+    })
+
+  def fromBinaryFile(filename: String): Seq[UInt] =
+    fromStringSeq8bit(
+      Files
+        .readAllBytes(Paths.get(filename))
+        .iterator
+        .map(b => f"${b & 0xff}%02X")
+        .toVector,
+    )
+
+  def fromFile8bit(filename: String): Seq[UInt] =
+    fromStringSeq8bit(readLines(filename))
+
+  def fromStringSeq8bit(seq: Seq[String]): Seq[UInt] =
+    seq
+      .map { s =>
+        val offset = if (s.startsWith("x")) 1 else 0
+        s.slice(offset, offset + 2)
+      }
+      .grouped(8)
+      .map(bytes => s"x${bytes.padTo(8, "00").reverse.mkString}".U(64.W))
+      .toVector
 }

@@ -160,7 +160,12 @@ and launches a fresh executable process per test. It never invokes Mill/Nix or
 falls back to ChiselSim. Run tests inside the devshell (Verilator, C++ compiler,
 make and firtool must be available). Builds, plans, test names and process logs
 are retained under `test_run_dir/standalone/jvm-*`. `B4SMT_SIM_JOBS` controls
-native build parallelism (default 2). Optionally `B4SMT_SIMULATOR_DIR` names a
+native build parallelism (default 2). Subprocess wall-clock limits are controlled
+by `B4SMT_SIM_BUILD_TIMEOUT_SECONDS` (default 1800) and
+`B4SMT_SIM_RUN_TIMEOUT_SECONDS` (default 3600); values must be positive seconds.
+Timed-out or interrupted subprocesses and their descendants are terminated.
+These limits are separate from the plan's cycle bounds.
+Optionally `B4SMT_SIMULATOR_DIR` names a
 package directory containing `bin/b4smt-sim` and
 `share/b4smt-simulator/config.json` (as installed by `.#simulator`); a configuration
 mismatch fails explicitly. There is no cross-JVM compilation cache.

@@ -1,4 +1,4 @@
-{ b4smt, mill, jdk, which, python3, iverilog, verilator, stdenv, zlib, circt, yosys, yices, espresso, z3, sby }:
+{ b4smt, mill, jdk, which, python3, verilator, stdenv, zlib, circt, yosys, yices, espresso, z3, sby }:
 name: testCommand:
 b4smt.mkDerivation {
   name = "${name}-b4smt-test";
@@ -7,7 +7,6 @@ b4smt.mkDerivation {
     which
     python3
     jdk
-    iverilog
     verilator
     stdenv.cc
     zlib

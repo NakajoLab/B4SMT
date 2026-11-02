@@ -2,6 +2,8 @@ package b4smt.simulator
 
 import b4smt.Parameters
 import java.nio.file.{Files, Path, Paths}
+import java.util.concurrent.TimeUnit
+import scala.jdk.CollectionConverters._
 import scala.collection.mutable
 import org.scalatest.{Outcome, TestSuite, TestSuiteMixin}
 
@@ -17,17 +19,56 @@ object StandaloneTest {
     Files.createTempDirectory(parent, "jvm-")
   }
 
-  private def run(command: Seq[String], cwd: Path, log: Path): Unit = {
+  private[simulator] def run(
+    command: Seq[String],
+    cwd: Path,
+    log: Path,
+    timeoutSeconds: Long,
+  ): Unit = {
+    require(timeoutSeconds > 0, "timeoutSeconds must be positive")
     val process = new ProcessBuilder(command: _*)
       .directory(cwd.toFile)
       .redirectErrorStream(true)
       .redirectOutput(log.toFile)
       .start()
-    val status = process.waitFor()
-    assert(
-      status == 0,
-      s"${command.mkString(" ")} exited $status; diagnostics: $log\n${Files.readString(log)}",
-    )
+    var completed = false
+    var interrupted = false
+    try {
+      assert(
+        process.waitFor(timeoutSeconds, TimeUnit.SECONDS),
+        s"${command.mkString(" ")} timed out after $timeoutSeconds seconds; diagnostics: $log",
+      )
+      completed = true
+      val status = process.exitValue()
+      assert(
+        status == 0,
+        s"${command.mkString(" ")} exited $status; diagnostics: $log\n${Files.readString(log)}",
+      )
+    } catch {
+      case e: InterruptedException =>
+        interrupted = true
+        throw e
+    } finally {
+      try {
+        if (!completed) {
+          val stream = process.descendants()
+          val descendants =
+            try stream.iterator().asScala.toVector
+            finally stream.close()
+          // Kill children first, giving the parent a bounded chance to reap them.
+          descendants.reverseIterator
+            .filter(_.isAlive)
+            .foreach(_.destroyForcibly())
+          try process.waitFor(1, TimeUnit.SECONDS)
+          catch { case _: InterruptedException => interrupted = true }
+          if (process.isAlive) process.destroyForcibly()
+          try process.waitFor(1, TimeUnit.SECONDS)
+          catch { case _: InterruptedException => interrupted = true }
+        }
+      } finally {
+        if (interrupted) Thread.currentThread().interrupt()
+      }
+    }
   }
 
   private def binary(params: Parameters): Path = synchronized {
@@ -76,6 +117,9 @@ object StandaloneTest {
               ),
               dir,
               dir.resolve("compile.log"),
+              sys.env
+                .getOrElse("B4SMT_SIM_BUILD_TIMEOUT_SECONDS", "1800")
+                .toLong,
             )
             println(
               f"STANDALONE BUILT $dir in ${(System.nanoTime() - start) / 1e9}%.3f s",
@@ -108,6 +152,7 @@ object StandaloneTest {
       ),
       Paths.get("").toAbsolutePath,
       dir.resolve("run.log"),
+      sys.env.getOrElse("B4SMT_SIM_RUN_TIMEOUT_SECONDS", "3600").toLong,
     )
     print(Files.readString(dir.resolve("run.log")))
   }

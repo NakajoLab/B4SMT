@@ -4,7 +4,6 @@
 , mill
 , which
 , jdk
-, iverilog
 , verilator
 , zlib
 , yosys
@@ -24,7 +23,6 @@ mkShell {
     mill
     which
     jdk
-    iverilog
     verilator
     zlib
     yosys

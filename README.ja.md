@@ -163,6 +163,10 @@ Mill や Nix を内部から起動したり、ChiselSim に切り替えたりす
 Verilator、C++ コンパイラ、make、firtool が必要なため、テストは開発環境内で実行してください。
 ビルド結果、手順ファイル、テスト名、プロセスのログは `test_run_dir/standalone/jvm-*` に保存します。
 `B4SMT_SIM_JOBS` でネイティブビルドの並列数を設定できます。既定値は 2 です。
+サブプロセスの実時間の上限は、`B4SMT_SIM_BUILD_TIMEOUT_SECONDS`（既定値 1800 秒）と
+`B4SMT_SIM_RUN_TIMEOUT_SECONDS`（既定値 3600 秒）で指定できます。値は正の秒数にしてください。
+タイムアウトや割り込みが発生した場合は、対象のサブプロセスとその子孫プロセスを終了します。
+これらの時間制限は、テスト手順のサイクル数制限とは別のものです。
 必要に応じて、`bin/b4smt-sim` と `share/b4smt-simulator/config.json` を含む
 パッケージのディレクトリを `B4SMT_SIMULATOR_DIR` に指定できます。
 これらのファイルは `.#simulator` によってインストールされ、設定が一致しなければ明示的にエラーになります。

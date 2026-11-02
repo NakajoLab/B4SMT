@@ -36,9 +36,13 @@ class StandaloneSimulator(implicit params: Parameters) extends Module {
   uartData := fixture.io.simulationIO.output.bits
   threadCount := params.threads.U
   programCapacity := (512L * 1024 * 1024 - params.instructionStart % (512L * 1024 * 1024)).U
-  registerValue := fixture.io.registerFileContents.get(threadIndex)(
-    registerIndex,
-  )
+  private val threadRegisters =
+    if (params.threads == 1) fixture.io.registerFileContents.get(0)
+    else
+      fixture.io.registerFileContents.get(
+        threadIndex(chisel3.util.log2Ceil(params.threads) - 1, 0),
+      )
+  registerValue := threadRegisters(registerIndex)
 }
 
 object StandaloneSimulator {
