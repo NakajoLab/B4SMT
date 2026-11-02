@@ -6,10 +6,10 @@ import b4smt.utils.Tag
 import chisel3._
 import chisel3.util._
 
-/** ソースタグ1の値を選択する回路
+/** Circuit that selects the value of source tag 1
   *
   * @param params
-  *   パラメータ
+  *   Parameters
   */
 class ValueSelector(implicit params: Parameters) extends Module {
   val io = IO(new Bundle {
@@ -20,12 +20,12 @@ class ValueSelector(implicit params: Parameters) extends Module {
     val value = Valid(UInt(64.W))
   })
 
-  // ALUからバイパスされた値のうち、destination tagと一致するsource tagを持っている
+  // Among the values bypassed from the ALU, find one whose destination tag matches the source tag
   private val outputMatchingTagExists = io.outputCollector.outputs
     .map(o => o.valid && o.bits.tag === io.sourceTag.bits)
     .fold(false.B)(_ || _)
 
-  // 値があるか
+  // Whether a value is available
   io.value.valid := MuxCase(
     false.B,
     Seq(
@@ -34,7 +34,7 @@ class ValueSelector(implicit params: Parameters) extends Module {
       (!io.sourceTag.valid) -> true.B,
     ),
   )
-  // 値の内容
+  // Value contents
   io.value.bits := MuxCase(
     0.U,
     Seq(

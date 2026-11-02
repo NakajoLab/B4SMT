@@ -5,7 +5,7 @@ import b4smt.utils.operations.{LoadStoreOperation, LoadStoreWidth}
 import b4smt.utils.Tag
 import chisel3._
 
-/** LSQとメモリをつなぐ
+/** Connects the LSQ and memory
   */
 class LoadStoreQueue2Memory(implicit params: Parameters) extends Bundle {
   val address = UInt(64.W)

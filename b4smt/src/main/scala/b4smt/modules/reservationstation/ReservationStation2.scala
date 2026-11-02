@@ -118,7 +118,7 @@ class ReservationStation2(implicit params: Parameters)
       ReservationStation2MulDivExecutor,
     ])
 
-  // デコーダから
+  // From the decoder
   private val head = RegInit(0.U(rsWidth.W))
 
   val decoder = io.decoder

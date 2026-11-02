@@ -105,7 +105,7 @@ class ReservationStation(implicit params: Parameters) extends Module {
       ])
   }
 
-  // デコーダから
+  // From the decoder
   private val head = RegInit(0.U(rsWidth.W))
   private var nextHead = head
   for (i <- 0 until params.decoderPerThread) {

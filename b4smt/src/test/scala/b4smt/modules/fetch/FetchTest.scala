@@ -16,43 +16,43 @@ import org.scalatest.flatspec.AnyFlatSpec
 
 import scala.math
 
-/** フェッチのラッパー
+/** Fetch wrapper
   *
-  * フェッチ、キャッシュ、命令メモリを含む
+  * Contains fetch, cache, and instruction memory
   */
 class FetchWrapper()(implicit params: Parameters)
     extends Module
     with PeekPokeAPI {
   val io = IO(new Bundle {
 
-    /** 分岐予測 */
+    /** Branch prediction */
     val prediction = Vec(params.decoderPerThread, new Fetch2BranchPrediction)
 
-    /** 実行ユニットからの分岐先の値 */
+    /** Branch target values from the execution unit */
     val collectedBranchAddresses = Flipped(new CollectedBranchAddresses)
 
-    /** デコーダ */
+    /** Decoder */
     val decoders = new Fetch2FetchBuffer
 
-    /** ロードストアキューのエントリが空か */
+    /** Whether the load-store queue is empty */
     val loadStoreQueueEmpty = Input(Bool())
 
-    /** リオーダバッファのエントリが空か */
+    /** Whether the reorder buffer is empty */
     val reorderBufferEmpty = Input(Bool())
 
-    /** キャッシュに要求されているアドレス */
+    /** Address requested from the cache */
     val cacheAddress = Decoupled(UInt(64.W))
 
-    /** キャッシュからの出力 */
+    /** Output from the cache */
     val cacheOutput = Vec(params.decoderPerThread, Valid(UInt(64.W)))
 
-    /** プログラムカウンタ */
+    /** Program counter */
     val PC = Output(UInt(64.W))
 
-    /** 次のクロックのプログラムカウンタ */
+    /** Program counter for the next clock cycle */
     val nextPC = Output(UInt(64.W))
 
-    /** 各命令の分岐の種類 */
+    /** Branch type of each instruction */
     val branchTypes = Output(Vec(params.decoderPerThread, new BranchType.Type))
 
     val memorySetup = Flipped(Valid(UInt(64.W)))
@@ -123,7 +123,7 @@ class FetchWrapper()(implicit params: Parameters)
 
   fetch.io.fetchBuffer.toBuffer.foreach(v => v.ready := true.B)
 
-  /** 初期化 */
+  /** Initialization */
   def initialize(memoryInit: => Seq[UInt]): Unit = {
     this.setPrediction(Seq.fill(params.decoderPerThread)(false))
     this.io.memorySetup.valid.poke(true)
@@ -143,14 +143,14 @@ class FetchWrapper()(implicit params: Parameters)
     io.cacheOutput(0).valid.expect(true)
   }
 
-  /** 予測をセット */
+  /** Set predictions */
   def setPrediction(values: Seq[Boolean]): Unit = {
     for (i <- 0 until params.decoderPerThread) {
       this.io.prediction(i).prediction.poke(values(i))
     }
   }
 
-  /** 分岐先をセット */
+  /** Set the branch target */
   def setExecutorBranchResult(results: Option[Int] = None): Unit = {
     io.collectedBranchAddresses.addresses.valid.poke(results.isDefined)
     io.collectedBranchAddresses.addresses.bits.programCounterOffset
@@ -169,8 +169,8 @@ class FetchTest extends AnyFlatSpec with ChiselSim with SymbiYosysFormal {
       instructionStart = 0x1000_0000,
     )
 
-  // 普通の命令と分岐を区別できるか
-  // 書き込む命令
+  // Check whether ordinary instructions and branches can be distinguished
+  // Instructions to write
   // nop                  00000013
   // beq zero,zero,LABEL  00000463
   // nop                  00000013
@@ -198,8 +198,8 @@ class FetchTest extends AnyFlatSpec with ChiselSim with SymbiYosysFormal {
     }
   }
 
-  // 予測で値がどちらとも読み取れる
-  // 書き込む命令
+  // Both values can be read using prediction
+  // Instructions to write
   // LOOP:
   // beq zero,zero,LOOP 00000063
   // TODO FIX
@@ -227,8 +227,8 @@ class FetchTest extends AnyFlatSpec with ChiselSim with SymbiYosysFormal {
     }
   }
 
-  // 普通の命令と分岐先を認識できているか
-  // 書き込む命令
+  // Check whether ordinary instructions and branch targets are recognized
+  // Instructions to write
   // nop                  00000013
   // beq zero,zero,LABEL  00000463
   // nop                  00000013
@@ -247,8 +247,8 @@ class FetchTest extends AnyFlatSpec with ChiselSim with SymbiYosysFormal {
     }
   }
 
-  // 普通の命令と分岐先を認識できているか
-  // 書き込む命令
+  // Check whether ordinary instructions and branch targets are recognized
+  // Instructions to write
   // nop                  00000013
   // beq zero,zero,LABEL  00000463
   // nop                  00000013
@@ -267,8 +267,8 @@ class FetchTest extends AnyFlatSpec with ChiselSim with SymbiYosysFormal {
     }
   }
 
-  // ループで自身と同じアドレスに戻ってくるか
-  // 書き込む命令
+  // Check whether a loop returns to its own address
+  // Instructions to write
   // nop                00000013
   // LOOP:
   // beq zero,zero,LOOP 00000063
@@ -291,8 +291,8 @@ class FetchTest extends AnyFlatSpec with ChiselSim with SymbiYosysFormal {
     }
   }
 
-  // ループで同じ命令に戻る
-  // 書き込む命令
+  // Return to the same instruction in a loop
+  // Instructions to write
   // LOOP:
   // nop                00000013
   // beq zero,zero,LOOP 00000063
@@ -317,8 +317,8 @@ class FetchTest extends AnyFlatSpec with ChiselSim with SymbiYosysFormal {
     }
   }
 
-  // jalで無限ループ
-  // 書き込む命令
+  // Infinite loop using jal
+  // Instructions to write
   // LOOP:
   // nop                00000013
   // j                  ffdff06f
@@ -335,8 +335,8 @@ class FetchTest extends AnyFlatSpec with ChiselSim with SymbiYosysFormal {
     }
   }
 
-  // jalで無条件アドレス替え
-  // 書き込む命令
+  // Unconditionally change the address using jal
+  // Instructions to write
   // START:
   // nop      00000013
   // j LABEL  0180006f
@@ -382,8 +382,8 @@ class FetchTest extends AnyFlatSpec with ChiselSim with SymbiYosysFormal {
     }
   }
 
-  // Fenceを使う
-  // 書き込む命令
+  // Use Fence
+  // Instructions to write
   // nop    00000013
   // fence  0ff0000f
   // nop    00000013

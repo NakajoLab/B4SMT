@@ -77,7 +77,7 @@ class ReservationStationTest extends AnyFlatSpec with ChiselSim {
   implicit val params: b4smt.Parameters =
     Parameters(threads = 1, decoderPerThread = 1, tagWidth = 4)
 
-  // エントリを追加してALUから値をうけとり、実行ユニットに回す
+  // Add an entry, receive a value from the ALU, and pass it to the execution unit
   it should "store a entry and release it" in {
     simulate(new ReservationStationWrapper()) { c =>
       c.initialize()
@@ -94,7 +94,7 @@ class ReservationStationTest extends AnyFlatSpec with ChiselSim {
     }
   }
 
-  // 空きがないときready=0になる
+  // ready=0 when there is no free space
   it should "make decoder become not ready" in {
     simulate(new ReservationStationWrapper()) { c =>
       c.initialize()
@@ -115,7 +115,7 @@ class ReservationStationTest extends AnyFlatSpec with ChiselSim {
     }
   }
 
-  // 空きがなくなるまで命令を入れて
+  // Insert instructions until there is no free space
   it should "fill and flush instructions" in {
     simulate(new ReservationStationWrapper()) { c =>
       c.initialize()

@@ -7,14 +7,14 @@ import circt.stage.ChiselStage
 import chisel3._
 import chisel3.util._
 
-/** 命令キャッシュモジュール
+/** Instruction cache module
   *
-  * とても単純なキャッシュ機構
+  * A very simple cache mechanism
   */
 class InstructionMemoryCache(implicit params: Parameters) extends Module {
   val io = IO(new Bundle {
 
-    /** フェッチ */
+    /** Fetch */
     val fetch = new Bundle {
       val request = Flipped(Decoupled(UInt(64.W)))
       val response = Decoupled(UInt(128.W))
@@ -38,11 +38,11 @@ class InstructionMemoryCache(implicit params: Parameters) extends Module {
   io.memory.request.bits.size := MemoryAccessWidth.DoubleWord
   io.memory.request.bits.burstLength := (params.MemoryBurstLength - 1).U
 
-  // アドレスを格納
+  // Store the address
   val addr = WireInit(UInt(64.W), 0.U)
   addr := io.fetch.request.bits
 
-  // タグ・インデックス・オフセットの抽出
+  // Extract tag, index, and offset
   val IgnoreBits = log2Up(16)
   val OffsetBits = log2Up(params.ICacheDataNum)
   val IndexBits = log2Up(params.ICacheSet)
@@ -60,7 +60,7 @@ class InstructionMemoryCache(implicit params: Parameters) extends Module {
   val AddrRequest = addr(63, 6) ## 0.U(6.W)
   val AddrRequestReg = RegInit(0.U(64.W))
 
-  // 有効ビット・タグ・インデックス
+  // Valid bits, tags, and indices
   val ICacheValidBit = RegInit(
     VecInit(Seq.fill(params.ICacheWay)(0.U(params.ICacheSet.W))),
   )
@@ -70,15 +70,15 @@ class InstructionMemoryCache(implicit params: Parameters) extends Module {
     SyncReadMem(params.ICacheSet, UInt(params.ICacheBlockWidth.W)),
   )
 
-  // バースト転送のバッファー
+  // Burst transfer buffer
   val ReadDataBuf = RegInit(
     VecInit(Seq.fill(params.MemoryBurstLength)(0.U(64.W))),
   )
 
-  // バースト転送のカウンター
+  // Burst transfer counter
   val count = RegInit(0.U(8.W))
 
-  // ウェイのカウンター(各セットごとにカウンターを用意)
+  // Way counter (one counter per set)
   val SelectWay = RegInit(0.U(params.ICacheSet.W))
 
   when(io.fetch.request.valid) {
@@ -89,7 +89,7 @@ class InstructionMemoryCache(implicit params: Parameters) extends Module {
   }
   io.fetch.request.ready := RegNext(io.fetch.request.valid, false.B)
 
-  // ヒットするか判定
+  // Check for a hit
   val hitVec = WireInit(VecInit(Seq.fill(params.ICacheWay)(false.B)))
   val hitVecReg = RegInit(VecInit(Seq.fill(params.ICacheWay)(false.B)))
   val hitWayNum = WireInit(0.U(log2Up(params.ICacheWay).W))
@@ -100,7 +100,7 @@ class InstructionMemoryCache(implicit params: Parameters) extends Module {
   }
   hitWayNum := MuxCase(0.U, hitVec.zipWithIndex.map { case (h, i) => h -> i.U })
 
-  // BRAMからRead
+  // Read from BRAM
   val ReadData = MuxLookup(hitWayNum, 0.U)(
     (0 until params.ICacheWay).map(i =>
       i.U -> ICacheDataBlock(i).read(AddrIndex),
@@ -126,7 +126,7 @@ class InstructionMemoryCache(implicit params: Parameters) extends Module {
   }.elsewhen(memory_state === waitingResponse) {
     io.memory.response.ready := true.B
     when(io.memory.response.valid) {
-      // メモリからのデータ(64bit)をReadDataBufに格納
+      // Store data from memory (64bit) in ReadDataBuf
       ReadDataBuf(
         io.memory.response.bits.burstIndex(log2Up(ReadDataBuf.size) - 1, 0),
       ) :=
@@ -156,7 +156,7 @@ class InstructionMemoryCache(implicit params: Parameters) extends Module {
   }
 
   when(hit) {
-    // ヒットした場合
+    // On a hit
     val DataHitOut = MuxLookup(AddrOffsetReg, 0.U)(
       (0 until params.ICacheDataNum).map(i =>
         i.U -> ReadData(
@@ -170,7 +170,7 @@ class InstructionMemoryCache(implicit params: Parameters) extends Module {
       io.fetch.request.bits === RegNext(io.fetch.request.bits, 0.U)
     io.fetch.response.bits := DataHitOut
   }.otherwise {
-    // ミスした場合
+    // On a miss
     when(RegNext(io.fetch.request.valid) && memory_state === idle) {
       memory_state := requesting
     }

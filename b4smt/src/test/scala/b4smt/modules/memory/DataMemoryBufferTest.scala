@@ -50,7 +50,7 @@ class DataMemoryBufferTest extends AnyFlatSpec with ChiselSim {
         throw new RuntimeException("one should be ready")
       }
 
-      // RRArbterで順序が入れ替わってしまっている。
+      // The order has been reversed by RRArbter.
       c.io.memory.read.request.valid.expect(false)
       c.io.memory.write.request.valid.expect(true)
       c.io.memory.write.request.bits.address.expect(8)

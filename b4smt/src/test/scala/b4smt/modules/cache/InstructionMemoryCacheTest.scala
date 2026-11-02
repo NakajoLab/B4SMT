@@ -6,7 +6,7 @@ import chisel3.simulator.scalatest.ChiselSim
 import chisel3.simulator.PeekPokeAPI
 import org.scalatest.flatspec.AnyFlatSpec
 
-/** メモリをキャッシュを含んだラッパー */
+/** Wrapper containing memory and cache */
 class InstructionMemoryCacheWrapper()(implicit params: Parameters)
     extends InstructionMemoryCache
     with PeekPokeAPI {

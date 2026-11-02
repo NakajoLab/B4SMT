@@ -15,10 +15,10 @@ object ExecutorType extends ChiselEnum {
   val Regular, MulDiv, PExt = Value
 }
 
-/** デコーダとリザベーションステーションをつなぐ
+/** Connects the decoder and reservation station
   *
   * @param params
-  *   パラメータ
+  *   Parameters
   */
 class ReservationStationEntry(implicit params: Parameters) extends Bundle {
   val operation = ALUOperation()

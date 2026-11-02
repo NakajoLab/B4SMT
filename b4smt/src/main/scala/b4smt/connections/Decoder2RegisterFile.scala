@@ -4,7 +4,7 @@ import b4smt.Parameters
 import b4smt.utils.{ForPext, RVRegister}
 import chisel3._
 
-/** デコーダとレジスタファイルをつなぐ
+/** Connects the decoder and register file
   */
 class Decoder2RegisterFile(implicit params: Parameters) extends Bundle {
   val sourceRegisters = Output(Vec(3, new RVRegister()))

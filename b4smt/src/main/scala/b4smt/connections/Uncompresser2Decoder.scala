@@ -3,7 +3,7 @@ package b4smt.connections
 import chisel3._
 import chisel3.util.ReadyValidIO
 
-/** 命令とデコーダをつなぐ
+/** Connects instructions and the decoder
   */
 class Uncompresser2Decoder
     extends ReadyValidIO(new Bundle {

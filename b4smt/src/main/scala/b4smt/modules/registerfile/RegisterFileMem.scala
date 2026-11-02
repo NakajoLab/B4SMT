@@ -8,19 +8,19 @@ import chisel3.experimental.prefix
 import circt.stage.ChiselStage
 import chisel3.util._
 
-/** レジスタファイル
+/** Register file
   *
   * @param params
-  *   パラメータ
+  *   Parameters
   */
 class RegisterFileMem(implicit params: Parameters) extends Module {
   val io = IO(new Bundle {
 
-    /** デコーダへ */
+    /** To the decoder */
     val decoders =
       Flipped(Vec(params.decoderPerThread, new Decoder2RegisterFile))
 
-    /** リオーダバッファ */
+    /** Reorder buffer */
     val reorderBuffer = Flipped(
       Vec(
         params.maxRegisterFileCommitCount,
@@ -38,7 +38,7 @@ class RegisterFileMem(implicit params: Parameters) extends Module {
   for ((rb, i) <- io.reorderBuffer.zipWithIndex) {
     prefix(s"in$i") {
       val valid = rb.valid && rb.bits.destinationRegister =/= 0.reg
-      // この先のレジスらにかぶりがある
+      // Check for overlapping destination registers in subsequent entries
       val overlapping =
         if (io.reorderBuffer.drop(i + 1).nonEmpty)
           io.reorderBuffer
@@ -52,10 +52,10 @@ class RegisterFileMem(implicit params: Parameters) extends Module {
     }
   }
 
-  // それぞれのデコーダへの信号
+  // Signals to each decoder
   for ((dec, i) <- io.decoders.zipWithIndex) {
     prefix(s"for_decoder_$i") {
-      // ソースレジスタが0ならば0それ以外ならばレジスタから
+      // Use 0 if the source register is 0; otherwise read from the register
       dec.values := 0.U.asTypeOf(dec.values)
       dec.values zip dec.sourceRegisters foreach { case (v, s) =>
         when(s =/= 0.reg) {
@@ -65,7 +65,7 @@ class RegisterFileMem(implicit params: Parameters) extends Module {
     }
   }
 
-  // デバッグ用信号
+  // Debug signals
   if (params.debug) {
     io.values.get(0) := 0.U
     for (i <- 1 until 32)

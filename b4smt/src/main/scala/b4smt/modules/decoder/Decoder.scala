@@ -11,7 +11,7 @@ import b4smt.modules.reservationstation.{ExecutorType, ReservationStationEntry}
 import b4smt.utils.operations.{DecodingMod, LoadStoreOperation}
 import chiselformal.FormalTools
 
-/** デコーダ
+/** Decoder
   */
 class Decoder(implicit params: Parameters) extends Module with FormalTools {
   val io = IO(new Bundle {
@@ -40,7 +40,7 @@ class Decoder(implicit params: Parameters) extends Module with FormalTools {
       operations.amoOp.isValid ||
       operations.csrOp.isValid
 
-  // リオーダバッファへの入力
+  // Inputs to the reorder buffer
   io.reorderBuffer.sources zip operations.sources foreach { case (rob, o) =>
     rob.sourceRegister := o.reg
   }
@@ -48,12 +48,12 @@ class Decoder(implicit params: Parameters) extends Module with FormalTools {
   io.reorderBuffer.destination.operationInorder := operationInorder
   io.reorderBuffer.programCounter := io.instructionFetch.bits.programCounter
 
-  // レジスタファイルへの入力
+  // Inputs to the register file
   io.registerFile.sourceRegisters zip operations.sources foreach {
     case (rf, o) => rf := o.reg
   }
 
-  // リオーダバッファから一致するタグを取得する
+  // Get matching tags from the reorder buffer
   val sourceTags = Wire(Vec(3, Valid(new Tag)))
   sourceTags := io.reorderBuffer.sources.map(_.matchingTag)
   if (!params.enablePExt) {
@@ -63,7 +63,7 @@ class Decoder(implicit params: Parameters) extends Module with FormalTools {
   sourceTags.foreach(s => s.bits.threadId.foreach(_ := io.threadId))
   val destinationTag = io.reorderBuffer.destination.destinationTag
 
-  // Valueの選択
+  // Select Value
   val values = Wire(Vec(3, Valid(UInt(64.W))))
   values := io.reorderBuffer.sources zip io.registerFile.values zip sourceTags map {
     case ((rob, rf), st) =>
@@ -72,12 +72,12 @@ class Decoder(implicit params: Parameters) extends Module with FormalTools {
   if (!params.enablePExt)
     values(2) := 0.U.asTypeOf(Valid(UInt(64.W)))
 
-  // 命令をデコードするのはリオーダバッファにエントリの空きがあり、リザベーションステーションにも空きがあるとき
+  // Decode instructions when both the reorder buffer and reservation station have free entries
   io.instructionFetch.ready := io.reservationStation.ready && io.reorderBuffer.ready && io.loadStoreQueue.ready && io.csr.ready && io.amo.ready
-  // リオーダバッファやリザベーションステーションに新しいエントリを追加するのは命令がある時
+  // Add new entries to the reorder buffer and reservation station when an instruction is available
   io.reorderBuffer.valid := io.instructionFetch.fire
 
-  // RSへの出力を埋める
+  // Populate outputs to the RS
   val rs = io.reservationStation.entry
   rs := 0.U.asTypeOf(new ReservationStationEntry)
   rs.valid := io.instructionFetch.fire &&
@@ -106,7 +106,7 @@ class Decoder(implicit params: Parameters) extends Module with FormalTools {
     rs.wasCompressed := io.instructionFetch.bits.wasCompressed
   }
 
-  // load or store命令の場合，LSQへ発送
+  // Dispatch load or store instructions to the LSQ
   io.loadStoreQueue.bits := 0.U.asTypeOf(new Decoder2LoadStoreQueue)
   io.loadStoreQueue.valid := io.loadStoreQueue.ready && io.instructionFetch.fire && operations.loadStoreOp.isValid
   when(io.loadStoreQueue.valid) {

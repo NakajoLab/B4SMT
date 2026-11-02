@@ -119,7 +119,7 @@ class B4SMTCore(implicit params: Parameters) extends Module {
 
   axi :<>= externalMemoryInterface.io.coordinator
 
-  /** レジスタのコンテンツをデバッグ時に接続 */
+  /** Connect register contents when debugging */
   if (params.debug)
     for (tid <- 0 until params.threads)
       for (i <- 0 until 32)
@@ -147,16 +147,16 @@ class B4SMTCore(implicit params: Parameters) extends Module {
 
   for (e <- 0 until params.executors) {
 
-    /** リザベーションステーションと実行ユニットを接続 */
+    /** Connect the reservation station and execution units */
     (executors(e).io.reservationStation: ReadyValidIO[
       ReservationStation2Executor,
     ]) :<>=
       (issueBuffer.io.executors(e): ReadyValidIO[ReservationStation2Executor])
 
-    /** 出力コレクタと実行ユニットの接続 */
+    /** Connect the output collector and execution units */
     outputCollector.io.executor(e) :<>= executors(e).io.out
 
-    /** 分岐結果コレクタと実行ユニットの接続 */
+    /** Connect the branch result collector and execution units */
     branchAddressCollector.io.executor(e) :<>= executors(e).io.fetch
   }
 
@@ -176,7 +176,7 @@ class B4SMTCore(implicit params: Parameters) extends Module {
     reorderBuffer(tid).io.threadId := tid.U
     registerFile(tid).io.threadId := tid.U
 
-    /** 命令キャッシュとフェッチを接続 */
+    /** Connect the instruction cache and fetch */
     instructionCache(tid).io.fetch.request :<>= cacheFetchInterface(
       tid,
     ).io.cache.request
@@ -185,7 +185,7 @@ class B4SMTCore(implicit params: Parameters) extends Module {
     ).io.fetch.response
     fetch(tid).io.cache :<>= cacheFetchInterface(tid).io.fetch
 
-    /** フェッチとフェッチバッファの接続 */
+    /** Connect fetch and the fetch buffer */
     fetchBuffer(tid).io.input :<>= fetch(tid).io.fetchBuffer
 
     fetch(tid).io.threadId := tid.U
@@ -206,7 +206,7 @@ class B4SMTCore(implicit params: Parameters) extends Module {
     branchAddressCollector.io.isError(tid) := reorderBuffer(tid).io.isError
     fetch(tid).io.isError := reorderBuffer(tid).io.isError
 
-    /** フェッチとデコーダの接続 */
+    /** Connect fetch and the decoder */
     for (d <- 0 until params.decoderPerThread) {
       reservationStation(tid)(d).io.collectedOutput :=
         outputCollector.io.outputs(tid)
@@ -246,56 +246,56 @@ class B4SMTCore(implicit params: Parameters) extends Module {
 
       uncompresser(tid)(d).io.fetch :<>= fetchBuffer(tid).io.output(d)
 
-      /** デコーダとフェッチバッファ */
+      /** Decoder and fetch buffer */
       decoders(tid)(d).io.instructionFetch :<>= uncompresser(tid)(d).io.decoder
 
-      /** デコーダとリオーダバッファを接続 */
+      /** Connect the decoder and reorder buffer */
       reorderBuffer(tid).io.decoders(d) :<>= decoders(tid)(d).io.reorderBuffer
 
-      /** デコーダとリザベーションステーションを接続 */
+      /** Connect the decoder and reservation station */
       reservationStation(tid)(d).io.decoder :<>=
         decoders(tid)(d).io.reservationStation
 
-      /** デコーダとレジスタファイルの接続 */
+      /** Connect the decoder and register file */
       registerFile(tid).io.decoders(d) :<>= decoders(tid)(d).io.registerFile
 
-      /** デコーダとLSQの接続 */
+      /** Connect the decoder and LSQ */
       loadStoreQueue(tid).io.decoders(d) :<>= decoders(tid)(d).io.loadStoreQueue
 
-      /** デコーダと出力コレクタ */
+      /** Decoder and output collector */
       decoders(tid)(d).io.outputCollector := outputCollector.io.outputs(tid)
 
-      /** デコーダとLSQの接続 */
+      /** Connect the decoder and LSQ */
       loadStoreQueue(tid).io.decoders(d) :<>= decoders(tid)(d).io.loadStoreQueue
     }
 
-    /** フェッチと分岐結果の接続 */
+    /** Connect fetch and branch results */
     fetch(tid).io.collectedBranchAddresses :=
       branchAddressCollector.io.fetch(tid)
 
-    /** LSQと出力コレクタ */
+    /** LSQ and output collector */
     loadStoreQueue(tid).io.outputCollector := outputCollector.io.outputs(tid)
 
-    /** レジスタファイルとリオーダバッファ */
+    /** Register file and reorder buffer */
     registerFile(tid).io.reorderBuffer := reorderBuffer(tid).io.registerFile
 
-    /** フェッチとLSQの接続 */
+    /** Connect fetch and the LSQ */
     fetch(tid).io.loadStoreQueueEmpty := loadStoreQueue(tid).io.empty
 
-    /** フェッチとリオーダバッファの接続 */
+    /** Connect fetch and the reorder buffer */
     fetch(tid).io.reorderBufferEmpty := reorderBuffer(tid).io.isEmpty
 
-    /** データメモリバッファとLSQ */
+    /** Data memory buffer and LSQ */
     (dataMemoryBuffer.io.dataIn(tid): ReadyValidIO[LoadStoreQueue2Memory]) :<>=
       (loadStoreQueue(tid).io.memory: ReadyValidIO[LoadStoreQueue2Memory])
 
-    /** リオーダバッファと出力コレクタ */
+    /** Reorder buffer and output collector */
     reorderBuffer(tid).io.collectedOutputs := outputCollector.io.outputs(tid)
 
-    /** リオーダバッファとLSQ */
+    /** Reorder buffer and LSQ */
     loadStoreQueue(tid).io.reorderBuffer := reorderBuffer(tid).io.loadStoreQueue
 
-    /** 命令メモリと命令キャッシュを接続 */
+    /** Connect instruction memory and the instruction cache */
     externalMemoryInterface.io.instruction(tid) :<>=
       instructionCache(tid).io.memory
 
@@ -323,11 +323,11 @@ class B4SMTCore(implicit params: Parameters) extends Module {
 
     instructionCache(tid).io.flush := fetch(tid).io.icache_flush
 
-    /** フェッチと分岐予測 TODO */
+    /** Fetch and branch prediction TODO */
     fetch(tid).io.prediction.foreach(_.prediction := DontCare)
   }
 
-  /** メモリとデータメモリバッファ */
+  /** Memory and data memory buffer */
   externalMemoryInterface.io.data :<>= dataMemoryBuffer.io.memory
   outputCollector.io.dataMemory :<>= dataMemoryBuffer.io.output
   externalMemoryInterface.io.amo :<>= amo.io.memory

@@ -7,16 +7,16 @@ import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 
 class ReorderBufferEntry extends Bundle {
 
-  /** デスティネーションレジスタ */
+  /** Destination register */
   val destinationRegister = new RVRegister()
 
-  /** 命令の処理が完了した（コミットできる） */
+  /** Instruction processing is complete (ready to commit) */
   val valueReady = Bool()
 
-  /** 通常時：実行結果の値 例外時：エラーの種類 */
+  /** Normally: execution result value; on exception: error type */
   val value = UInt(64.W)
 
-  /** プログラムカウンタ */
+  /** Program counter */
   val programCounter = UInt(64.W)
 
   val operationInorder = Bool()

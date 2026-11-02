@@ -13,16 +13,17 @@ class ValueSelectorWrapper(implicit params: Parameters)
     extends ValueSelector
     with PeekPokeAPI {
 
-  /** 初期化
+  /** Initialization
     *
     * @param sourceTag
-    *   ソースタグ
+    *   Source tag
     * @param registerFileValue
-    *   レジスタファイルから渡される値
+    *   Value passed from the register file
     * @param reorderBufferValue
-    *   リオーダバッファからの値
+    *   Value from the reorder buffer
     * @param aluBypassValue
-    *   ALUからバイパスされてきた値。タプルの1つめの値がdestination tag、2つめがvalue。
+    *   Value bypassed from the ALU. The first tuple element is the destination
+    *   tag, and the second is the value.
     */
   def initialize(
     sourceTag: Option[Int] = None,

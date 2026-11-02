@@ -2,24 +2,25 @@ package b4smt
 
 import scala.math.pow
 
-/** プロセッサを生成する際のパラメータ
+/** Parameters for generating the processor
   *
   * @param tagWidth
-  *   リオーダバッファで使用するタグのビット数
+  *   Number of bits in tags used by the reorder buffer
   * @param loadStoreQueueIndexWidth
-  *   ロードストアキューに使うインデックスのビット幅
+  *   Bit width of indices used by the load-store queue
   * @param maxRegisterFileCommitCount
-  *   リオーダバッファからレジスタファイルに1クロックでコミットする命令の数(Max)
+  *   Number of instructions committed from the reorder buffer to the register
+  *   file per clock (Max)
   * @param maxDataMemoryCommitCount
-  *   メモリバッファに出力する最大数
+  *   Maximum number of outputs to the memory buffer
   * @param debug
-  *   デバッグ機能を使う
+  *   Enable debugging features
   * @param fetchWidth
-  *   命令フェッチ時にメモリから取出す命令数
+  *   Number of instructions retrieved from memory during instruction fetch
   * @param branchPredictionWidth
-  *   分岐予測で使う下位ビット数
+  *   Number of low-order bits used for branch prediction
   * @param instructionStart
-  *   プログラムカウンタの初期値
+  *   Initial program counter value
   */
 case class Parameters(
   tagWidth: Int = 4,
@@ -39,7 +40,7 @@ case class Parameters(
   enablePExt: Boolean = false,
   pextExecutors: Int = 1,
   reservationStationWidth: Int = 4,
-  // 命令キャッシュ用パラメータ
+  // Instruction cache parameters
   ICacheWay: Int = 2,
   ICacheSet: Int = 128,
   ICacheBlockWidth: Int = 512,

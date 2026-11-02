@@ -3,7 +3,7 @@ package b4smt.common
 import chisel3._
 import chisel3.util.{BitPat, MuxCase, MuxLookup}
 
-/** 命令の種類のチェック */
+/** Check instruction types */
 class InstructionChecker extends Module {
   val input = IO(Input(new Bundle {
     val function3bits = UInt(3.W)
@@ -123,13 +123,13 @@ class InstructionChecker extends Module {
   )
 }
 
-/** 命令の種類 */
+/** Instruction types */
 object Instructions extends ChiselEnum {
   val lui, auipc, jal, jalr, Branch, Load, Store, ArithmeticImmediate,
     Arithmetic, fence, fencei, ecall, ebreak, Csr, CsrI, Unknown = Value
 }
 
-/** 分岐命令の種類 */
+/** Branch instruction types */
 object BranchOperations extends ChiselEnum {
 
   /** beq
@@ -172,7 +172,7 @@ object BranchOperations extends ChiselEnum {
   val Unknown = Value
 }
 
-/** 操作するビット幅 (演算、load、store) */
+/** Operation bit width (arithmetic, load, store) */
 object OperationWidth extends ChiselEnum {
 
   /** 8bit */
@@ -191,7 +191,7 @@ object OperationWidth extends ChiselEnum {
   val Unknown = Value
 }
 
-/** 演算の種類 */
+/** Arithmetic operation types */
 object ArithmeticOperations extends ChiselEnum {
 
   /** add, addi */
@@ -228,16 +228,22 @@ object ArithmeticOperations extends ChiselEnum {
   val Unknown = Value
 }
 
-/** CSRへの操作の種類 */
+/** CSR operation types */
 object CSROperations extends ChiselEnum {
 
-  /** csrrw CSRの中身をrdに書き出し、rsの内容をCSRに書き込む */
+  /** csrrw writes the CSR contents to rd and writes the contents of rs to the
+    * CSR
+    */
   val ReadAndWrite = Value
 
-  /** csrrs CSRの中身をrdに書き出し、rsをビットマスクとしてビットを増やすようにCSR|=rsのように書き込む */
+  /** csrrs writes the CSR contents to rd and uses rs as a bit mask to set bits,
+    * writing as CSR|=rs
+    */
   val ReadAndSet = Value
 
-  /** csrrc CSRの中身をrdに書き出し、rsをビットマスクとしてビットを消すようにCSR&=rsのように書き込む */
+  /** csrrc writes the CSR contents to rd and uses rs as a bit mask to clear
+    * bits, writing as CSR&=rs
+    */
   val ReadAndClear = Value
 
   /** Unknown */

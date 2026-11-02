@@ -40,7 +40,7 @@ class LoadStoreQueue(implicit params: Parameters)
     val tail =
       if (params.debug) Some(Output(UInt(params.loadStoreQueueIndexWidth.W)))
       else None
-    // LSQのエントリ数はこのままでいいのか
+    // Is the current number of LSQ entries appropriate?
 
     val statusLoad = Output(Bool())
     val statusStore = Output(Bool())
@@ -60,20 +60,24 @@ class LoadStoreQueue(implicit params: Parameters)
   )
   var insertIndex = head
 
-  /** デコードした命令をLSQに加えるかどうか確認し，l or s 命令ならばエンキュー */
+  /** Check whether to add the decoded instruction to the LSQ; enqueue if it is
+    * an l or s instruction
+    */
   for (i <- 0 until params.decoderPerThread) {
     val decoder = io.decoders(i)
     decoder.ready := tail =/= insertIndex + 1.U
     val entryValid = decoder.fire
 
-    /** 現状，(LSQの最大エントリ数 = リオーダバッファの最大エントリ数)であり，
-      * プロセッサで同時実行可能な最大命令数がリオーダバッファのエントリ番号数(dtag数)であることから，
-      * エンキュー時の命令待機は必要ないが，LSQのエントリ数を減らした場合，必要
+    /** Currently, (maximum LSQ entries = maximum reorder buffer entries), and
+      * the maximum number of instructions the processor can execute
+      * concurrently is the number of reorder buffer entry indices (dtag count),
+      * so instructions need not wait when enqueuing, but must wait if the
+      * number of LSQ entries is reduced
       */
     when(entryValid) {
       //      printf("isLoad = %d\n", decoder.bits.opcode === LOAD)
       buffer(insertIndex) := LoadStoreQueueEntry.validEntry(
-        // opcode = 1(load), 0(store) (bit数削減)
+        // opcode = 1(load), 0(store) (reduce bit count)
         operation = decoder.bits.operation,
         operationWidth = decoder.bits.operationWidth,
         destinationTag = decoder.bits.destinationTag,
@@ -91,7 +95,7 @@ class LoadStoreQueue(implicit params: Parameters)
 
   head := insertIndex
 
-  /** オペランドバイパスのタグorPCが対応していた場合は，ALUを読み込む */
+  /** Read the ALU when the operand bypass tag or PC matches */
 
   private val output = io.outputCollector.outputs
   for (buf <- buffer) {
@@ -123,13 +127,16 @@ class LoadStoreQueue(implicit params: Parameters)
     }
   }
 
-  /** Ra = 1 && R=0の先行するストア命令と実効アドレスが被っていなければ ロード命令をメモリに送出 送出後, R=1
+  /** Ra = 1 && R=0: issue the load instruction to memory if its effective
+    * address does not overlap with a preceding store instruction; after
+    * issuing, R=1
     */
 
-  /** Ra = Rd = 1 && リオーダバッファから命令送出信号が来れば ストア命令をメモリに送出 送出後, R=1
+  /** Ra = Rd = 1 && an instruction issue signal arrives from the reorder
+    * buffer: issue the store instruction to memory; after issuing, R=1
     */
-  // Overlap : 先行する命令の実効アドレスとの被りがあるかのフラグ (T:あり　F:なし)
-  // Address : 送出対象の命令のアドレスを格納
+  // Overlap : Flag indicating overlap with a preceding instruction's effective address (T: overlap F: no overlap)
+  // Address : Holds the address of the instruction to issue
   val Overlap = WireInit(
     VecInit(Seq.fill(params.loadStoreQueueCheckLength)(false.B)),
   )
@@ -143,8 +150,8 @@ class LoadStoreQueue(implicit params: Parameters)
     VecInit(Seq.fill(params.loadStoreQueueCheckLength)(false.B)),
   )
 
-  // emissionindex : 送出可能か調べるエントリを指すindex
-  // nexttail      : 1クロック分の送出確認後，動かすtailのエントリを指すindex
+  // emissionindex : index pointing to the entry to check for issue eligibility
+  // nexttail      : index pointing to the entry to move tail to after one clock's issue checks
   var nextTail = tail
   var isSet = false.B
 
@@ -160,7 +167,7 @@ class LoadStoreQueue(implicit params: Parameters)
       AddressValid(i) := buf.addressValid
       EntryValid(i) := buf.valid
       //      Overlap(i) := false.B
-      // 先行する命令が持つアドレスの中に被りがある場合，Overlap(i) := true.B
+      // If any preceding instruction's address overlaps, Overlap(i) := true.B
       if (i != 0) {
         for (j <- 0 until i) {
           when(EntryValid(j)) {
@@ -176,7 +183,7 @@ class LoadStoreQueue(implicit params: Parameters)
       val operationIsStore =
         LoadStoreOperation.Store === buf.operation
 
-      // io.memory(i).valid :=  io.memory(i).ready && (head =/= tail) && ("loadの送出条件" || "storeの送出条件")
+      // io.memory(i).valid :=  io.memory(i).ready && (head =/= tail) && ("load issue condition" || "store issue condition")
       checkOk := (head =/= tail) && buf.valid &&
         buf.addressValid &&
         ((!operationIsStore && !Overlap(i)) ||
@@ -184,7 +191,7 @@ class LoadStoreQueue(implicit params: Parameters)
             buf.readyReorderSign))
 
       io.memory.valid := checkOk | isSet
-      // 送出実行
+      // Issue the instruction
       when(checkOk && !isSet) {
         toMemoryIndex := checkIndex
         io.memory.bits.tag := buf.destinationTag
@@ -214,7 +221,7 @@ class LoadStoreQueue(implicit params: Parameters)
     }
   }
 
-  // デバッグ
+  // Debugging
   if (params.debug) {
     io.head.get := head
     io.tail.get := tail

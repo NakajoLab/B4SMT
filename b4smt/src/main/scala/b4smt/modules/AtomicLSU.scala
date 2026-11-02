@@ -320,7 +320,7 @@ class AtomicLSU(implicit params: Parameters) extends Module {
         }
       }
 
-      // 条件は真理値表を用いて作成
+      // Conditions derived using a truth table
       val RD = writeRequestDone
       val DD = writeRequestDataDone
       val RR = io.memory.write.request.ready

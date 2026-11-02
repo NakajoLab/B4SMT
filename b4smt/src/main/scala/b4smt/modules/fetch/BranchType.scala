@@ -2,28 +2,28 @@ package b4smt.modules.fetch
 
 import chisel3._
 
-/** フェッチ用分岐の種類 */
+/** Branch types for fetch */
 object BranchType extends ChiselEnum {
 
-  /** 分岐なし4byte進む */
+  /** No branch; advance 4 bytes */
   val Next4 = Value
 
-  /** 分岐なし2byte進む */
+  /** No branch; advance 2 bytes */
   val Next2 = Value
 
-  /** 分岐命令 */
+  /** Branch instruction */
   val Branch = Value
 
-  /** JAL命令による強制分岐 */
+  /** Unconditional branch via a JAL instruction */
   val JAL = Value
 
-  /** JALRによる分岐 */
+  /** Branch via JALR */
   val JALR = Value
 
-  /** Fenceによる停止 */
+  /** Stall due to Fence */
   val Fence = Value
 
-  /** Fense.iによる停止 */
+  /** Stall due to Fense.i */
   val FenceI = Value
 
   /** mret */

@@ -4,22 +4,24 @@ import chisel3._
 
 object WaitingReason extends ChiselEnum {
 
-  /** 分岐なし */
+  /** No branch */
   val None = Value
 
-  /** 分岐命令 */
+  /** Branch instruction */
   val Branch = Value
 
-  /** JALRによる分岐 */
+  /** Branch via JALR */
   val JALR = Value
 
-  /** Fenceによる停止 */
+  /** Stall due to Fence */
   val Fence = Value
 
-  /** Fense.iによる停止 */
+  /** Stall due to Fense.i */
   val FenceI = Value
 
-  /** JAL命令で同じ場所を移動していると、ReservationStationが圧迫されてしまうので遅延させる */
+  /** Delay JAL instructions that jump to the same location to avoid putting
+    * pressure on the ReservationStation
+    */
   val BusyLoop = Value
 
   /** mret */

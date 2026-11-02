@@ -8,7 +8,7 @@ import org.scalatest.tagobjects.Slow
 class B4SMTCoreProgramTest extends AnyFlatSpec with StandaloneTests {
 
   behavior of "B4SMT test programs"
-  // デバッグに時間がかかりすぎるのでパラメータを少し下げる。
+  // Reduce the parameters slightly because debugging takes too long.
   implicit val defaultParams: b4smt.Parameters =
     Parameters(
       debug = true,
@@ -18,14 +18,14 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with StandaloneTests {
 //      enablePExt = true
     )
 
-  // branchプログラムが実行できる
+  // Execute the branch program
   it should "execute branch with no parallel" in {
     standalone(defaultParams.copy(threads = 1, decoderPerThread = 1)) { c =>
       c.initialize("programs/riscv-sample-programs/branch")
       c.checkForRegister(13, 20, 200)
     }
   }
-  // branchプログラムが実行できる
+  // Execute the branch program
   it should "execute branch with 2 parallel thread" in {
     standalone(defaultParams.copy(threads = 2, decoderPerThread = 1)) { c =>
       c.initialize("programs/riscv-sample-programs/branch")
@@ -34,7 +34,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with StandaloneTests {
     }
   }
 
-  // フィボナッチ数列の計算が同時発行数1でできる
+  // Calculate the Fibonacci sequence with an issue width of 1
   it should "execute fibonacci with no parallel" in {
     standalone(defaultParams.copy(threads = 1, decoderPerThread = 1)) { c =>
       c.initialize("programs/riscv-sample-programs/fibonacci")
@@ -42,7 +42,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with StandaloneTests {
     }
   }
 
-  // フィボナッチ数列の計算が同時発行数2でできる
+  // Calculate the Fibonacci sequence with an issue width of 2
   it should "execute fibonacci with 2 parallel" in {
     standalone(defaultParams) { c =>
       c.initialize("programs/riscv-sample-programs/fibonacci")
@@ -50,7 +50,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with StandaloneTests {
     }
   }
 
-  // フィボナッチ数列の計算が同時発行数4でできる
+  // Calculate the Fibonacci sequence with an issue width of 4
   it should "execute fibonacci with 4 parallel" in {
     standalone(defaultParams.copy(threads = 1, decoderPerThread = 4)) { c =>
       c.initialize("programs/riscv-sample-programs/fibonacci")
@@ -58,7 +58,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with StandaloneTests {
     }
   }
 
-  // call(JALRを使った関数呼び出し)とret(JALRを使った関数からのリターン)がうまく実行できる
+  // Correctly execute call (function call using JALR) and ret (return from a function using JALR)
   it should "execute call_ret with 2 parallel" in {
     standalone(defaultParams) { c =>
       c.initialize("programs/riscv-sample-programs/call_ret")
@@ -68,7 +68,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with StandaloneTests {
     }
   }
 
-  // 並列実行できそうな大量のadd命令を同時発行数1で試す
+  // Test many potentially parallelizable add instructions with an issue width of 1
   it should "execute many_add with no parallel" in {
     standalone(defaultParams.copy(threads = 1, decoderPerThread = 1)) { c =>
       c.initialize("programs/riscv-sample-programs/many_add")
@@ -76,7 +76,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with StandaloneTests {
     }
   }
 
-  // 並列実行できそうな大量のadd命令を同時発行数1で試す
+  // Test many potentially parallelizable add instructions with an issue width of 1
   it should "execute many_add with no parallel 2 thread" in {
     standalone(defaultParams.copy(threads = 2, decoderPerThread = 1)) { c =>
       c.initialize("programs/riscv-sample-programs/many_add")
@@ -85,7 +85,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with StandaloneTests {
     }
   }
 
-  // 並列実行できそうな大量のadd命令を同時発行数2で試す
+  // Test many potentially parallelizable add instructions with an issue width of 2
   it should "execute many_add with 2 parallel" in {
     standalone(defaultParams.copy(fetchWidth = 8)) { c =>
       c.initialize("programs/riscv-sample-programs/many_add")
@@ -93,7 +93,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with StandaloneTests {
     }
   }
 
-  // 並列実行できそうな大量のadd命令を同時発行数4で試す
+  // Test many potentially parallelizable add instructions with an issue width of 4
   it should "execute many_add with 4 parallel" in {
     standalone(
       defaultParams.copy(threads = 1, decoderPerThread = 4, fetchWidth = 8),
@@ -103,7 +103,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with StandaloneTests {
     }
   }
 
-  // タグ幅をとても小さくする（すべてのデコーダが使えない）ような状況でもうまく動作する
+  // Work correctly even with a very small tag width (not all decoders can be used)
   it should "execute many_add with 4 parallel with very low tag width" in {
     standalone(
       defaultParams
@@ -114,7 +114,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with StandaloneTests {
     }
   }
 
-  // 並列実行できそうな大量のadd命令を同時発行数8で試す
+  // Test many potentially parallelizable add instructions with an issue width of 8
   it should "execute many_add with 8 parallel" in {
     standalone(
       defaultParams.copy(
@@ -130,7 +130,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with StandaloneTests {
     }
   }
 
-  // アウトオブオーダでできそうな命令を同時発行数4で試す
+  // Test potentially out-of-order instructions with an issue width of 4
   it should "execute out_of_order with 4 parallel" in {
     standalone(
       defaultParams
@@ -158,7 +158,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with StandaloneTests {
     }
   }
 
-  // 単純な値をストアしてロードするプログラム同時発行数2
+  // Program that stores and loads a simple value, with an issue width of 2
   it should "run load_store with 2 parallel" in {
     standalone(defaultParams.copy(threads = 1, decoderPerThread = 2)) { c =>
       c.initialize("programs/riscv-sample-programs/load_store")

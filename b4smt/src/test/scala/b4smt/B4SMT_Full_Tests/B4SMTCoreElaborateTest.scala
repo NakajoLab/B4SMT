@@ -8,11 +8,11 @@ import org.scalatest.flatspec.AnyFlatSpec
 
 class B4SMTCoreElaborateTest extends AnyFlatSpec with ChiselSim {
 
-  // デバッグに時間がかかりすぎるのでパラメータを少し下げる。
+  // Reduce the parameters slightly because debugging takes too long.
   implicit val defaultParams: b4smt.Parameters = Parameters(debug = true)
 
   behavior of "B4SMTCore elaborate"
-  // コンパイルが通ることを確認（信号をつなぎきれていないとエラーになる）
+  // Check that compilation succeeds (incomplete signal connections cause an error)
   for (enablePExt <- Seq(false, true))
     for (threads <- Seq(1, 2, 3, 4)) {
       for (pextExecutors <- if (enablePExt) Seq(1, 4) else Seq(0))

@@ -4,7 +4,7 @@ import b4smt.Parameters
 import chisel3._
 import chisel3.util._
 
-/** 命令とデコーダをつなぐ
+/** Connects instructions and the decoder
   */
 class Fetch2FetchBuffer(implicit params: Parameters) extends Bundle {
   val toBuffer = Vec(

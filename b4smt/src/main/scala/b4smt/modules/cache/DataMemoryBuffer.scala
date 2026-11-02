@@ -17,10 +17,10 @@ import chisel3.connectable._
 import chisel3.util._
 import chiselformal.FormalTools
 
-/** from LSQ toDataMemory のためのバッファ
+/** Buffer from LSQ toDataMemory
   *
   * @param params
-  *   パラメータ
+  *   Parameters
   */
 class DataMemoryBuffer(implicit params: Parameters)
     extends Module
@@ -142,7 +142,7 @@ class DataMemoryBuffer(implicit params: Parameters)
         )
       }
 
-      // 条件は真理値表を用いて作成
+      // Conditions derived using a truth table
       val RD = writeRequestDone
       val DD = writeRequestDataDone
       val RR = io.memory.write.request.ready

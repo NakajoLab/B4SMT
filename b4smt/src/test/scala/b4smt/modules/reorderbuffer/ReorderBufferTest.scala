@@ -80,7 +80,7 @@ class ReorderBufferTest
     debug = true,
   )
 
-  /** リオーダバッファに値が出力されない */
+  /** No values are output to the reorder buffer */
   it should "output nothing to register file on first clock" in {
     simulate(new ReorderBufferWrapper) { c =>
       c.initialize()
@@ -220,12 +220,12 @@ class ReorderBufferTest
     simulate(new ReorderBufferWrapper) { c =>
       c.initialize()
 
-      // 値の確認
+      // Check values
       c.io.head.get.expect(0)
       c.io.tail.get.expect(0)
       c.expectRegisterFile(Seq(None))
 
-      // 値のセット
+      // Set values
       c.setDecoder(
         Seq(
           DecoderValue(
@@ -239,17 +239,17 @@ class ReorderBufferTest
       )
 
       c.clock.step()
-      // 値の確認
+      // Check values
       c.expectRegisterFile(Seq(None))
       c.io.head.get.expect(1)
 
-      // 値のセット
+      // Set values
       c.setDecoder(Seq(DecoderValue()))
       c.setOutputs(Some(ExecutorValue(destinationTag = 0, value = 10)))
 
       c.clock.step()
       c.setOutputs(None)
-      // 値の確認
+      // Check values
       c.expectRegisterFile(
         Seq(Some(RegisterFileValue(destinationRegister = 1, value = 10))),
       )
@@ -266,10 +266,10 @@ class ReorderBufferTest
     ) { c =>
       c.initialize()
 
-      // 値の確認
+      // Check values
       c.expectRegisterFile(Seq(None, None, None, None))
 
-      // 値のセット
+      // Set values
       c.setDecoder(
         Seq(
           DecoderValue(
@@ -304,10 +304,10 @@ class ReorderBufferTest
       )
 
       c.clock.step()
-      // 値の確認
+      // Check values
       c.expectRegisterFile(Seq(None, None, None, None))
 
-      // 値のセット
+      // Set values
       c.setDecoder(Seq.fill(4)(DecoderValue()))
 
       c.setOutputs(Some(ExecutorValue(destinationTag = 0, value = 10)))
@@ -366,10 +366,10 @@ class ReorderBufferTest
     ) { c =>
       c.initialize()
 
-      // 値の確認
+      // Check values
       c.expectRegisterFile(Seq(None, None, None, None))
 
-      // 値のセット
+      // Set values
       c.setDecoder(
         Seq(
           DecoderValue(
@@ -405,7 +405,7 @@ class ReorderBufferTest
 
       c.clock.step()
 
-      // 値のセット
+      // Set values
       c.setDecoder(
         Seq(
           DecoderValue(
@@ -513,10 +513,10 @@ class ReorderBufferTest
     ) { c =>
       c.initialize()
 
-      // 値の確認
+      // Check values
       c.expectRegisterFile(Seq(None, None, None, None))
 
-      // 値のセット
+      // Set values
       c.setDecoder(
         Seq(
           DecoderValue(
@@ -552,7 +552,7 @@ class ReorderBufferTest
 
       c.clock.step()
 
-      // 値のセット
+      // Set values
       c.setDecoder(
         Seq(
           DecoderValue(

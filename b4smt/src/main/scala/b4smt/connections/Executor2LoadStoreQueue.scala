@@ -4,10 +4,10 @@ import b4smt.Parameters
 import chisel3._
 import chisel3.util._
 
-/** ALUからLSQへデータを送信
+/** Send data from the ALU to the LSQ
   *
   * @param params
-  *   パラメータ
+  *   Parameters
   */
 
 class Executor2LoadStoreQueue(implicit params: Parameters) extends Bundle {

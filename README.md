@@ -2,78 +2,78 @@
 
 # B4SMT Core
 
-OoOのプロセッサ
+An out-of-order, simultaneous-multithreading RISC-V processor written in Chisel.
 
-## 準備
-これらのソフトウェアをインストールしておく必要があります。
+[Japanese documentation](README.ja.md)
 
-### プロセッサの生成・テストコードの生成
-* [Nix][Nix download]
+## Requirements
 
-Nixについては[Nix]の公式サイトや[Zero to Nix]を参考にしてみてください。
+Install [Nix](https://nixos.org/) to generate the processor, build test programs,
+and enter the development environment. See [Zero to Nix](https://zero-to-nix.com/)
+for installation and setup instructions.
 
-次のコマンドでこのプロジェクトのキャッシュを有効にしておくと多くのパッケージのビルドを省略できます。
+Enable the project's binary cache to avoid rebuilding available packages:
 
-```shell
-$ nix shell "nixpkgs#cachix" -c cachix use b4smt
+```sh
+nix shell "nixpkgs#cachix" -c cachix use b4smt
 ```
 
-[Nix download]: https://zero-to-nix.com/start/install
-[Nix]: https://nixos.org/
-[Zero to Nix]: https://zero-to-nix.com/
+Enter the development environment before running Mill commands:
 
-開発
-* [intellij IDEA][intellij]
-* java
-* [Mill]
-* [LLVM circt] (System Verilog生成用のfirtoolコマンドラインツール)
-
-[intellij]: https://www.jetbrains.com/idea/
-[Mill]: https://mill-build.org/
-[LLVM circt]: https://circt.llvm.org/
-
-テスト
-* Verilator（ChiselSim）
-* SymbiYosys（形式検証）
-
-## プロセッサの生成
-次のコマンドで`./processor`にSystem Verilogのソースが出力されます。
-
-```shell
-$ make processor
+```sh
+nix develop
 ```
 
-## テストコードの生成
-次のコマンドで`./programs`にいくつかテスト用のプログラムと[riscv-tests]のコンパイル結果が出力されます。
+The environment provides Java, [Mill](https://mill-build.org/),
+[LLVM CIRCT](https://circt.llvm.org/) (`firtool` for SystemVerilog generation),
+Verilator, and the formal-verification tools. You can also use
+[IntelliJ IDEA](https://www.jetbrains.com/idea/) for development.
 
-```shell
-$ make programs
+## Generate the processor
+
+Generate SystemVerilog sources under `./processor`:
+
+```sh
+make processor
 ```
 
-[riscv-tests]: https://github.com/riscv-software-src/riscv-tests
+## Build test programs
 
-## テスト用のプログラムの生成
-テスト用プログラムは`nix`を使って管理しています。
+Build the sample programs and upstream [riscv-tests](https://github.com/riscv-software-src/riscv-tests)
+under `./programs`:
 
-## テスト方法
-いくつかの時間のかかるテストを除いたテストは次のように行います。
-```shell
-$ mill b4smt.test.testOnly '*' -- -l org.scalatest.tags.Slow
+```sh
+make programs
 ```
 
-すべてのテストを実行するには次のコマンドを実行します。（とても時間がかかります）
-```shell
-$ mill b4smt.test.testOnly '*'
+Nix manages the test-program toolchains and build dependencies.
+
+## Run tests
+
+Run the quick suite, excluding tests tagged `Slow`:
+
+```sh
+mill b4smt.test.testOnly '*' -- -l org.scalatest.tags.Slow
 ```
 
-シミュレーションテストはChiselSimを直接使用し、形式検証はSymbiYosysで実行します。
-通常はコンパイル時間とディスク使用量を抑えるため、VCD波形を出力しません。
-必要な場合だけScalaTestに`-DemitVcd=1`を渡します（Mill/JVMのオプションではなく、`--`の後に指定）。
-```shell
-$ mill b4smt.test.testOnly '*' -- -l org.scalatest.tags.Slow -DemitVcd=1
+Run all non-ignored tests, including the slow tests (this can take a long time):
+
+```sh
+mill b4smt.test.testOnly '*'
 ```
 
-細かく実行するテストを決めたい場合はIntellij IDEAでプロジェクトを開き、各テストを実行してください。
+Processor-program tests use the reusable standalone Verilator harness described
+below. Unit simulations use ChiselSim, and formal checks use SymbiYosys.
+Waveforms are disabled by default to reduce compilation time and disk use.
+For ChiselSim tests, enable VCD output with the ScalaTest option `-DemitVcd=1`
+(after `--`, not as a Mill or JVM option):
+
+```sh
+mill b4smt.test.testOnly '*' -- -l org.scalatest.tags.Slow -DemitVcd=1
+```
+
+This option applies to ChiselSim tests, not the standalone harness. You can also
+select individual test suites with `testOnly` or run tests from IntelliJ IDEA.
 
 ## Standalone simulator
 
@@ -92,9 +92,11 @@ nix build .#checks.x86_64-linux.simulator --no-link
 ```
 
 The generator CLI takes JSON, not individual parameter flags:
+
 ```sh
 mill --no-daemon --offline b4smt.test.runMain b4smt.simulator.StandaloneSimulator --config simulator/config.json --target-dir rtl
 ```
+
 `nix/b4smt_simulator.nix` also accepts `configFile ? ../simulator/config.json`
 when called with `pkgs.callPackage`. All `Parameters` case-class field names are
 accepted; unknown names fail. Omitted fields use `Parameters()` defaults.
@@ -133,6 +135,7 @@ ready for exactly one consumption cycle and then lower it. The suites retain
 sequential intermediate register checks and fixed-cycle expectations.
 
 For example, after loading `csrtest.hex`:
+
 ```text
 wait 0 17 10 500
 wait 0 17 20 500
@@ -162,19 +165,24 @@ package directory containing `bin/b4smt-sim` and
 `share/b4smt-simulator/config.json` (as installed by `.#simulator`); a configuration
 mismatch fails explicitly. There is no cross-JVM compilation cache.
 
-## フォーマット
-Scala・Millのソース（Mill経由のScalafmt）とNixファイルをまとめて整形します。
-```shell
-$ nix fmt
-```
+## Formatting
 
-## トラブルシューティング
-### 依存関係周りを編集したらプロセッサが生成できない
+Format Scala and Mill sources through Mill's Scalafmt task, and Nix files with
+treefmt:
 
-コンパイル中に依存関係周りで問題が発生していれば、Nixの依存関係のキャッシュに問題がある場合があります。
-その場合は次のコマンドを実行してください。
 ```sh
-$ nix run ".#update-hash"
+nix fmt
 ```
 
-このコマンドでnixの依存関係をを管理するHashを更新できます。
+## Troubleshooting
+
+### Processor generation fails after dependency changes
+
+If compilation fails because Nix's dependency cache is out of date, update its
+hash:
+
+```sh
+nix run .#update-hash
+```
+
+This updates the dependency-cache hash in `flake.nix`.

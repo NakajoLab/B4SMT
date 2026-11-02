@@ -14,29 +14,29 @@ import b4smt.modules.branch_output_collector.CollectedBranchAddresses
 import b4smt.modules.fetch.{BranchType, CheckBranch, WaitingReason}
 import chiselformal.FormalTools
 
-/** 命令フェッチ用モジュール */
+/** Instruction fetch module */
 class Fetch(wfiWaitWidth: Int = 10)(implicit params: Parameters)
     extends Module
     with FormalTools {
   val io = IO(new Bundle {
 
-    /** 命令キャッシュ */
+    /** Instruction cache */
     val cache =
       Flipped(new InstructionCache2Fetch)
 
-    /** 分岐予測 */
+    /** Branch prediction */
     val prediction = Vec(params.decoderPerThread, new Fetch2BranchPrediction)
 
-    /** リオーダバッファの中身が空である */
+    /** The reorder buffer is empty */
     val reorderBufferEmpty = Input(Bool())
 
-    /** ロードストアキューが空である */
+    /** The load-store queue is empty */
     val loadStoreQueueEmpty = Input(Bool())
 
-    /** 実行ユニットから分岐先の計算結果が帰ってきた */
+    /** The computed branch target has returned from the execution unit */
     val collectedBranchAddresses = Flipped(new CollectedBranchAddresses)
 
-    /** デコーダ */
+    /** Decoder */
     val fetchBuffer = new Fetch2FetchBuffer
 
     /** CSR */
@@ -50,7 +50,7 @@ class Fetch(wfiWaitWidth: Int = 10)(implicit params: Parameters)
 
     val threadId = Input(UInt(log2Up(params.threads).W))
 
-    /** デバッグ用 */
+    /** For debugging */
     val PC = if (params.debug) Some(Output(UInt(64.W))) else None
     val nextPC = if (params.debug) Some(Output(UInt(64.W))) else None
     val branchTypes =
@@ -63,10 +63,10 @@ class Fetch(wfiWaitWidth: Int = 10)(implicit params: Parameters)
 
   val checkBranches = Seq.fill(params.decoderPerThread)(Module(new CheckBranch))
 
-  /** プログラムカウンタ */
+  /** Program counter */
   val pc = RegInit(params.instructionStart.U(64.W))
 
-  /** フェッチの停止と理由 */
+  /** Fetch stall and its reason */
   val waiting = RegInit(WaitingReason.None)
 
   var nextPC = pc
@@ -82,7 +82,7 @@ class Fetch(wfiWaitWidth: Int = 10)(implicit params: Parameters)
     if (params.debug)
       io.branchTypes.get(i) := branch.io.branchType
 
-    // キャッシュからの値があり、待つ必要はなく、JAL命令ではない（JALはアドレスを変えるだけとして処理できて、デコーダ以降を使う必要はない）
+    // A value is available from the cache, no wait is needed, and this is not a JAL instruction (JAL can be handled by changing only the address, without using the decoder or later stages)
     val instructionValid =
       cache.response.valid && nextWait === WaitingReason.None
     decoder.valid := instructionValid &&
@@ -93,7 +93,7 @@ class Fetch(wfiWaitWidth: Int = 10)(implicit params: Parameters)
 
     cache.request.valid := nextWait === WaitingReason.None
 
-    // 次に停止する必要があるか確認
+    // Check whether a stall is needed next
     nextWait = Mux(
       nextWait =/= WaitingReason.None || !decoder.ready || !instructionValid,
       nextWait,
@@ -113,7 +113,7 @@ class Fetch(wfiWaitWidth: Int = 10)(implicit params: Parameters)
         ),
       ),
     )
-    // PCの更新を確認
+    // Check the PC update
     nextPC = (nextPC.asSInt + MuxCase(
       4.S,
       Seq(
@@ -135,7 +135,7 @@ class Fetch(wfiWaitWidth: Int = 10)(implicit params: Parameters)
 
   val lastWaiting = RegNext(waiting)
   val cnt = RegInit(1.U(8.W))
-  // 停止している際の挙動
+  // Behavior while stalled
   when(waiting =/= WaitingReason.None) {
     when(lastWaiting === waiting) {
       when(cnt === 0.U) {
@@ -208,7 +208,7 @@ class Fetch(wfiWaitWidth: Int = 10)(implicit params: Parameters)
     io.nextPC.get := nextPC
   }
 
-  // TODO: 分岐予測を使う
+  // TODO: Use branch prediction
   for (p <- io.prediction) {
     p.isBranch := DontCare
     p.prediction := DontCare

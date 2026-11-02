@@ -5,14 +5,14 @@ import b4smt.utils.operations.{LoadStoreOperation, LoadStoreWidth}
 import b4smt.utils.Tag
 import chisel3._
 
-/** デコーダとLSQをつなぐ
+/** Connects the decoder and LSQ
   *
   * @param params
-  *   パラメータ
+  *   Parameters
   */
 class Decoder2LoadStoreQueue(implicit params: Parameters) extends Bundle {
 
-  /** メモリアクセスの情報 */
+  /** Memory access information */
   val operation = LoadStoreOperation()
   val operationWidth = LoadStoreWidth()
 
@@ -20,21 +20,21 @@ class Decoder2LoadStoreQueue(implicit params: Parameters) extends Bundle {
 
   val addressTag = new Tag
 
-  /** アドレス値が有効である */
+  /** The address value is valid */
   val address = UInt(64.W)
 
-  /** アドレス値が有効である */
+  /** The address value is valid */
   val addressOffset = SInt(12.W)
 
-  /** アドレス値が有効である */
+  /** The address value is valid */
   val addressValid = Bool()
 
-  /** ストアに使用するデータが格納されるタグ(SourceRegister2 Tag) */
+  /** Tag holding the data to store (SourceRegister2 Tag) */
   val storeDataTag = new Tag
 
-  /** ストアデータ */
+  /** Store data */
   val storeData = UInt(64.W)
 
-  /** ストアデータの値が有効か */
+  /** Whether the store data value is valid */
   val storeDataValid = Bool()
 }

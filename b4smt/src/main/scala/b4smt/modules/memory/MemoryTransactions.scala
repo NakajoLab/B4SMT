@@ -25,16 +25,16 @@ class MemoryReadRequest(implicit params: Parameters) extends Bundle {
 }
 class MemoryReadResponse(implicit params: Parameters) extends Bundle {
 
-  /** 値 */
+  /** Value */
   val value = Output(UInt(64.W))
 
-  /** バーストの場合のインデックス */
+  /** Index within a burst */
   val burstIndex = Output(UInt(8.W))
 
-  /// エラーだった
+  /// An error occurred
   val isError = Bool()
 
-  /** 対応するタグ */
+  /** Corresponding tag */
   val tag = Output(new Tag)
 }
 
@@ -57,16 +57,16 @@ class MemoryWriteRequestData(implicit params: Parameters) extends Bundle {
 
 class MemoryWriteResponse(implicit params: Parameters) extends Bundle {
 
-  /** 値 */
+  /** Value */
   val value = Output(UInt(64.W))
 
-  /** バーストの場合のインデックス */
+  /** Index within a burst */
   val burstIndex = Output(UInt(8.W))
 
-  /// エラーだった
+  /// An error occurred
   val isError = Bool()
 
-  /** 対応するタグ */
+  /** Corresponding tag */
   val tag = Output(new Tag)
 }
 

@@ -7,16 +7,16 @@ import chisel3._
 
 class DataMemoryBufferEntry(implicit params: Parameters) extends Bundle {
 
-  /** アドレス値 */
+  /** Address value */
   val address = UInt(64.W)
 
-  /** 命令を識別するためのタグ(Destination Tag) */
+  /** Tag identifying the instruction (Destination Tag) */
   val tag = new Tag
 
-  /** ストアデータ */
+  /** Store data */
   val data = UInt(64.W)
 
-  /** メモリアクセスの情報 */
+  /** Memory access information */
   val operation = LoadStoreOperation()
   val operationWidth = LoadStoreWidth()
 }

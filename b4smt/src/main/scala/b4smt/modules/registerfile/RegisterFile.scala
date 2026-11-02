@@ -7,19 +7,19 @@ import chisel3._
 import chisel3.experimental.prefix
 import chisel3.util._
 
-/** レジスタファイル
+/** Register file
   *
   * @param params
-  *   パラメータ
+  *   Parameters
   */
 class RegisterFile(implicit params: Parameters) extends Module {
   val io = IO(new Bundle {
 
-    /** デコーダへ */
+    /** To the decoder */
     val decoders =
       Flipped(Vec(params.decoderPerThread, new Decoder2RegisterFile))
 
-    /** リオーダバッファ */
+    /** Reorder buffer */
     val reorderBuffer = Flipped(
       Vec(
         params.maxRegisterFileCommitCount,
@@ -32,7 +32,7 @@ class RegisterFile(implicit params: Parameters) extends Module {
     val values = if (params.debug) Some(Output(Vec(32, UInt(64.W)))) else None
   })
 
-  /** レジスタx1~x31 tpのみthreadIdで初期化
+  /** Registers x1~x31; only tp is initialized with threadId
     */
 //  val registers = RegInit(VecInit(Seq.fill(32)(-1.S(64.W).asUInt)))
   val registers = Reg(Vec(32, UInt(64.W)))
@@ -47,9 +47,9 @@ class RegisterFile(implicit params: Parameters) extends Module {
     }
   }
 
-  // それぞれのデコーダへの信号
+  // Signals to each decoder
   for (dec <- io.decoders) {
-    // ソースレジスタが0ならば0それ以外ならばレジスタから
+    // Use 0 if the source register is 0; otherwise read from the register
     dec.values zip dec.sourceRegisters foreach { case (v, s) =>
       v := registers(s.inner)
     }
@@ -57,7 +57,7 @@ class RegisterFile(implicit params: Parameters) extends Module {
 
   registers(0) := 0.U
 
-  // デバッグ用信号
+  // Debug signals
   if (params.debug) {
     for (i <- 0 until 32)
       io.values.get(i) := registers(i)

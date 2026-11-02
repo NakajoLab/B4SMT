@@ -30,10 +30,10 @@ object Debug {
   }
 }
 
-/** リオーダバッファ
+/** Reorder buffer
   *
   * @param params
-  *   パラメータ
+  *   Parameters
   */
 class ReorderBuffer(implicit params: Parameters) extends Module {
   private val tagWidth = params.tagWidth
@@ -112,7 +112,7 @@ class ReorderBuffer(implicit params: Parameters) extends Module {
 
   private val previousDecoderMap =
     Seq.fill(params.decoderPerThread - 1)(WireDefault(DecoderMap.default))
-  // レジスタファイルへの書き込み
+  // Writes to the register file
   io.isError := false.B
   private var lastValid = true.B
   for (lsq <- io.loadStoreQueue) {
@@ -167,7 +167,7 @@ class ReorderBuffer(implicit params: Parameters) extends Module {
     },
   )
 
-  // デコーダからの読み取りと書き込み
+  // Reads and writes from the decoder
   private var insertIndex = head
   private var lastReady = true.B
   for (i <- 0 until params.decoderPerThread) {
@@ -241,8 +241,8 @@ class ReorderBuffer(implicit params: Parameters) extends Module {
         }
       }
 
-      // 次のループで使用するinserIndexとlastReadyを変える
-      // わざと:=ではなく=を利用している
+      // Update inserIndex and lastReady for the next loop iteration
+      // Intentionally use = rather than :=
       insertIndex =
         Mux(decoder.valid && decoder.ready, insertIndex + 1.U, insertIndex)
       lastReady = decoder.ready
@@ -254,7 +254,7 @@ class ReorderBuffer(implicit params: Parameters) extends Module {
   io.isEmpty := head === tail
   io.full := head + 1.U === tail
 
-  // 出力の読み込み
+  // Read outputs
   private val output = io.collectedOutputs.outputs
   for (o <- output) {
     when(o.valid && (o.bits.tag.getThreadId === io.threadId)) {
@@ -268,7 +268,7 @@ class ReorderBuffer(implicit params: Parameters) extends Module {
   registerTagMap(0) := new RegisterTagMapContent()
     .Lit(_.valid -> false.B, _.tagId -> 0.U)
 
-  // デバッグ
+  // Debugging
   if (params.debug) {
     io.head.get := head
     io.tail.get := tail

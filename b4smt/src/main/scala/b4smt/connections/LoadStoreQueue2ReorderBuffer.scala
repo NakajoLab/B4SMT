@@ -5,7 +5,7 @@ import b4smt.utils.Tag
 import chisel3._
 import chisel3.util._
 
-/** LSQとリオーダバッファをつなぐ
+/** Connects the LSQ and reorder buffer
   */
 class LoadStoreQueue2ReorderBuffer(implicit params: Parameters) extends Bundle {
   val destinationTag = new Tag

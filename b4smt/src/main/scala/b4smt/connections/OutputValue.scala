@@ -6,12 +6,12 @@ import chisel3._
 
 class OutputValue(implicit params: Parameters) extends Bundle {
 
-  /** 値 */
+  /** Value */
   val value = Output(UInt(64.W))
 
-  /// エラーだった
+  /// An error occurred
   val isError = Bool()
 
-  /** 対応するタグ */
+  /** Corresponding tag */
   val tag = Output(new Tag)
 }

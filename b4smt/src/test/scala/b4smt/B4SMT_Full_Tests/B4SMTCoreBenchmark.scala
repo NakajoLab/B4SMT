@@ -7,7 +7,7 @@ import org.scalatest.tagobjects.Slow
 
 class B4SMTCoreBenchmark extends AnyFlatSpec with StandaloneTests {
 
-  // デバッグに時間がかかりすぎるのでパラメータを少し下げる。
+  // Reduce the parameters slightly because debugging takes too long.
   implicit val defaultParams: b4smt.Parameters = {
     Parameters(
       debug = true,

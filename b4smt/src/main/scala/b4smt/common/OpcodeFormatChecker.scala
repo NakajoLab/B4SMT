@@ -13,15 +13,15 @@ class OpcodeFormatChecker extends Module {
     val format = Output(OpcodeFormat())
   })
 
-  // RV32I対応
+  // RV32I support
   io.format := MuxLookup(io.opcode, OpcodeFormat.Unknown)(
     Seq(
       // I
       "b0000011".U -> OpcodeFormat.I, // load
       "b0001111".U -> OpcodeFormat.I, // fence
       "b1110011".U -> OpcodeFormat.I, // csr, ecall, ebreak
-      "b0010011".U -> OpcodeFormat.I, // 演算
-      "b0011011".U -> OpcodeFormat.I, // 演算(64I)
+      "b0010011".U -> OpcodeFormat.I, // Arithmetic
+      "b0011011".U -> OpcodeFormat.I, // Arithmetic (64I)
       "b1100111".U -> OpcodeFormat.I, // jalr
       // J
       "b1101111".U -> OpcodeFormat.J, // jal
@@ -29,12 +29,12 @@ class OpcodeFormatChecker extends Module {
       "b0110111".U -> OpcodeFormat.U, // lui
       "b0010111".U -> OpcodeFormat.U, // aupic
       // B
-      "b1100011".U -> OpcodeFormat.B, // 分岐
+      "b1100011".U -> OpcodeFormat.B, // Branch
       // S
       "b0100011".U -> OpcodeFormat.S, // store
       // R
-      "b0110011".U -> OpcodeFormat.R, // 演算
-      "b0111011".U -> OpcodeFormat.R, // 演算(64I)
+      "b0110011".U -> OpcodeFormat.R, // Arithmetic
+      "b0111011".U -> OpcodeFormat.R, // Arithmetic (64I)
     ),
   )
 }

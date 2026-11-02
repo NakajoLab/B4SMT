@@ -19,7 +19,8 @@ class Executor(implicit params: Parameters) extends Module {
 
   private val operation = io.reservationStation.bits.operation
 
-  /** リザベーションステーションから実行ユニットへデータを送信 op,fuctionによって命令を判断し，計算を実行
+  /** Send data from the reservation station to the execution unit; identify the
+    * instruction using op,fuction and perform the computation
     */
   io.reservationStation.ready := io.out.ready && io.fetch.ready
 

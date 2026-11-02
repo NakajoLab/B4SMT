@@ -9,7 +9,7 @@ import chisel3.simulator.scalatest.ChiselSim
 import chisel3.simulator.PeekPokeAPI
 import org.scalatest.flatspec.AnyFlatSpec
 
-/** デコーダをテストしやすくするためにラップしたもの
+/** Wrapper to make the decoder easier to test
   */
 class DecoderWrapper(implicit params: Parameters)
     extends Decoder
@@ -155,7 +155,7 @@ class DecoderWrapper(implicit params: Parameters)
   }
 }
 
-/** デコーダのテスト
+/** Decoder tests
   */
 class DecoderTest extends AnyFlatSpec with ChiselSim with SymbiYosysFormal {
 
@@ -163,7 +163,7 @@ class DecoderTest extends AnyFlatSpec with ChiselSim with SymbiYosysFormal {
   implicit val testParams: b4smt.Parameters =
     Parameters(threads = 1, decoderPerThread = 1)
 
-  // rs1 rs2 rdが正しくリオーダバッファに渡されているか
+  // Check whether rs1 rs2 rd are passed correctly to the reorder buffer
   it should "pass rs1 rs2 rd to reorder buffer" in {
     simulate(new DecoderWrapper) { c =>
       // add x1,x2,x3
@@ -176,7 +176,7 @@ class DecoderTest extends AnyFlatSpec with ChiselSim with SymbiYosysFormal {
     }
   }
 
-  // レジスタファイルから値を取得できているか
+  // Check whether values can be retrieved from the register file
   it should "get values from register file" in {
     simulate(new DecoderWrapper) { c =>
       // add x1,x2,x3
@@ -194,7 +194,7 @@ class DecoderTest extends AnyFlatSpec with ChiselSim with SymbiYosysFormal {
     }
   }
 
-  // stagをリオーダバッファから取得できているか
+  // Check whether stag can be retrieved from the reorder buffer
   it should "get source tags from reorder buffer" in {
     simulate(new DecoderWrapper) { c =>
       // add x1,x2,x3
@@ -218,7 +218,7 @@ class DecoderTest extends AnyFlatSpec with ChiselSim with SymbiYosysFormal {
     }
   }
 
-  // stagと値をリオーダバッファから取得できているか
+  // Check whether stag and values can be retrieved from the reorder buffer
   it should "get source tags and values from reorder buffer" in {
     simulate(new DecoderWrapper) { c =>
       // add x1,x2,x3
@@ -240,7 +240,7 @@ class DecoderTest extends AnyFlatSpec with ChiselSim with SymbiYosysFormal {
     }
   }
 
-  // sd命令を認識できる
+  // Recognize the sd instruction
   it should "understand sd" in {
     simulate(new DecoderWrapper) { c =>
       // sd x1,10(x2)
@@ -250,7 +250,7 @@ class DecoderTest extends AnyFlatSpec with ChiselSim with SymbiYosysFormal {
     }
   }
 
-  // I形式を認識できる
+  // Recognize the I format
   it should "understand I" in {
     simulate(new DecoderWrapper) { c =>
       // addi x1,x2,20
@@ -277,7 +277,7 @@ class DecoderTest extends AnyFlatSpec with ChiselSim with SymbiYosysFormal {
     }
   }
 
-  // ALUからの値を使える
+  // Use values from the ALU
   it should "do register bypass" in {
     simulate(
       new DecoderWrapper()(testParams.copy(threads = 1, decoderPerThread = 2)),
@@ -304,7 +304,7 @@ class DecoderTest extends AnyFlatSpec with ChiselSim with SymbiYosysFormal {
     }
   }
 
-  // imemがvalidのときRSとRBでvalidと表示されている
+  // RS and RB indicate valid when imem is valid
   it should "say the data is valid when imem is valid" in {
     simulate(new DecoderWrapper) { c =>
       // add x1,x2,x3
@@ -317,7 +317,7 @@ class DecoderTest extends AnyFlatSpec with ChiselSim with SymbiYosysFormal {
     }
   }
 
-  // imemがvalid=0のときRSとRBでvalid=0と表示されている
+  // RS and RB indicate valid=0 when imem has valid=0
   it should "say the data is invalid when imem invalid" in {
     simulate(new DecoderWrapper) { c =>
       c.initialize(0.U)
@@ -328,7 +328,7 @@ class DecoderTest extends AnyFlatSpec with ChiselSim with SymbiYosysFormal {
     }
   }
 
-  // U形式を認識 (edge case: "x0007b1b7".U)
+  // Recognize the U format (edge case: "x0007b1b7".U)
   it should "understand U format" in {
     simulate(new DecoderWrapper()(testParams)) { c =>
       // lui x3, 123

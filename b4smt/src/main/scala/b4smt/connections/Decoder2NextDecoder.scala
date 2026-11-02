@@ -4,10 +4,10 @@ import b4smt.Parameters
 import b4smt.utils.Tag
 import chisel3._
 
-/** デコーダ同士をつなぐ
+/** Connects decoders
   *
   * @param params
-  *   パラメータ
+  *   Parameters
   */
 class Decoder2NextDecoder(implicit params: Parameters) extends Bundle {
   val valid = Bool()

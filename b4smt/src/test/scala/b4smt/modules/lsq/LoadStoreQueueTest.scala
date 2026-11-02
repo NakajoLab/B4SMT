@@ -141,13 +141,13 @@ class LoadStoreQueueTest
     )
   }
 
-// TODO: もとに戻す
+// TODO: Restore this
 //  it should "load check" in {
 //    // runParallel = 1, maxRegisterFileCommitCount = 1
 //    simulate(new LoadStoreQueueWrapper) {
 //      c =>
 //        c.initialize()
-//        // 初期化
+//        // Initialization
 //        c.io.head.get.expect(0)
 //        c.io.tail.get.expect(0)
 //        c.io.decoders(0).ready.expect(true)
@@ -156,7 +156,7 @@ class LoadStoreQueueTest
 //        c.expectMemory(None)
 //        // c.expectMemory(Seq(None, None)) (if runParallel = 2)
 //
-//        // 値のセット
+//        // Set values
 //        c.setDecoder(values =
 //          Seq(
 //            Some(
@@ -182,7 +182,7 @@ class LoadStoreQueueTest
 //        c.expectMemory(None)
 //        c.clock.step(1)
 //
-//        // 値の確認
+//        // Check values
 //        c.expectMemory(values =
 //          Some(
 //            LSQ2Memory(
@@ -205,13 +205,13 @@ class LoadStoreQueueTest
 //    }
 //  }
 
-  // TODO: もとに戻す
+  // TODO: Restore this
 //  it should "store check" in {
 //    // runParallel = 1, maxRegisterFileCommitCount = 1
 //    simulate(new LoadStoreQueueWrapper) {
 //      c =>
 //        c.initialize()
-//        // 初期化
+//        // Initialization
 //        c.io.head.get.expect(0)
 //        c.io.tail.get.expect(0)
 //        c.io.decoders(0).ready.expect(true)
@@ -221,7 +221,7 @@ class LoadStoreQueueTest
 //        c.expectMemory(None)
 //        // c.expectMemory(Seq(None, None)) (if runParallel = 2)
 //
-//        // 値のセット
+//        // Set values
 //        c.setDecoder(values =
 //          Seq(
 //            Some(
@@ -258,7 +258,7 @@ class LoadStoreQueueTest
 //        c.expectMemory(None)
 //        c.clock.step()
 //
-//        // 値の確認
+//        // Check values
 //        c.expectMemory(values =
 //          Some(
 //            LSQ2Memory(
@@ -280,12 +280,12 @@ class LoadStoreQueueTest
 //    }
 //  }
 
-  // TODO: もとに戻す
+  // TODO: Restore this
 //  it should "2 Parallel load check" in {
 //    simulate(new LoadStoreQueueWrapper) {
 //      c =>
 //        c.initialize()
-//        // 初期化
+//        // Initialization
 //        c.io.head.get.expect(0)
 //        c.io.tail.get.expect(0)
 //        c.io.decoders(0).ready.expect(true)
@@ -294,7 +294,7 @@ class LoadStoreQueueTest
 //        c.io.memory.ready.poke(true)
 //        c.expectMemory(None)
 //
-//        // 値のセット
+//        // Set values
 //        c.setDecoder(values =
 //          Seq(
 //            Some(
@@ -344,7 +344,7 @@ class LoadStoreQueueTest
 //        )
 //        c.clock.step()
 //
-//        // 値の確認
+//        // Check values
 //        c.setOutputs()
 //        c.expectMemory(values =
 //          Some(
@@ -366,7 +366,7 @@ class LoadStoreQueueTest
 //    simulate(new LoadStoreQueueWrapper) {
 //      c =>
 //        c.initialize()
-//        // 初期化
+//        // Initialization
 //        c.io.head.get.expect(0)
 //        c.io.tail.get.expect(0)
 //        c.io.decoders(0).ready.expect(true)
@@ -375,7 +375,7 @@ class LoadStoreQueueTest
 //        c.io.memory.ready.poke(true)
 //        c.expectMemory(None)
 //
-//        // 値のセット
+//        // Set values
 //        c.setDecoder(values =
 //          Seq(
 //            Some(
@@ -433,7 +433,7 @@ class LoadStoreQueueTest
 //        )
 //        c.clock.step(1)
 //
-//        // 値の確認
+//        // Check values
 //        c.setOutputs()
 //        c.setReorderBuffer(
 //          valids = Seq(true, false),
@@ -471,7 +471,7 @@ class LoadStoreQueueTest
 //    simulate(new LoadStoreQueueWrapper) {
 //      c =>
 //        c.initialize()
-//        // 初期化
+//        // Initialization
 //        c.io.head.get.expect(0)
 //        c.io.tail.get.expect(0)
 //        c.io.decoders(0).ready.expect(true)
@@ -480,7 +480,7 @@ class LoadStoreQueueTest
 //        c.io.memory.ready.poke(true)
 //        c.expectMemory(None)
 //
-//        // 値のセット
+//        // Set values
 //        c.setDecoder(values =
 //          Seq(
 //            Some(
@@ -556,7 +556,7 @@ class LoadStoreQueueTest
 //        )
 //        c.clock.step()
 //
-//        // 値の確認
+//        // Check values
 //        c.setDecoder()
 //
 //        c.io.head.get.expect(3)
@@ -578,7 +578,7 @@ class LoadStoreQueueTest
 //            LSQfromALU(valid = true, destinationtag = 6, value = 456)
 //          ) // store data
 //        )
-//        // store命令を飛び越えてload命令を送出
+//        // Issue a load instruction ahead of a store instruction
 //        c.expectMemory(values =
 //          Some(
 //            LSQ2Memory(
@@ -613,8 +613,8 @@ class LoadStoreQueueTest
 //    }
 //  }
 //
-//  // ロードがストアを追い越さないようにチェック
-//  // ストアのアドレスが確定したいないときにOverlap=falseとしてしまっていたバグのチェック
+//  // Check that loads do not overtake stores
+//  // Check for the bug that set Overlap=false when the store address was not yet determined
 //  it should "wait load for the overlapping store" in {
 //    // runParallel = 1, maxRegisterFileCommitCount = 1
 //    simulate(
@@ -623,7 +623,7 @@ class LoadStoreQueueTest
 //      )
 //    ) { c =>
 //      c.initialize()
-//      // 初期化
+//      // Initialization
 //      c.io.head.get.expect(0)
 //      c.io.tail.get.expect(0)
 //      c.io.decoders(0).ready.expect(true)
@@ -632,7 +632,7 @@ class LoadStoreQueueTest
 //      c.expectMemory(None)
 //      // c.expectMemory(Seq(None, None)) (if runParallel = 2)
 //
-//      // ストア命令を追加
+//      // Add a store instruction
 //      c.setDecoder(values =
 //        Seq(
 //          Some(
@@ -647,7 +647,7 @@ class LoadStoreQueueTest
 //      )
 //
 //      c.clock.step()
-//      // ロード命令の追加
+//      // Add a load instruction
 //      c.setDecoder(values =
 //        Seq(
 //          Some(
@@ -669,7 +669,7 @@ class LoadStoreQueueTest
 //      c.io.tail.get.expect(0)
 //
 //      c.clock.step(2)
-//      // ロード命令のアドレス値を先に指定
+//      // Specify the load instruction's address first
 //      c.setOutputs(values =
 //        Some(
 //          LSQfromALU(
@@ -684,11 +684,11 @@ class LoadStoreQueueTest
 //
 //      c.clock.step()
 //      c.initialize()
-//      // まだ出力はない
+//      // No output yet
 //      c.expectMemory(None)
 //
 //      c.clock.step()
-//      // ストア命令の値確定
+//      // Determine the store instruction's values
 //      c.setOutputs(values =
 //        Some(
 //          LSQfromALU(
@@ -707,7 +707,7 @@ class LoadStoreQueueTest
 //
 //      c.clock.step()
 //      c.initialize()
-//      // ストア命令送出
+//      // Issue the store instruction
 //      c.expectMemory(values =
 //        Some(
 //          LSQ2Memory(
@@ -720,7 +720,7 @@ class LoadStoreQueueTest
 //      )
 //
 //      c.clock.step()
-//      // ロード命令送出
+//      // Issue the load instruction
 //      c.expectMemory(values =
 //        Some(
 //          LSQ2Memory(

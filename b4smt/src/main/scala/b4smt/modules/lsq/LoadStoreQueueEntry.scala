@@ -6,43 +6,43 @@ import b4smt.utils.operations.{LoadStoreOperation, LoadStoreWidth}
 import b4smt.utils.Tag
 import chisel3._
 
-/** LSQのエントリ
+/** LSQ entry
   *
   * @param params
-  *   パラメータ
+  *   Parameters
   */
 class LoadStoreQueueEntry(implicit params: Parameters) extends Bundle {
 
-  /** エントリが有効である */
+  /** The entry is valid */
   val valid = Bool()
 
-  /** 命令がリオーダバッファでコミットされたか */
+  /** Whether the instruction has been committed in the reorder buffer */
   val readyReorderSign = Bool()
 
-  /** メモリアクセスの情報 */
+  /** Memory access information */
   val operation = LoadStoreOperation()
   val operationWidth = LoadStoreWidth()
 
-  /** 命令自体を識別するためのタグ(Destination Tag) */
+  /** Tag identifying the instruction itself (Destination Tag) */
   val destinationTag = new Tag
 
-  /** アドレス値 */
+  /** Address value */
   val address = UInt(64.W)
 
   val addressOffset = SInt(12.W)
 
-  /** アドレス値が有効である */
+  /** The address value is valid */
   val addressValid = Bool()
 
   val addressTag = new Tag
 
-  /** ストアに使用するデータが格納されるタグ(SourceRegister2 Tag) */
+  /** Tag holding the data to store (SourceRegister2 Tag) */
   val storeDataTag = new Tag
 
-  /** ストアデータ */
+  /** Store data */
   val storeData = UInt(64.W)
 
-  /** ストアデータが有効である */
+  /** The store data is valid */
   val storeDataValid = Bool()
 }
 

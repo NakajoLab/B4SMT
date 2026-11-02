@@ -45,7 +45,7 @@ class ExecutorWrapper(implicit params: Parameters)
     reservationstation.bits.destinationTag.poke(Tag(0, values.destinationTag))
     reservationstation.bits.wasCompressed.poke(values.wasCompressed)
 
-    /** マイナスの表現ができていない */
+    /** Negative values are not represented correctly */
 
     reservationstation.bits.value1.poke(values.value1.S)
     reservationstation.bits.value2.poke(values.value2.S)
@@ -294,7 +294,7 @@ class ExecutorTest extends AnyFlatSpec with ChiselSim with GivenWhenThen {
       //      c.expectFetch(values = FetchValue(valid = true, programCounter = 20))
       //
       //      When("beq -- NG")
-      //      // rs1 = 40, rs = 30, offset = 200 (jump先： PC + (offset*2))
+      //      // rs1 = 40, rs = 30, offset = 200 (jump target: PC + (offset*2))
       //      c.setALU(values =
       //        ReservationValue(
       //          destinationTag = 10,
@@ -309,7 +309,7 @@ class ExecutorTest extends AnyFlatSpec with ChiselSim with GivenWhenThen {
       //      c.expectFetch(values = FetchValue(valid = true, programCounter = 4))
       //
       //      When("beq -- OK")
-      //      // rs1 = 40, rs = 40, offset = 200 (jump先： PC + (offset*2))
+      //      // rs1 = 40, rs = 40, offset = 200 (jump target: PC + (offset*2))
       //      c.setALU(values =
       //        ReservationValue(
       //          destinationTag = 10,
@@ -324,7 +324,7 @@ class ExecutorTest extends AnyFlatSpec with ChiselSim with GivenWhenThen {
       //      c.expectFetch(values = FetchValue(valid = true, programCounter = 400))
       //
       //      When("bne -- NG")
-      //      // rs1 = 40, rs = 40, offset = 200 (jump先： PC + (offset*2))
+      //      // rs1 = 40, rs = 40, offset = 200 (jump target: PC + (offset*2))
       //      c.setALU(values =
       //        ReservationValue(
       //          destinationTag = 10,
@@ -340,7 +340,7 @@ class ExecutorTest extends AnyFlatSpec with ChiselSim with GivenWhenThen {
       //      c.expectFetch(values = FetchValue(valid = true, programCounter = 4))
       //
       //      When("bne -- OK")
-      //      // rs1 = 40, rs = 30, offset = 200 (jump先： PC + (offset*2))
+      //      // rs1 = 40, rs = 30, offset = 200 (jump target: PC + (offset*2))
       //      c.setALU(values =
       //        ReservationValue(
       //          destinationTag = 10,
@@ -356,7 +356,7 @@ class ExecutorTest extends AnyFlatSpec with ChiselSim with GivenWhenThen {
       //      c.expectFetch(values = FetchValue(valid = true, programCounter = 400))
       //
       //      When("blt -- NG")
-      //      // rs1 = 40, rs = 30, offset = 200 (jump先： PC + (offset*2))
+      //      // rs1 = 40, rs = 30, offset = 200 (jump target: PC + (offset*2))
       //      c.setALU(values =
       //        ReservationValue(
       //          destinationTag = 10,
@@ -372,7 +372,7 @@ class ExecutorTest extends AnyFlatSpec with ChiselSim with GivenWhenThen {
       //      c.expectFetch(values = FetchValue(valid = true, programCounter = 4))
       //
       //      When("blt -- OK")
-      //      // rs1 = 20, rs = 30, offset = 200 (jump先： PC + (offset*2))
+      //      // rs1 = 20, rs = 30, offset = 200 (jump target: PC + (offset*2))
       //      c.setALU(values =
       //        ReservationValue(
       //          destinationTag = 10,
@@ -388,7 +388,7 @@ class ExecutorTest extends AnyFlatSpec with ChiselSim with GivenWhenThen {
       //      c.expectFetch(values = FetchValue(valid = true, programCounter = 400))
       //
       //      When("bge -- NG")
-      //      // rs1 = 20, rs = 30, offset = 200 (jump先： PC + (offset*2))
+      //      // rs1 = 20, rs = 30, offset = 200 (jump target: PC + (offset*2))
       //      c.setALU(values =
       //        ReservationValue(
       //          destinationTag = 10,
@@ -404,7 +404,7 @@ class ExecutorTest extends AnyFlatSpec with ChiselSim with GivenWhenThen {
       //      c.expectFetch(values = FetchValue(valid = true, programCounter = 4))
       //
       //      When("bge -- OK")
-      //      // rs1 = 40, rs = 30, offset = 200 (jump先： PC + (offset*2))
+      //      // rs1 = 40, rs = 30, offset = 200 (jump target: PC + (offset*2))
       //      c.setALU(values =
       //        ReservationValue(
       //          destinationTag = 10,
@@ -420,7 +420,7 @@ class ExecutorTest extends AnyFlatSpec with ChiselSim with GivenWhenThen {
       //      c.expectFetch(values = FetchValue(valid = true, programCounter = 400))
       //
       //      When("bltu -- NG")
-      //      // rs1 = 40, rs = 30, offset = 200 (jump先： PC + (offset*2))
+      //      // rs1 = 40, rs = 30, offset = 200 (jump target: PC + (offset*2))
       //      c.setALU(values =
       //        ReservationValue(
       //          destinationTag = 10,
@@ -436,7 +436,7 @@ class ExecutorTest extends AnyFlatSpec with ChiselSim with GivenWhenThen {
       //      c.expectFetch(values = FetchValue(valid = true, programCounter = 4))
       //
       //      When("bltu -- OK")
-      //      // rs1 = 20, rs = 30, offset = 200 (jump先： PC + (offset*2))
+      //      // rs1 = 20, rs = 30, offset = 200 (jump target: PC + (offset*2))
       //      c.setALU(values =
       //        ReservationValue(
       //          destinationTag = 10,
@@ -452,7 +452,7 @@ class ExecutorTest extends AnyFlatSpec with ChiselSim with GivenWhenThen {
       //      c.expectFetch(values = FetchValue(valid = true, programCounter = 400))
       //
       //      When("bgeu -- OK")
-      //      // rs1 = 20, rs = 30, offset = 200 (jump先： PC + (offset*2))
+      //      // rs1 = 20, rs = 30, offset = 200 (jump target: PC + (offset*2))
       //      c.setALU(values =
       //        ReservationValue(
       //          destinationTag = 10,
@@ -468,7 +468,7 @@ class ExecutorTest extends AnyFlatSpec with ChiselSim with GivenWhenThen {
       //      c.expectFetch(values = FetchValue(valid = true, programCounter = 4))
       //
       //      When("bgeu -- OK")
-      //      // rs1 = 40, rs = 30, offset = 200 (jump先： PC + (offset*2))
+      //      // rs1 = 40, rs = 30, offset = 200 (jump target: PC + (offset*2))
       //      c.setALU(values =
       //        ReservationValue(
       //          destinationTag = 10,
@@ -677,7 +677,7 @@ class ExecutorTest extends AnyFlatSpec with ChiselSim with GivenWhenThen {
       //      c.expectFetch(values = FetchValue(valid = false, programCounter = 0))
       //
       //      When("addw")
-      //      // rs1 = 0xFFFF_FFFF, rs2 = 10 オーバーフローして 9
+      //      // rs1 = 0xFFFF_FFFF, rs2 = 10 overflows to 9
       //      c.setALU(values =
       //        ReservationValue(
       //          destinationTag = 10,
@@ -691,7 +691,7 @@ class ExecutorTest extends AnyFlatSpec with ChiselSim with GivenWhenThen {
       //      c.expectFetch(values = FetchValue(valid = false, programCounter = 0))
       //
       //      When("addw -- negative")
-      //      // rs1 = 5, rs2 = -10 オーバーフローして -5
+      //      // rs1 = 5, rs2 = -10 overflows to -5
       //      c.setALU(values =
       //        ReservationValue(
       //          destinationTag = 10,

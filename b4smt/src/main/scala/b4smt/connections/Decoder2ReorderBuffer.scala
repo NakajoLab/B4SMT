@@ -5,17 +5,17 @@ import b4smt.utils.{ForPext, RVRegister, Tag}
 import chisel3._
 import chisel3.util._
 
-/** デコーダとリオーダバッファをつなぐ
+/** Connects the decoder and reorder buffer
   *
   * @param params
-  *   パラメータ
+  *   Parameters
   */
 class Decoder2ReorderBuffer(implicit params: Parameters) extends Bundle {
   val sources = Vec(3, new SourceRegister())
   val destination = new DestinationRegister()
   val programCounter = Output(UInt(64.W))
   val isDecodeError = Output(Bool())
-  // 全体をDecoupledにするとsource1などがすべてOutputにってしまって、間違っているのでこちらに書く
+  // Making the entire bundle Decoupled would incorrectly make source1 and the other fields all Output, so define it here
   val ready = Input(Bool())
   val valid = Output(Bool())
 

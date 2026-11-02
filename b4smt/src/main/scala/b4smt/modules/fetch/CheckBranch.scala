@@ -5,17 +5,17 @@ import chisel3.util._
 import _root_.circt.stage.ChiselStage
 import b4smt.riscv.Instructions.{CType, IType, SYSTEMType, ZIFENCEIType}
 
-/** フェッチモジュール用命令の種類のチェック */
+/** Check instruction types for the fetch module */
 class CheckBranch extends Module {
   val io = IO(new Bundle {
 
-    /** 命令 */
+    /** Instruction */
     val instruction = Input(UInt(32.W))
 
-    /** 分岐の種類 */
+    /** Branch type */
     val branchType = Output(BranchType())
 
-    /** 分岐後の命令のオフセット */
+    /** Offset of the instruction after the branch */
     val offset = Output(SInt(21.W))
   })
 
@@ -64,7 +64,7 @@ class CheckBranch extends Module {
 
   val defaultOffset =
     Mux(instruction(1, 0) === "b11".U, 4.S, 2.S)
-  // 分岐のオフセット
+  // Branch offset
   io.offset := MuxCase(
     defaultOffset,
     branchTypeAndOffset.map(a => a._1 -> a._2._2),
@@ -72,7 +72,7 @@ class CheckBranch extends Module {
 
   val defaultNext =
     Mux(instruction(1, 0) === "b11".U, BranchType.Next4, BranchType.Next2)
-  // 分岐の種類の抽出
+  // Extract the branch type
   io.branchType := MuxCase(
     defaultNext,
     branchTypeAndOffset.map(a => a._1 -> a._2._1),
