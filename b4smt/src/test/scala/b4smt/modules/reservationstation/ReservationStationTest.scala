@@ -3,11 +3,13 @@ package b4smt.modules.reservationstation
 import b4smt.Parameters
 import b4smt.utils.{ExecutorValue, Tag}
 import chisel3._
-import chiseltest._
+import chisel3.simulator.scalatest.ChiselSim
+import chisel3.simulator.PeekPokeAPI
 import org.scalatest.flatspec.AnyFlatSpec
 
 class ReservationStationWrapper(implicit params: Parameters)
-    extends ReservationStation {
+    extends ReservationStation
+    with PeekPokeAPI {
   def initialize(): Unit = {
     setExecutorReady(true)
     setDecoderInput(None)
@@ -69,8 +71,8 @@ class ReservationStationWrapper(implicit params: Parameters)
   }
 }
 
-class ReservationStationTest extends AnyFlatSpec with ChiselScalatestTester {
-  override def autoResetEnabled: Boolean = true
+class ReservationStationTest extends AnyFlatSpec with ChiselSim {
+  override def configMap = super.configMap + ("emitVcd" -> "1")
 
   behavior of "Reservation Station"
   implicit val params: b4smt.Parameters =
@@ -78,72 +80,69 @@ class ReservationStationTest extends AnyFlatSpec with ChiselScalatestTester {
 
   // エントリを追加してALUから値をうけとり、実行ユニットに回す
   it should "store a entry and release it" in {
-    test(new ReservationStationWrapper())
-      .withAnnotations(Seq(WriteVcdAnnotation)) { c =>
-        c.initialize()
-        c.setDecoderInput(programCounter = Some(1))
-        c.clock.step()
-        c.setDecoderInput(None)
-        c.setExecutors(Some(ExecutorValue(destinationTag = 0, value = 0)))
+    simulate(new ReservationStationWrapper()) { c =>
+      c.initialize()
+      c.setDecoderInput(programCounter = Some(1))
+      c.clock.step()
+      c.setDecoderInput(None)
+      c.setExecutors(Some(ExecutorValue(destinationTag = 0, value = 0)))
 //        c.expectExecutor(None) // Check this
-        c.clock.step()
+      c.clock.step()
 //        c.expectExecutor(Some(1)) // TODO
-        c.clock.step()
-        c.expectExecutor(None)
-        c.clock.step()
-      }
+      c.clock.step()
+      c.expectExecutor(None)
+      c.clock.step()
+    }
   }
 
   // 空きがないときready=0になる
   it should "make decoder become not ready" in {
-    test(new ReservationStationWrapper())
-      .withAnnotations(Seq(WriteVcdAnnotation)) { c =>
-        c.initialize()
-        c.setExecutorReady(false)
-        var loop = 0
-        while (loop < 100 && c.io.decoder(0).ready.peek().litToBoolean) {
-          loop += 1
-          c.setDecoderInput(
-            programCounter = Some(1),
-            value1 = Some(2),
-            value2 = Some(3),
-          )
-          c.clock.step()
-        }
-        c.io.decoder(0).ready.expect(false)
-
+    simulate(new ReservationStationWrapper()) { c =>
+      c.initialize()
+      c.setExecutorReady(false)
+      var loop = 0
+      while (loop < 100 && c.io.decoder(0).ready.peek().litToBoolean) {
+        loop += 1
+        c.setDecoderInput(
+          programCounter = Some(1),
+          value1 = Some(2),
+          value2 = Some(3),
+        )
         c.clock.step()
       }
+      c.io.decoder(0).ready.expect(false)
+
+      c.clock.step()
+    }
   }
 
   // 空きがなくなるまで命令を入れて
   it should "fill and flush instructions" in {
-    test(new ReservationStationWrapper())
-      .withAnnotations(Seq(WriteVcdAnnotation)) { c =>
-        c.initialize()
-        c.setExecutorReady(false)
-        var loop = 0
-        while (loop < 100 && c.io.decoder(0).ready.peekBoolean()) {
-          loop += 1
-          c.setDecoderInput(
-            programCounter = Some(1),
-            value1 = Some(2),
-            value2 = Some(3),
-          )
-          c.clock.step()
-        }
-        c.io.decoder(0).ready.expect(false)
-
+    simulate(new ReservationStationWrapper()) { c =>
+      c.initialize()
+      c.setExecutorReady(false)
+      var loop = 0
+      while (loop < 100 && c.io.decoder(0).ready.peekBoolean()) {
+        loop += 1
+        c.setDecoderInput(
+          programCounter = Some(1),
+          value1 = Some(2),
+          value2 = Some(3),
+        )
         c.clock.step()
-
-        c.setExecutorReady(true)
-        c.setDecoderInput(None)
-        loop = 0
-        while (loop < 100 && c.io.issue(0).valid.peekBoolean()) {
-          loop += 1
-          c.clock.step()
-        }
-        c.io.issue(0).valid.expect(false)
       }
+      c.io.decoder(0).ready.expect(false)
+
+      c.clock.step()
+
+      c.setExecutorReady(true)
+      c.setDecoderInput(None)
+      loop = 0
+      while (loop < 100 && c.io.issue(0).valid.peekBoolean()) {
+        loop += 1
+        c.clock.step()
+      }
+      c.io.issue(0).valid.expect(false)
+    }
   }
 }

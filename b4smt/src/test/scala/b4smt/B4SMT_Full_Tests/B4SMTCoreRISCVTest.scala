@@ -3,36 +3,34 @@ package b4smt.B4SMT_Full_Tests
 import b4smt.Parameters
 import b4smt.utils.B4SMTCoreWithMemory
 import chisel3._
-import chiseltest._
+import chisel3.simulator.scalatest.ChiselSim
 import org.scalatest.Tag
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.tagobjects.Slow
 
 class B4SMTCoreRISCVTestWrapper()(implicit params: Parameters)
     extends B4SMTCoreWithMemory() {
-  def riscv_test(): Unit = {
-    while (this.io.registerFileContents.get(0)(17).peekInt() != 93) {
-      this.clock.step()
-    }
-    val reg3_value = this.io.registerFileContents.get(0)(3).peekInt()
+  def riscv_test(timeout: Int): Unit = {
+    checkForRegister(17, 93, timeout)
+    val reg3_value = this.io.registerFileContents.get(0)(3).peek().litValue
     val fail_num = reg3_value >> 1
     val error_message =
       s"failed on test $fail_num\n" + this.io.registerFileContents
         .get(0)
-        .map(_.peekInt())
+        .map(_.peek().litValue)
         .zipWithIndex
         .map { case (n, i) => f"x$i%-2d = ($n%016X) $n" }
         .reduce(_ + "\n" + _)
-    chiseltest
-      .testableData(this.io.registerFileContents.get(0)(3))
+    this.io.registerFileContents
+      .get(0)(3)
       .expect(1.U, error_message)
   }
 }
 
 abstract class RiscvTest(val testPrefix: String)
     extends AnyFlatSpec
-    with ChiselScalatestTester {
-  override def autoResetEnabled: Boolean = true
+    with ChiselSim {
+  override def configMap = super.configMap + ("emitVcd" -> "1")
 
   var params = Parameters(
     debug = true,
@@ -45,25 +43,22 @@ abstract class RiscvTest(val testPrefix: String)
 //    enablePExt = true
   )
 
-  // ChiselTest compatibility runs on Verilator; Icarus and FST are unavailable.
-  val writeWaveform = WriteVcdAnnotation
+  // Preserve waveform tracing through ChiselSim's native emitVcd configuration.
 
   object RISCVTest extends Tag("RISCVTest")
 
   def riscv_test(test_name: String, timeout: Int = 4000): Unit = {
 
     it should s"run $test_name" taggedAs (RISCVTest, Slow) in {
-      test( // FIXME fromFile8bit
+      simulate( // FIXME fromFile8bit
         new B4SMTCoreRISCVTestWrapper(
         )(this.params),
-      )
-        .withAnnotations(Seq(this.writeWaveform)) { c =>
-          c.clock.setTimeout(timeout)
-          c.initialize(
-            s"programs/riscv-tests/share/riscv-tests/isa/rv64u$testPrefix-p-$test_name",
-          )
-          c.riscv_test()
-        }
+      ) { c =>
+        c.initialize(
+          s"programs/riscv-tests/share/riscv-tests/isa/rv64u$testPrefix-p-$test_name",
+        )
+        c.riscv_test(timeout)
+      }
     }
   }
 }

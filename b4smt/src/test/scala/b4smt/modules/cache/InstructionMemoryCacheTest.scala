@@ -2,12 +2,14 @@ package b4smt.modules.cache
 
 import b4smt.Parameters
 import chisel3._
-import chiseltest._
+import chisel3.simulator.scalatest.ChiselSim
+import chisel3.simulator.PeekPokeAPI
 import org.scalatest.flatspec.AnyFlatSpec
 
 /** メモリをキャッシュを含んだラッパー */
 class InstructionMemoryCacheWrapper()(implicit params: Parameters)
-    extends InstructionMemoryCache {
+    extends InstructionMemoryCache
+    with PeekPokeAPI {
   def initialize() = {}
 
   def responseStep(data: UInt) = {
@@ -37,65 +39,61 @@ class InstructionMemoryCacheWrapper()(implicit params: Parameters)
   }
 }
 
-class InstructionMemoryCacheTest
-    extends AnyFlatSpec
-    with ChiselScalatestTester {
-  override def autoResetEnabled: Boolean = true
+class InstructionMemoryCacheTest extends AnyFlatSpec with ChiselSim {
+  override def configMap = super.configMap + ("emitVcd" -> "1")
 
   behavior of "Instruction Cache"
   implicit val defaultParams: Parameters = Parameters(fetchWidth = 2)
 
   it should "elaborate" in {
-    test(new InstructionMemoryCacheWrapper) { c => }
+    simulate(new InstructionMemoryCacheWrapper) { c => }
   }
 
   it should "access memory" in {
-    test(new InstructionMemoryCacheWrapper)
-      .withAnnotations(Seq(WriteVcdAnnotation)) { c =>
-        c.setFetch("x2222222200000000".U)
-        c.clock.step()
-        c.expectRequest("x2222222200000000".U)
-        c.io.memory.request.ready.poke(true)
-        c.clock.step()
-      }
+    simulate(new InstructionMemoryCacheWrapper) { c =>
+      c.setFetch("x2222222200000000".U)
+      c.clock.step()
+      c.expectRequest("x2222222200000000".U)
+      c.io.memory.request.ready.poke(true)
+      c.clock.step()
+    }
   }
 
   // TODO FIX
   ignore should "load memory" in {
-    test(new InstructionMemoryCacheWrapper)
-      .withAnnotations(Seq(WriteVcdAnnotation)) { c =>
-        c.setFetch("x2222222200000000".U)
-        c.clock.step()
-        c.expectRequest("x2222222200000000".U)
-        c.io.memory.request.ready.poke(true)
-        c.clock.step()
+    simulate(new InstructionMemoryCacheWrapper) { c =>
+      c.setFetch("x2222222200000000".U)
+      c.clock.step()
+      c.expectRequest("x2222222200000000".U)
+      c.io.memory.request.ready.poke(true)
+      c.clock.step()
 
-        c.responseStep("x1010101000000000".U) // 00
-        c.clock.step(2)
-        c.responseStep("x2020202010101010".U) // 10
-        c.clock.step(2)
-        c.responseStep("x3030303020202020".U) // 20
-        c.clock.step(2)
-        c.responseStep("x4040404030303030".U) // 30
-        c.clock.step(2)
-        c.responseStep("x5050505040404040".U) // 40
-        c.clock.step(2)
-        c.responseStep("x6060606050505050".U) // 50
-        c.clock.step(2)
-        c.responseStep("x7070707060606060".U) // 60
-        c.clock.step(2)
-        c.responseStep("x8080808070707070".U) // 70
-        c.clock.step(2)
+      c.responseStep("x1010101000000000".U) // 00
+      c.clock.step(2)
+      c.responseStep("x2020202010101010".U) // 10
+      c.clock.step(2)
+      c.responseStep("x3030303020202020".U) // 20
+      c.clock.step(2)
+      c.responseStep("x4040404030303030".U) // 30
+      c.clock.step(2)
+      c.responseStep("x5050505040404040".U) // 40
+      c.clock.step(2)
+      c.responseStep("x6060606050505050".U) // 50
+      c.clock.step(2)
+      c.responseStep("x7070707060606060".U) // 60
+      c.clock.step(2)
+      c.responseStep("x8080808070707070".U) // 70
+      c.clock.step(2)
 
-        c.expectData("x20202020101010101010101000000000".U)
+      c.expectData("x20202020101010101010101000000000".U)
 
-        c.io.fetch.response.ready.poke(true)
-        c.clock.step()
-        //   c.setFetch("x2222222200000020".U)
-        //   c.clock.step()
-        //   c.expectData("x40404040303030303030303020202020".U)
-        //   c.io.fetch.response.ready.poke(true)
-        //   c.clock.step()
-      }
+      c.io.fetch.response.ready.poke(true)
+      c.clock.step()
+      //   c.setFetch("x2222222200000020".U)
+      //   c.clock.step()
+      //   c.expectData("x40404040303030303030303020202020".U)
+      //   c.io.fetch.response.ready.poke(true)
+      //   c.clock.step()
+    }
   }
 }

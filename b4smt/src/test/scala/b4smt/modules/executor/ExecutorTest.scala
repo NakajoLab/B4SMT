@@ -4,7 +4,8 @@ import b4smt.Parameters
 import b4smt.connections.BranchOutput
 import b4smt.utils.operations.ALUOperation
 import b4smt.utils.{ExecutorValue, FetchValue, ReservationValue, Tag}
-import chiseltest._
+import chisel3.simulator.scalatest.ChiselSim
+import chisel3.simulator.PeekPokeAPI
 import org.scalatest.flatspec.AnyFlatSpec
 import chisel3._
 import chisel3.util.Irrevocable
@@ -12,7 +13,9 @@ import org.scalatest.GivenWhenThen
 
 import scala.math.pow
 
-class ExecutorWrapper(implicit params: Parameters) extends Module {
+class ExecutorWrapper(implicit params: Parameters)
+    extends Module
+    with PeekPokeAPI {
   val io = IO(new Bundle {
     val reservationStation = Flipped(new ReservationStation2ExecutorForTest)
     val out = new ExecutionRegisterBypassForTest
@@ -55,7 +58,7 @@ class ExecutorWrapper(implicit params: Parameters) extends Module {
     message: String = "",
   ): Unit = {
     val out = this.io.out
-    chiseltest.testableData(out.valid).expect(valid.B, message)
+    out.valid.expect(valid.B, message)
     if (values.isDefined) {
       out.destinationTag.expect(Tag(0, values.get.destinationTag), message)
       out.value.expect(values.get.value.S, message)
@@ -78,11 +81,7 @@ class ExecutorWrapper(implicit params: Parameters) extends Module {
   }
 }
 
-class ExecutorTest
-    extends AnyFlatSpec
-    with ChiselScalatestTester
-    with GivenWhenThen {
-  override def autoResetEnabled: Boolean = true
+class ExecutorTest extends AnyFlatSpec with ChiselSim with GivenWhenThen {
 
   behavior of "Executor"
 
@@ -90,7 +89,7 @@ class ExecutorTest
     Parameters(decoderPerThread = 1)
 
   it should "be compatible with I extension" in {
-    test(new ExecutorWrapper) { c =>
+    simulate(new ExecutorWrapper) { c =>
       c.io.fetch.ready.poke(true)
       c.io.out.ready.poke(true)
 
@@ -1087,7 +1086,7 @@ class ExecutorTest
       //  }
       //
       //  it should "be compatible with C extension" in {
-      //    test(new ExecutorWrapper()) { c =>
+      //    simulate(new ExecutorWrapper()) { c =>
       //      c.io.fetch.ready.poke(true)
       //      c.io.out.ready.poke(true)
       //

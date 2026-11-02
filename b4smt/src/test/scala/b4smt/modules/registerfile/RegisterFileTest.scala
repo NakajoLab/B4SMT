@@ -2,12 +2,11 @@ package b4smt.modules.registerfile
 
 import b4smt.Parameters
 import b4smt.utils.RVRegister.{AddRegConstructor, AddUIntRegConstructor}
-import chiseltest._
+import chisel3.simulator.scalatest.ChiselSim
 import org.scalatest.flatspec.AnyFlatSpec
 import chisel3._
 
-class RegisterFileTest extends AnyFlatSpec with ChiselScalatestTester {
-  override def autoResetEnabled: Boolean = true
+class RegisterFileTest extends AnyFlatSpec with ChiselSim {
 
   behavior of "register file"
 
@@ -19,7 +18,7 @@ class RegisterFileTest extends AnyFlatSpec with ChiselScalatestTester {
     )
 
   it should "save a value" in {
-    test(new RegisterFile) { c =>
+    simulate(new RegisterFile) { c =>
       c.io.reorderBuffer(0).valid.poke(true)
       c.io.reorderBuffer(0).bits.value.poke(123)
       c.io.reorderBuffer(0).bits.destinationRegister.poke(5.reg)
@@ -32,7 +31,7 @@ class RegisterFileTest extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   it should "have no op on 0" in {
-    test(new RegisterFile) { c =>
+    simulate(new RegisterFile) { c =>
       c.io.reorderBuffer(0).valid.poke(true)
       c.io.reorderBuffer(0).bits.value.poke(123)
       c.io.reorderBuffer(0).bits.destinationRegister.poke(0.reg)
@@ -45,7 +44,7 @@ class RegisterFileTest extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   it should "resolve multiple inputs and outputs" in {
-    test(
+    simulate(
       new RegisterFile()(detfaultParams.copy(maxRegisterFileCommitCount = 2)),
     ) { c =>
       c.io.reorderBuffer(0).valid.poke(true)
@@ -65,7 +64,7 @@ class RegisterFileTest extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   it should "resolve multiple inputs overlapping" in {
-    test(
+    simulate(
       new RegisterFile()(detfaultParams.copy(maxRegisterFileCommitCount = 2)),
     ) { c =>
       c.io.reorderBuffer(0).valid.poke(true)

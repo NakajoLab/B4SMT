@@ -5,10 +5,13 @@ import b4smt.common.OpcodeFormat
 import b4smt.common.OpcodeFormat._
 import b4smt.utils.Tag
 import chisel3._
-import chiseltest._
+import chisel3.simulator.scalatest.ChiselSim
+import chisel3.simulator.PeekPokeAPI
 import org.scalatest.flatspec.AnyFlatSpec
 
-class ValueSelectorWrapper(implicit params: Parameters) extends ValueSelector {
+class ValueSelectorWrapper(implicit params: Parameters)
+    extends ValueSelector
+    with PeekPokeAPI {
 
   /** 初期化
     *
@@ -52,19 +55,16 @@ class ValueSelectorWrapper(implicit params: Parameters) extends ValueSelector {
   }
 
   def expectValue(value: Option[Int]): Unit = {
-    chiseltest
-      .testableData(this.io.value.valid)
+    this.io.value.valid
       .expect(value.isDefined.B, "valueがありませんです")
     if (value.isDefined) {
-      chiseltest
-        .testableData(this.io.value.bits)
+      this.io.value.bits
         .expect(value.get.U, "valueの値が間違っています")
     }
   }
 }
 
-class ValueSelectorTest extends AnyFlatSpec with ChiselScalatestTester {
-  override def autoResetEnabled: Boolean = true
+class ValueSelectorTest extends AnyFlatSpec with ChiselSim {
 
   behavior of "ValueSelector1"
 
@@ -72,14 +72,14 @@ class ValueSelectorTest extends AnyFlatSpec with ChiselScalatestTester {
     Parameters(threads = 1, decoderPerThread = 1)
 
   it should "use the register file" in {
-    test(new ValueSelectorWrapper) { c =>
+    simulate(new ValueSelectorWrapper) { c =>
       c.initialize(registerFileValue = 5)
       c.expectValue(Some(5))
     }
   }
 
   it should "use the reorder buffer" in {
-    test(new ValueSelectorWrapper) { c =>
+    simulate(new ValueSelectorWrapper) { c =>
       c.initialize(
         sourceTag = Some(3),
         registerFileValue = 5,
@@ -90,31 +90,33 @@ class ValueSelectorTest extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   it should "use the alu bypass" in {
-    test(new ValueSelectorWrapper()(defaultParams.copy(decoderPerThread = 1))) {
-      c =>
-        c.initialize(
-          sourceTag = Some(3),
-          registerFileValue = 5,
-          aluBypassValue = Some((3, 12)),
-        )
-        c.expectValue(Some(12))
+    simulate(
+      new ValueSelectorWrapper()(defaultParams.copy(decoderPerThread = 1)),
+    ) { c =>
+      c.initialize(
+        sourceTag = Some(3),
+        registerFileValue = 5,
+        aluBypassValue = Some((3, 12)),
+      )
+      c.expectValue(Some(12))
     }
   }
 
   it should "use multiple alu bypasses" in {
-    test(new ValueSelectorWrapper()(defaultParams.copy(decoderPerThread = 4))) {
-      c =>
-        c.initialize(
-          sourceTag = Some(3),
-          registerFileValue = 5,
-          aluBypassValue = Some(3, 12),
-        )
-        c.expectValue(Some(12))
+    simulate(
+      new ValueSelectorWrapper()(defaultParams.copy(decoderPerThread = 4)),
+    ) { c =>
+      c.initialize(
+        sourceTag = Some(3),
+        registerFileValue = 5,
+        aluBypassValue = Some(3, 12),
+      )
+      c.expectValue(Some(12))
     }
   }
 
   it should "not have any value" in {
-    test(new ValueSelectorWrapper) { c =>
+    simulate(new ValueSelectorWrapper) { c =>
       c.initialize(sourceTag = Some(3), registerFileValue = 5)
       c.expectValue(None)
     }

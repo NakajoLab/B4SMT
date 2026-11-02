@@ -6,10 +6,11 @@ import b4smt.common.CSROperations._
 import b4smt.common.Instructions._
 import b4smt.common.OperationWidth._
 import chisel3._
-import chiseltest._
+import chisel3.simulator.scalatest.ChiselSim
+import chisel3.simulator.PeekPokeAPI
 import org.scalatest.flatspec.AnyFlatSpec
 
-class InstructionCheckerWrapper extends InstructionChecker {
+class InstructionCheckerWrapper extends InstructionChecker with PeekPokeAPI {
   def setInstruction(instruction: UInt): Unit = {
     val opcode = instruction(6, 0)
     val funct3 = instruction(14, 12)
@@ -35,13 +36,12 @@ class InstructionCheckerWrapper extends InstructionChecker {
   }
 }
 
-class InstructionCheckerTest extends AnyFlatSpec with ChiselScalatestTester {
-  override def autoResetEnabled: Boolean = true
+class InstructionCheckerTest extends AnyFlatSpec with ChiselSim {
 
   behavior of "InstructionChecker"
 
   it should "parse add x1, x2, x3" in {
-    test(new InstructionCheckerWrapper) { c =>
+    simulate(new InstructionCheckerWrapper) { c =>
       c.setInstruction("x003100b3".U)
       c.expect(
         instruction = Arithmetic,
@@ -52,7 +52,7 @@ class InstructionCheckerTest extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   it should "parse addw x1, x2, x3" in {
-    test(new InstructionCheckerWrapper) { c =>
+    simulate(new InstructionCheckerWrapper) { c =>
       c.setInstruction("x003100bb".U)
       c.expect(
         instruction = Arithmetic,
@@ -63,21 +63,21 @@ class InstructionCheckerTest extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   it should "parse sb x1, 5(x2)" in {
-    test(new InstructionCheckerWrapper) { c =>
+    simulate(new InstructionCheckerWrapper) { c =>
       c.setInstruction("x001102a3".U)
       c.expect(instruction = Store, operationWidth = Byte)
     }
   }
 
   it should "parse csrrw x1, mhartid, x2" in {
-    test(new InstructionCheckerWrapper) { c =>
+    simulate(new InstructionCheckerWrapper) { c =>
       c.setInstruction("xf14110f3".U)
       c.expect(instruction = Csr, csr = ReadAndWrite)
     }
   }
 
   it should "parse bge x1, x2, 0" in {
-    test(new InstructionCheckerWrapper) { c =>
+    simulate(new InstructionCheckerWrapper) { c =>
       c.setInstruction("x0020d263".U)
       c.expect(instruction = Branch, branch = GreaterOrEqual)
     }

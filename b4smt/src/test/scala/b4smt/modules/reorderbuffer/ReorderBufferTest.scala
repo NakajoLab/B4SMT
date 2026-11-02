@@ -3,7 +3,8 @@ package b4smt.modules.reorderbuffer
 import b4smt.Parameters
 import b4smt.utils.RVRegister.{AddRegConstructor, AddUIntRegConstructor}
 import b4smt.utils.{DecoderValue, ExecutorValue, RegisterFileValue, Tag}
-import chiseltest._
+import chisel3.simulator.scalatest.ChiselSim
+import chisel3.simulator.PeekPokeAPI
 import org.scalatest.flatspec.AnyFlatSpec
 import chisel3._
 import chiselformal.SymbiYosysFormal
@@ -11,7 +12,8 @@ import chiselformal.SymbiYosysFormal
 import scala.util.Random
 
 class ReorderBufferWrapper(implicit params: Parameters)
-    extends ReorderBuffer() {
+    extends ReorderBuffer()
+    with PeekPokeAPI {
   def initialize(): Unit = {
     setOutputs()
     setDecoder()
@@ -67,9 +69,9 @@ class ReorderBufferWrapper(implicit params: Parameters)
 
 class ReorderBufferTest
     extends AnyFlatSpec
-    with ChiselScalatestTester
+    with ChiselSim
     with SymbiYosysFormal {
-  override def autoResetEnabled: Boolean = true
+  override def configMap = super.configMap + ("emitVcd" -> "1")
 
   behavior of "Reorder Buffer"
   implicit val defaultParams: b4smt.Parameters = Parameters(
@@ -81,14 +83,14 @@ class ReorderBufferTest
 
   /** リオーダバッファに値が出力されない */
   it should "output nothing to register file on first clock" in {
-    test(new ReorderBufferWrapper) { c =>
+    simulate(new ReorderBufferWrapper) { c =>
       c.initialize()
       c.expectRegisterFile(Seq(None))
     }
   }
 
   it should "set ready to 0 when full" in {
-    test(new ReorderBufferWrapper) { c =>
+    simulate(new ReorderBufferWrapper) { c =>
       c.initialize()
       var loop = 0
       c.io.decoders(0).ready.expect(true)
@@ -112,85 +114,87 @@ class ReorderBufferTest
   }
 
   it should "set ready to 0 when full with 4 decoders (reduced tag width to 5 for speed)" in {
-    test(new ReorderBufferWrapper()(defaultParams.copy(decoderPerThread = 4))) {
-      c =>
-        c.initialize()
-        var loop = 0
-        c.io.decoders(0).ready.expect(true)
-        while (loop < 40 && c.io.decoders(0).ready.peek().litToBoolean) {
-          //        println(loop, c.io.head.get.peek().litValue, c.io.tail.get.peek().litValue)
-          c.setDecoder(
-            Seq(
-              DecoderValue(
-                valid = true,
-                source1 = Random.nextInt(32).reg,
-                source2 = Random.nextInt(32).reg,
-                destination = Random.nextInt(32).reg,
-              ),
-              DecoderValue(
-                valid = true,
-                source1 = Random.nextInt(32).reg,
-                source2 = Random.nextInt(32).reg,
-                destination = Random.nextInt(32).reg,
-              ),
-              DecoderValue(
-                valid = true,
-                source1 = Random.nextInt(32).reg,
-                source2 = Random.nextInt(32).reg,
-                destination = Random.nextInt(32).reg,
-              ),
-              DecoderValue(
-                valid = true,
-                source1 = Random.nextInt(32).reg,
-                source2 = Random.nextInt(32).reg,
-                destination = Random.nextInt(32).reg,
-              ),
+    simulate(
+      new ReorderBufferWrapper()(defaultParams.copy(decoderPerThread = 4)),
+    ) { c =>
+      c.initialize()
+      var loop = 0
+      c.io.decoders(0).ready.expect(true)
+      while (loop < 40 && c.io.decoders(0).ready.peek().litToBoolean) {
+        //        println(loop, c.io.head.get.peek().litValue, c.io.tail.get.peek().litValue)
+        c.setDecoder(
+          Seq(
+            DecoderValue(
+              valid = true,
+              source1 = Random.nextInt(32).reg,
+              source2 = Random.nextInt(32).reg,
+              destination = Random.nextInt(32).reg,
             ),
-          )
-          c.clock.step()
-          loop += 1
-        }
-        //      println(loop, c.io.head.get.peek().litValue, c.io.tail.get.peek().litValue)
-        c.io.decoders(0).ready.expect(false)
+            DecoderValue(
+              valid = true,
+              source1 = Random.nextInt(32).reg,
+              source2 = Random.nextInt(32).reg,
+              destination = Random.nextInt(32).reg,
+            ),
+            DecoderValue(
+              valid = true,
+              source1 = Random.nextInt(32).reg,
+              source2 = Random.nextInt(32).reg,
+              destination = Random.nextInt(32).reg,
+            ),
+            DecoderValue(
+              valid = true,
+              source1 = Random.nextInt(32).reg,
+              source2 = Random.nextInt(32).reg,
+              destination = Random.nextInt(32).reg,
+            ),
+          ),
+        )
+        c.clock.step()
+        loop += 1
+      }
+      //      println(loop, c.io.head.get.peek().litValue, c.io.tail.get.peek().litValue)
+      c.io.decoders(0).ready.expect(false)
     }
   }
 
   it should "set ready to 0 when full with 4 decoders but 2 decoder inputs (reduced tag width to 5 for speed)" in {
-    test(new ReorderBufferWrapper()(defaultParams.copy(decoderPerThread = 4))) {
-      c =>
-        c.initialize()
-        var loop = 0
-        c.io.decoders(0).ready.expect(true)
-        while (loop < 40 && c.io.decoders(0).ready.peek().litToBoolean) {
-          //        println(loop, c.io.head.get.peek().litValue, c.io.tail.get.peek().litValue)
-          c.setDecoder(
-            Seq(
-              DecoderValue(
-                valid = true,
-                source1 = Random.nextInt(32).reg,
-                source2 = Random.nextInt(32).reg,
-                destination = Random.nextInt(32).reg,
-              ),
-              DecoderValue(
-                valid = true,
-                source1 = Random.nextInt(32).reg,
-                source2 = Random.nextInt(32).reg,
-                destination = Random.nextInt(32).reg,
-              ),
-              DecoderValue(),
-              DecoderValue(),
+    simulate(
+      new ReorderBufferWrapper()(defaultParams.copy(decoderPerThread = 4)),
+    ) { c =>
+      c.initialize()
+      var loop = 0
+      c.io.decoders(0).ready.expect(true)
+      while (loop < 40 && c.io.decoders(0).ready.peek().litToBoolean) {
+        //        println(loop, c.io.head.get.peek().litValue, c.io.tail.get.peek().litValue)
+        c.setDecoder(
+          Seq(
+            DecoderValue(
+              valid = true,
+              source1 = Random.nextInt(32).reg,
+              source2 = Random.nextInt(32).reg,
+              destination = Random.nextInt(32).reg,
             ),
-          )
-          c.clock.step()
-          loop += 1
-        }
-        //      println(loop, c.io.head.get.peek().litValue, c.io.tail.get.peek().litValue)
-        c.io.decoders(0).ready.expect(false)
+            DecoderValue(
+              valid = true,
+              source1 = Random.nextInt(32).reg,
+              source2 = Random.nextInt(32).reg,
+              destination = Random.nextInt(32).reg,
+            ),
+            DecoderValue(),
+            DecoderValue(),
+          ),
+        )
+        c.clock.step()
+        loop += 1
+      }
+      //      println(loop, c.io.head.get.peek().litValue, c.io.tail.get.peek().litValue)
+      c.io.decoders(0).ready.expect(false)
     }
   }
 
   it should "make the tail follow head" in {
-    test(new ReorderBufferWrapper) { c =>
+    simulate(new ReorderBufferWrapper) { c =>
       c.initialize()
       c.io.decoders(0).ready.expect(true)
       c.io.tail.get.expect(0)
@@ -214,57 +218,54 @@ class ReorderBufferTest
   }
 
   it should "have an output in register file" in {
-    test(new ReorderBufferWrapper).withAnnotations(Seq(WriteVcdAnnotation)) {
-      c =>
-        c.initialize()
-        c.clock.setTimeout(10)
+    simulate(new ReorderBufferWrapper) { c =>
+      c.initialize()
 
-        // 値の確認
-        c.io.head.get.expect(0)
-        c.io.tail.get.expect(0)
-        c.expectRegisterFile(Seq(None))
+      // 値の確認
+      c.io.head.get.expect(0)
+      c.io.tail.get.expect(0)
+      c.expectRegisterFile(Seq(None))
 
-        // 値のセット
-        c.setDecoder(
-          Seq(
-            DecoderValue(
-              valid = true,
-              destination = 1.reg,
-              source1 = 2.reg,
-              source2 = 3.reg,
-              programCounter = 500,
-            ),
+      // 値のセット
+      c.setDecoder(
+        Seq(
+          DecoderValue(
+            valid = true,
+            destination = 1.reg,
+            source1 = 2.reg,
+            source2 = 3.reg,
+            programCounter = 500,
           ),
-        )
+        ),
+      )
 
-        c.clock.step()
-        // 値の確認
-        c.expectRegisterFile(Seq(None))
-        c.io.head.get.expect(1)
+      c.clock.step()
+      // 値の確認
+      c.expectRegisterFile(Seq(None))
+      c.io.head.get.expect(1)
 
-        // 値のセット
-        c.setDecoder(Seq(DecoderValue()))
-        c.setOutputs(Some(ExecutorValue(destinationTag = 0, value = 10)))
+      // 値のセット
+      c.setDecoder(Seq(DecoderValue()))
+      c.setOutputs(Some(ExecutorValue(destinationTag = 0, value = 10)))
 
-        c.clock.step()
-        c.setOutputs(None)
-        // 値の確認
-        c.expectRegisterFile(
-          Seq(Some(RegisterFileValue(destinationRegister = 1, value = 10))),
-        )
+      c.clock.step()
+      c.setOutputs(None)
+      // 値の確認
+      c.expectRegisterFile(
+        Seq(Some(RegisterFileValue(destinationRegister = 1, value = 10))),
+      )
 
-        c.clock.step(5)
+      c.clock.step(5)
     }
   }
 
   it should "have an output in register file with 4 of each component" in {
-    test(
+    simulate(
       new ReorderBufferWrapper()(
         defaultParams.copy(decoderPerThread = 4, maxRegisterFileCommitCount = 4),
       ),
-    ).withAnnotations(Seq(WriteVcdAnnotation)) { c =>
+    ) { c =>
       c.initialize()
-      c.clock.setTimeout(10)
 
       // 値の確認
       c.expectRegisterFile(Seq(None, None, None, None))
@@ -359,13 +360,12 @@ class ReorderBufferTest
   }
 
   it should "have an output in register file with 4 of each component out of order simple" in {
-    test(
+    simulate(
       new ReorderBufferWrapper()(
         defaultParams.copy(decoderPerThread = 4, maxRegisterFileCommitCount = 4),
       ),
-    ).withAnnotations(Seq(WriteVcdAnnotation)) { c =>
+    ) { c =>
       c.initialize()
-      c.clock.setTimeout(10)
 
       // 値の確認
       c.expectRegisterFile(Seq(None, None, None, None))
@@ -507,13 +507,12 @@ class ReorderBufferTest
   }
 
   it should "have an output in register file with 4 of each component out of order complex" in {
-    test(
+    simulate(
       new ReorderBufferWrapper()(
         defaultParams.copy(decoderPerThread = 4, maxRegisterFileCommitCount = 4),
       ),
-    ).withAnnotations(Seq(WriteVcdAnnotation)) { c =>
+    ) { c =>
       c.initialize()
-      c.clock.setTimeout(10)
 
       // 値の確認
       c.expectRegisterFile(Seq(None, None, None, None))

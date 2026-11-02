@@ -3,11 +3,10 @@ package b4smt.B4SMT_Full_Tests
 import circt.stage.ChiselStage
 import b4smt.Parameters
 import b4smt.utils.B4SMTCoreWithMemory
-import chiseltest._
+import chisel3.simulator.scalatest.ChiselSim
 import org.scalatest.flatspec.AnyFlatSpec
 
-class B4SMTCoreElaborateTest extends AnyFlatSpec with ChiselScalatestTester {
-  override def autoResetEnabled: Boolean = true
+class B4SMTCoreElaborateTest extends AnyFlatSpec with ChiselSim {
 
   // デバッグに時間がかかりすぎるのでパラメータを少し下げる。
   implicit val defaultParams: b4smt.Parameters = Parameters(debug = true)

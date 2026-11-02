@@ -1,14 +1,13 @@
 package b4smt.utils
 
-import chiseltest._
+import chisel3.simulator.scalatest.ChiselSim
 import org.scalatest.flatspec.AnyFlatSpec
 import chisel3._
 
-class PassthroughBufferTest extends AnyFlatSpec with ChiselScalatestTester {
-  override def autoResetEnabled: Boolean = true
+class PassthroughBufferTest extends AnyFlatSpec with ChiselSim {
 
   it should "pass values" in {
-    test(new PassthroughBuffer(UInt(4.W))) { c =>
+    simulate(new PassthroughBuffer(UInt(4.W))) { c =>
       c.io.output.ready.poke(true)
       for (i <- 0 until 16) {
         c.clock.step()
@@ -22,7 +21,7 @@ class PassthroughBufferTest extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   it should "pass values delayed" in {
-    test(new PassthroughBuffer(UInt(4.W))) { c =>
+    simulate(new PassthroughBuffer(UInt(4.W))) { c =>
       c.io.output.ready.poke(false)
       c.io.input.valid.poke(true)
       c.io.input.bits.poke(10)

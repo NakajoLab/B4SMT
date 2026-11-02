@@ -10,7 +10,8 @@ import b4smt.utils.{InstructionUtil, SimpleAXIMemory}
 import chisel3._
 import chisel3.util._
 import chiselformal.SymbiYosysFormal
-import chiseltest._
+import chisel3.simulator.scalatest.ChiselSim
+import chisel3.simulator.PeekPokeAPI
 import org.scalatest.flatspec.AnyFlatSpec
 
 import scala.math
@@ -19,7 +20,9 @@ import scala.math
   *
   * フェッチ、キャッシュ、命令メモリを含む
   */
-class FetchWrapper()(implicit params: Parameters) extends Module {
+class FetchWrapper()(implicit params: Parameters)
+    extends Module
+    with PeekPokeAPI {
   val io = IO(new Bundle {
 
     /** 分岐予測 */
@@ -132,12 +135,12 @@ class FetchWrapper()(implicit params: Parameters) extends Module {
     this.clock.step()
     this.io.memorySetup.valid.poke(false)
     this.clock.step()
-    this.clock.setTimeout(200)
+
   }
 
   def waitForCacheValid(): Unit = {
-    while (!this.io.cacheOutput(0).valid.peekBoolean())
-      this.clock.step()
+    clock.stepUntil(io.cacheOutput(0).valid, 1, 200)
+    io.cacheOutput(0).valid.expect(true)
   }
 
   /** 予測をセット */
@@ -155,11 +158,8 @@ class FetchWrapper()(implicit params: Parameters) extends Module {
   }
 }
 
-class FetchTest
-    extends AnyFlatSpec
-    with ChiselScalatestTester
-    with SymbiYosysFormal {
-  override def autoResetEnabled: Boolean = true
+class FetchTest extends AnyFlatSpec with ChiselSim with SymbiYosysFormal {
+  override def configMap = super.configMap + ("emitVcd" -> "1")
 
   behavior of "Fetch"
   implicit val defaultParams: b4smt.Parameters =
@@ -178,10 +178,10 @@ class FetchTest
   // LABEL:
   // TODO FIX
   ignore should "load memory" in {
-    test(
+    simulate(
       new FetchWrapper(
       ),
-    ).withAnnotations(Seq(WriteVcdAnnotation)) { c =>
+    ) { c =>
       c.initialize(
         InstructionUtil
           .fromStringSeq32bit(Seq("00000013", "00000463", "00000013")),
@@ -205,7 +205,7 @@ class FetchTest
   // beq zero,zero,LOOP 00000063
   // TODO FIX
   ignore should "read both values in loop" in {
-    test(
+    simulate(
       new FetchWrapper(
       ),
     ) { c =>
@@ -235,7 +235,7 @@ class FetchTest
   // nop                  00000013
   // LABEL:
   it should "understand branch prediction=false" in {
-    test(
+    simulate(
       new FetchWrapper(
       ),
     ) { c =>
@@ -255,7 +255,7 @@ class FetchTest
   // nop                  00000013
   // LABEL:
   it should "understand branch prediction=true" in {
-    test(
+    simulate(
       new FetchWrapper(
       ),
     ) { c =>
@@ -274,7 +274,7 @@ class FetchTest
   // LOOP:
   // beq zero,zero,LOOP 00000063
   it should "understand loop to self" in {
-    test(
+    simulate(
       new FetchWrapper(
       ),
     ) { c =>
@@ -298,10 +298,10 @@ class FetchTest
   // nop                00000013
   // beq zero,zero,LOOP 00000063
   it should "understand loop" in {
-    test(
+    simulate(
       new FetchWrapper(
       ),
-    ).withAnnotations(Seq(WriteVcdAnnotation)) { c =>
+    ) { c =>
       c.initialize(
         InstructionUtil.fromStringSeq32bit(Seq("00000013", "00000063")),
       )
@@ -324,7 +324,7 @@ class FetchTest
   // nop                00000013
   // j                  ffdff06f
   it should "understand jal loop" in {
-    test(
+    simulate(
       new FetchWrapper(
       ),
     ) { c =>
@@ -351,7 +351,7 @@ class FetchTest
   // j START  fe1ff06f
   // TODO FIX
   ignore should "understand jal jumps" in {
-    test(
+    simulate(
       new FetchWrapper(
       ),
     ) { c =>
@@ -390,10 +390,10 @@ class FetchTest
   // nop    00000013
   // nop    00000013
   it should "understand fence" in {
-    test(
+    simulate(
       new FetchWrapper(
       ),
-    ).withAnnotations(Seq(WriteVcdAnnotation)) { c =>
+    ) { c =>
       c.initialize(
         InstructionUtil.fromStringSeq32bit(
           Seq("00000013", "0ff0000f", "00000013", "00000013"),

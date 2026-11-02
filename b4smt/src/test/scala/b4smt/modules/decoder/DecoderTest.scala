@@ -5,12 +5,15 @@ import b4smt.utils.RVRegister.{AddRegConstructor, AddUIntRegConstructor}
 import b4smt.utils.{ExecutorValue, RVRegister, Tag}
 import chisel3._
 import chiselformal.SymbiYosysFormal
-import chiseltest._
+import chisel3.simulator.scalatest.ChiselSim
+import chisel3.simulator.PeekPokeAPI
 import org.scalatest.flatspec.AnyFlatSpec
 
 /** デコーダをテストしやすくするためにラップしたもの
   */
-class DecoderWrapper(implicit params: Parameters) extends Decoder {
+class DecoderWrapper(implicit params: Parameters)
+    extends Decoder
+    with PeekPokeAPI {
 
   def initialize(instruction: UInt, programCounter: Int = 1000): Unit = {
     this.setImem(instruction, programCounter)
@@ -154,11 +157,8 @@ class DecoderWrapper(implicit params: Parameters) extends Decoder {
 
 /** デコーダのテスト
   */
-class DecoderTest
-    extends AnyFlatSpec
-    with ChiselScalatestTester
-    with SymbiYosysFormal {
-  override def autoResetEnabled: Boolean = true
+class DecoderTest extends AnyFlatSpec with ChiselSim with SymbiYosysFormal {
+  override def configMap = super.configMap + ("emitVcd" -> "1")
 
   behavior of "decoder"
   implicit val testParams: b4smt.Parameters =
@@ -166,7 +166,7 @@ class DecoderTest
 
   // rs1 rs2 rdが正しくリオーダバッファに渡されているか
   it should "pass rs1 rs2 rd to reorder buffer" in {
-    test(new DecoderWrapper) { c =>
+    simulate(new DecoderWrapper) { c =>
       // add x1,x2,x3
       c.initialize("x003100b3".U)
       c.expectReorderBuffer(
@@ -179,7 +179,7 @@ class DecoderTest
 
   // レジスタファイルから値を取得できているか
   it should "get values from register file" in {
-    test(new DecoderWrapper).withAnnotations(Seq(WriteVcdAnnotation)) { c =>
+    simulate(new DecoderWrapper) { c =>
       // add x1,x2,x3
       c.initialize("x003100b3".U)
       c.setRegisterFile(value1 = 10, value2 = 20)
@@ -197,7 +197,7 @@ class DecoderTest
 
   // stagをリオーダバッファから取得できているか
   it should "get source tags from reorder buffer" in {
-    test(new DecoderWrapper) { c =>
+    simulate(new DecoderWrapper) { c =>
       // add x1,x2,x3
       c.initialize("x003100b3".U)
       c.setReorderBuffer(
@@ -221,7 +221,7 @@ class DecoderTest
 
   // stagと値をリオーダバッファから取得できているか
   it should "get source tags and values from reorder buffer" in {
-    test(new DecoderWrapper) { c =>
+    simulate(new DecoderWrapper) { c =>
       // add x1,x2,x3
       c.initialize("x003100b3".U)
       c.setReorderBuffer(
@@ -243,7 +243,7 @@ class DecoderTest
 
   // sd命令を認識できる
   it should "understand sd" in {
-    test(new DecoderWrapper) { c =>
+    simulate(new DecoderWrapper) { c =>
       // sd x1,10(x2)
       c.initialize("x00113523".U)
       c.expectReorderBuffer(sourceRegister1 = 2.reg, sourceRegister2 = 1.reg)
@@ -253,7 +253,7 @@ class DecoderTest
 
   // I形式を認識できる
   it should "understand I" in {
-    test(new DecoderWrapper).withAnnotations(Seq(WriteVcdAnnotation)) { c =>
+    simulate(new DecoderWrapper) { c =>
       // addi x1,x2,20
       c.initialize("x01410093".U)
       c.setReorderBuffer(
@@ -265,8 +265,8 @@ class DecoderTest
       c.expectReorderBuffer(1.reg, sourceRegister1 = 2.reg)
       // TODO show
 //      println(
-//        c.io.reservationStation.entry.value2.peekInt(),
-//        c.io.reservationStation.entry.ready2.peekInt(),
+//        c.io.reservationStation.entry.value2.peek().litValue,
+//        c.io.reservationStation.entry.ready2.peek().litValue,
 //        c.io.reservationStation.entry.sourceTag2.peek()
 //      )
       c.expectReservationStation(
@@ -280,7 +280,7 @@ class DecoderTest
 
   // ALUからの値を使える
   it should "do register bypass" in {
-    test(
+    simulate(
       new DecoderWrapper()(testParams.copy(threads = 1, decoderPerThread = 2)),
     ) { c =>
       // add x1,x2,x3
@@ -307,7 +307,7 @@ class DecoderTest
 
   // imemがvalidのときRSとRBでvalidと表示されている
   it should "say the data is valid when imem is valid" in {
-    test(new DecoderWrapper).withAnnotations(Seq(WriteVcdAnnotation)) { c =>
+    simulate(new DecoderWrapper) { c =>
       // add x1,x2,x3
       c.initialize("x003100b3".U)
 
@@ -320,7 +320,7 @@ class DecoderTest
 
   // imemがvalid=0のときRSとRBでvalid=0と表示されている
   it should "say the data is invalid when imem invalid" in {
-    test(new DecoderWrapper) { c =>
+    simulate(new DecoderWrapper) { c =>
       c.initialize(0.U)
       c.io.instructionFetch.valid.poke(false.B)
 
@@ -331,7 +331,7 @@ class DecoderTest
 
   // U形式を認識 (edge case: "x0007b1b7".U)
   it should "understand U format" in {
-    test(new DecoderWrapper()(testParams)) { c =>
+    simulate(new DecoderWrapper()(testParams)) { c =>
       // lui x3, 123
       c.initialize("x0007b1b7".U)
       c.setReorderBuffer(destinationTag = 5)
@@ -346,7 +346,7 @@ class DecoderTest
   }
 
   it should "understand J format" in {
-    test(new DecoderWrapper()(testParams)) { c =>
+    simulate(new DecoderWrapper()(testParams)) { c =>
       // jal x10,LABEL
       // LABEL:
       c.initialize("x0040056f".U)
@@ -358,7 +358,7 @@ class DecoderTest
   }
 
   it should "do csr" in {
-    test(new DecoderWrapper()(testParams)) { c =>
+    simulate(new DecoderWrapper()(testParams)) { c =>
       // jal x10,LABEL
       // LABEL:
       c.initialize("xc0002573".U)
@@ -370,14 +370,14 @@ class DecoderTest
   }
 
   it should "pass isPrediction" in {
-    test(new DecoderWrapper()(testParams)) { c =>
+    simulate(new DecoderWrapper()(testParams)) { c =>
       c.initialize("x0040056f".U)
       c.setImem("x0040056f".U, 0, isPrediction = true)
     }
   }
 
   it should "do pext" in {
-    test(new DecoderWrapper()(testParams.copy(enablePExt = true))) { c =>
+    simulate(new DecoderWrapper()(testParams.copy(enablePExt = true))) { c =>
       c.initialize("x40aaacf7".U) // ADD32 x25,x21,x10
       c.setImem("x40aaacf7".U, 0)
 

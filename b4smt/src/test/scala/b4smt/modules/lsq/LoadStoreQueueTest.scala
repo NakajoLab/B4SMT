@@ -10,11 +10,13 @@ import chisel3._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chisel3.util.{BitPat, DecoupledIO}
 import chiselformal.SymbiYosysFormal
-import chiseltest._
+import chisel3.simulator.scalatest.ChiselSim
+import chisel3.simulator.PeekPokeAPI
 import org.scalatest.flatspec.AnyFlatSpec
 
 class LoadStoreQueueWrapper(implicit params: Parameters)
-    extends LoadStoreQueue {
+    extends LoadStoreQueue
+    with PeekPokeAPI {
 
   def initialize(): Unit = {
     this.setDecoder()
@@ -80,9 +82,8 @@ class LoadStoreQueueWrapper(implicit params: Parameters)
 
 class LoadStoreQueueTest
     extends AnyFlatSpec
-    with ChiselScalatestTester
+    with ChiselSim
     with SymbiYosysFormal {
-  override def autoResetEnabled: Boolean = true
 
   behavior of "Load Store Queue"
   implicit val defaultParams: b4smt.Parameters = Parameters(
@@ -94,7 +95,7 @@ class LoadStoreQueueTest
   )
 
   it should "Both Of Instructions Enqueue LSQ" in {
-    test(new LoadStoreQueueWrapper) { c =>
+    simulate(new LoadStoreQueueWrapper) { c =>
       c.initialize()
       c.io.head.get.expect(0)
       c.io.tail.get.expect(0)
@@ -143,7 +144,7 @@ class LoadStoreQueueTest
 // TODO: もとに戻す
 //  it should "load check" in {
 //    // runParallel = 1, maxRegisterFileCommitCount = 1
-//    test(new LoadStoreQueueWrapper).withAnnotations(Seq(WriteVcdAnnotation)) {
+//    simulate(new LoadStoreQueueWrapper) {
 //      c =>
 //        c.initialize()
 //        // 初期化
@@ -207,7 +208,7 @@ class LoadStoreQueueTest
   // TODO: もとに戻す
 //  it should "store check" in {
 //    // runParallel = 1, maxRegisterFileCommitCount = 1
-//    test(new LoadStoreQueueWrapper).withAnnotations(Seq(WriteVcdAnnotation)) {
+//    simulate(new LoadStoreQueueWrapper) {
 //      c =>
 //        c.initialize()
 //        // 初期化
@@ -281,7 +282,7 @@ class LoadStoreQueueTest
 
   // TODO: もとに戻す
 //  it should "2 Parallel load check" in {
-//    test(new LoadStoreQueueWrapper).withAnnotations(Seq(WriteVcdAnnotation)) {
+//    simulate(new LoadStoreQueueWrapper) {
 //      c =>
 //        c.initialize()
 //        // 初期化
@@ -362,7 +363,7 @@ class LoadStoreQueueTest
 //  }
 
 //  it should "2 Parallel store check" in {
-//    test(new LoadStoreQueueWrapper).withAnnotations(Seq(WriteVcdAnnotation)) {
+//    simulate(new LoadStoreQueueWrapper) {
 //      c =>
 //        c.initialize()
 //        // 初期化
@@ -467,7 +468,7 @@ class LoadStoreQueueTest
 //  }
 //
 //  it should "2 Parallel check (1 clock wait)" in {
-//    test(new LoadStoreQueueWrapper).withAnnotations(Seq(WriteVcdAnnotation)) {
+//    simulate(new LoadStoreQueueWrapper) {
 //      c =>
 //        c.initialize()
 //        // 初期化
@@ -616,11 +617,11 @@ class LoadStoreQueueTest
 //  // ストアのアドレスが確定したいないときにOverlap=falseとしてしまっていたバグのチェック
 //  it should "wait load for the overlapping store" in {
 //    // runParallel = 1, maxRegisterFileCommitCount = 1
-//    test(
+//    simulate(
 //      new LoadStoreQueueWrapper()(
 //        defaultParams.copy(decoderPerThread = 1, maxRegisterFileCommitCount = 1)
 //      )
-//    ).withAnnotations(Seq(WriteVcdAnnotation)) { c =>
+//    ) { c =>
 //      c.initialize()
 //      // 初期化
 //      c.io.head.get.expect(0)

@@ -33,8 +33,8 @@ $ nix shell "nixpkgs#cachix" -c cachix use b4smt
 [LLVM circt]: https://circt.llvm.org/
 
 テスト
-* Verilator
-* Icarus Verilog
+* Verilator（ChiselSim）
+* SymbiYosys（形式検証）
 
 ## プロセッサの生成
 次のコマンドで`./processor`にSystem Verilogのソースが出力されます。
@@ -64,6 +64,12 @@ $ mill b4smt.test.testOnly '*' -- -l org.scalatest.tags.Slow
 すべてのテストを実行するには次のコマンドを実行します。（とても時間がかかります）
 ```shell
 $ mill b4smt.test.testOnly '*'
+```
+
+シミュレーションテストはChiselSimを直接使用し、形式検証はSymbiYosysで実行します。
+VCD波形を出力する場合はScalaTestに`-DemitVcd=1`を渡します。
+```shell
+$ mill b4smt.test.testOnly '*' -- -l org.scalatest.tags.Slow -DemitVcd=1
 ```
 
 細かく実行するテストを決めたい場合はIntellij IDEAでプロジェクトを開き、各テストを実行してください。

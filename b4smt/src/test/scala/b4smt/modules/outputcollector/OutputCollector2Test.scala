@@ -2,14 +2,13 @@ package b4smt.modules.outputcollector
 
 import b4smt.Parameters
 import chiselformal.SymbiYosysFormal
-import chiseltest.ChiselScalatestTester
+import chisel3.simulator.scalatest.ChiselSim
 import org.scalatest.flatspec.AnyFlatSpec
 
 class OutputCollector2Test
     extends AnyFlatSpec
-    with ChiselScalatestTester
+    with ChiselSim
     with SymbiYosysFormal {
-  override def autoResetEnabled: Boolean = true
 
   behavior of "output collector 2"
   implicit val params: b4smt.Parameters =

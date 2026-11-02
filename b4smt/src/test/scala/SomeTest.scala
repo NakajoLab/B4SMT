@@ -1,6 +1,6 @@
 import chisel3._
 import chiselformal.SymbiYosysFormal
-import chiseltest._
+import chisel3.simulator.scalatest.ChiselSim
 import circt.stage.ChiselStage
 import org.scalatest.flatspec._
 
@@ -21,17 +21,13 @@ object Adder extends App {
   ChiselStage.emitSystemVerilogFile(new Adder)
 }
 
-class SomeTest
-    extends AnyFlatSpec
-    with ChiselScalatestTester
-    with SymbiYosysFormal {
-
-  override def autoResetEnabled: Boolean = true
+class SomeTest extends AnyFlatSpec with ChiselSim with SymbiYosysFormal {
+  override def configMap = super.configMap + ("emitVcd" -> "1")
 
   behavior of "some test"
 
   it should "10-3=7" in {
-    test(new Adder).withAnnotations(Seq(WriteVcdAnnotation)) { c =>
+    simulate(new Adder) { c =>
       c.a.poke(10.S)
       c.b.poke((-3).S)
       c.out.expect(7.S)

@@ -1,18 +1,14 @@
 package b4smt.utils.operations
 
 import b4smt.Parameters
-import chiseltest._
+import chisel3.simulator.scalatest.ChiselSim
 import org.scalatest.flatspec.AnyFlatSpec
 
 import chisel3._
 import chisel3.util._
 import chiselformal.SymbiYosysFormal
 
-class DecodingModTest
-    extends AnyFlatSpec
-    with ChiselScalatestTester
-    with SymbiYosysFormal {
-  override def autoResetEnabled: Boolean = true
+class DecodingModTest extends AnyFlatSpec with ChiselSim with SymbiYosysFormal {
 
   behavior of "Decodign Module"
 
@@ -26,7 +22,7 @@ class DecodingModTest
   }
 
   it should "check decoded" in {
-    test(new DecodingMod()(params.copy(enablePExt = true))) { c =>
+    simulate(new DecodingMod()(params.copy(enablePExt = true))) { c =>
       c.input.poke("b00111000000000000010000001110111".U) // KMDA32
       println(c.out.pextOp.peek())
     }

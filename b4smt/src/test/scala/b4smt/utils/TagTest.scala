@@ -3,16 +3,15 @@ package b4smt.utils
 import b4smt.Parameters
 import chisel3._
 import chisel3.util.log2Ceil
-import chiseltest._
+import chisel3.simulator.scalatest.ChiselSim
 import org.scalatest.flatspec.AnyFlatSpec
 
-class TagTest extends AnyFlatSpec with ChiselScalatestTester {
-  override def autoResetEnabled: Boolean = true
+class TagTest extends AnyFlatSpec with ChiselSim {
 
   for (threads <- Seq(1, 2, 3, 4)) {
     it should s"omit or size the thread field for $threads threads" in {
       implicit val params: Parameters = Parameters(threads = threads)
-      test(new Module {
+      simulate(new Module {
         val input = IO(Input(new Tag))
         val output = IO(Output(new Tag))
         val thread = IO(Output(UInt(log2Ceil(threads).max(1).W)))
