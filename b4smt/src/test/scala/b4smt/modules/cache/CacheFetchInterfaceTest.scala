@@ -6,14 +6,17 @@ import chiseltest._
 import chisel3._
 import chisel3.util._
 
+// ChiselTest compatibility uses Verilator; Icarus is not supported.
 class CacheFetchInterfaceTest extends AnyFlatSpec with ChiselScalatestTester {
+  override def autoResetEnabled: Boolean = true
+
   behavior of "cache fetch interface"
   implicit val params: Parameters = Parameters()
 
   // this test checks if by giving a address, it would request a block from cache and return the appropriate data to fetch
   it should "request address" in {
     test(new CacheFetchInterface())
-      .withAnnotations(Seq(IcarusBackendAnnotation, WriteVcdAnnotation)) { c =>
+      .withAnnotations(Seq(WriteVcdAnnotation)) { c =>
         c.io.fetch.requestNext.bits.poke(0x80000000L)
         c.io.fetch.requestNext.valid.poke(true)
         c.io.fetch.perDecoder.zipWithIndex foreach { case (f, i) =>
@@ -40,7 +43,7 @@ class CacheFetchInterfaceTest extends AnyFlatSpec with ChiselScalatestTester {
   // multiple times
   it should "request address different" in {
     test(new CacheFetchInterface())
-      .withAnnotations(Seq(IcarusBackendAnnotation, WriteVcdAnnotation)) { c =>
+      .withAnnotations(Seq(WriteVcdAnnotation)) { c =>
         c.io.fetch.requestNext.bits.poke(0x80000000L)
         c.io.fetch.requestNext.valid.poke(true)
         c.io.fetch.perDecoder.zipWithIndex foreach { case (f, i) =>
@@ -88,7 +91,7 @@ class CacheFetchInterfaceTest extends AnyFlatSpec with ChiselScalatestTester {
   // this test checks if by giving a edge (e.g. 0x000E) address, it would request two blocks from cache and return the appropriate data to fetch
   it should "request edge" in {
     test(new CacheFetchInterface())
-      .withAnnotations(Seq(IcarusBackendAnnotation, WriteVcdAnnotation)) { c =>
+      .withAnnotations(Seq(WriteVcdAnnotation)) { c =>
         c.io.fetch.requestNext.bits.poke(0x8000000eL)
         c.io.fetch.requestNext.valid.poke(true)
         c.io.fetch.perDecoder.zipWithIndex foreach { case (f, i) =>

@@ -11,6 +11,7 @@ project/plugins/project/
 .direnv
 
 /out
+/build
 /.idea
 /.bsp
 .bloop
@@ -24,6 +25,8 @@ project/project
 **/*.v
 **/*.sv
 **/*.anno.json
+/filelist.f
+/verification/
 
 /result
 /programs

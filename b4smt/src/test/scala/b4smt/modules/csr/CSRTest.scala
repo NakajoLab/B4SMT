@@ -38,6 +38,8 @@ class CSRTest
     extends AnyFlatSpec
     with ChiselScalatestTester
     with SymbiYosysFormal {
+  override def autoResetEnabled: Boolean = true
+
   behavior of "CSR"
 
   implicit val params: b4smt.Parameters = Parameters()

@@ -69,6 +69,8 @@ class ReorderBufferTest
     extends AnyFlatSpec
     with ChiselScalatestTester
     with SymbiYosysFormal {
+  override def autoResetEnabled: Boolean = true
+
   behavior of "Reorder Buffer"
   implicit val defaultParams: b4smt.Parameters = Parameters(
     tagWidth = 4,

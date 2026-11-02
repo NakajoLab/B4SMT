@@ -1,10 +1,14 @@
-{ b4smt, iverilog, verilator_4, stdenv, zlib, circt, yosys, yices, espresso, z3, sby }:
+{ b4smt, mill, jdk, which, python3, iverilog, verilator, stdenv, zlib, circt, yosys, yices, espresso, z3, sby }:
 name: testCommand:
 b4smt.mkDerivation {
   name = "${name}-b4smt-test";
   nativeBuildInputs = [
+    mill
+    which
+    python3
+    jdk
     iverilog
-    verilator_4
+    verilator
     stdenv.cc
     zlib
     circt
@@ -15,8 +19,10 @@ b4smt.mkDerivation {
     sby
   ];
   buildPhase = ''
+    runHook preBuild
     ln -s ${b4smt.riscv-programs} programs
     ${testCommand}
+    runHook postBuild
   '';
   installPhase = ''
     mkdir $out

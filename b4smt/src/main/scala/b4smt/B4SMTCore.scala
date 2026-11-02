@@ -337,7 +337,6 @@ object B4SMTCore extends App {
     Array(
 //      "--lowering-options=disallowLocalVariables,disallowPackedArrays,noAlwaysComb",
       "-O=release",
-      "--emit-omir",
       "--export-module-hierarchy",
       "--disable-all-randomization",
       "--add-vivado-ram-address-conflict-synthesis-bug-workaround",

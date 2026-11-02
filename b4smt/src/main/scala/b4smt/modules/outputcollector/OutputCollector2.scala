@@ -39,7 +39,7 @@ class OutputCollector2(implicit params: Parameters)
   val bufferedInputs = allInputs map { PassthroughBuffer(_) }
 
   val splitted = bufferedInputs map {
-    SignalSplitWith(params.threads, _) { _.tag.threadId }
+    SignalSplitWith(params.threads, _) { _.tag.getThreadId }
   }
 
 //  val mmarb = Seq.fill(params.threads)(
@@ -69,17 +69,17 @@ class OutputCollector2(implicit params: Parameters)
       io.outputs(t).outputs(i).bits := mmarb(t)(i).bits
       when(mmarb(t)(i).valid) {
         assert(
-          mmarb(t)(i).bits.tag.threadId === t.U,
+          mmarb(t)(i).bits.tag.getThreadId === t.U,
           s"check for thread $t, output ${i}",
         )
       }
       takesEveryValue(io.outputs(t).outputs(i).valid)
-      io.outputs(t).outputs(i).bits.tag.threadId := t.U
+      io.outputs(t).outputs(i).bits.tag.threadId.foreach(_ := t.U)
       mmarb(t)(i).ready := true.B
     }
     // I added all signals to the splitter so this should not be an issue
 //    assume(
-//      io.csr(t).bits.tag.threadId === t.U,
+//      io.csr(t).bits.tag.getThreadId === t.U,
 //      s"csr outputs should have correct threadid ${t}"
 //    )
   }

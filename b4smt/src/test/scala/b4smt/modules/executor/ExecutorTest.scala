@@ -44,8 +44,8 @@ class ExecutorWrapper(implicit params: Parameters) extends Module {
 
     /** マイナスの表現ができていない */
 
-    reservationstation.bits.value1.poke(values.value1)
-    reservationstation.bits.value2.poke(values.value2)
+    reservationstation.bits.value1.poke(values.value1.S)
+    reservationstation.bits.value2.poke(values.value2.S)
     reservationstation.bits.operation.poke(values.operation)
   }
 
@@ -55,10 +55,10 @@ class ExecutorWrapper(implicit params: Parameters) extends Module {
     message: String = "",
   ): Unit = {
     val out = this.io.out
-    out.valid.expect(valid, message)
+    chiseltest.testableData(out.valid).expect(valid.B, message)
     if (values.isDefined) {
       out.destinationTag.expect(Tag(0, values.get.destinationTag), message)
-      out.value.expect(values.get.value, message)
+      out.value.expect(values.get.value.S, message)
     }
   }
 
@@ -67,14 +67,14 @@ class ExecutorWrapper(implicit params: Parameters) extends Module {
     out.valid.expect(valid)
     if (values.isDefined) {
       out.destinationTag.expect(Tag(0, values.get.destinationTag))
-      out.value.expect(values.get.value)
+      out.value.expect(values.get.value.S)
     }
   }
 
   def expectFetch(values: FetchValue): Unit = {
     val fetch = this.io.fetch
     fetch.valid.expect(values.valid)
-    fetch.bits.programCounterOffset.expect(values.programCounter)
+    fetch.bits.programCounterOffset.expect(values.programCounter.S)
   }
 }
 
@@ -82,6 +82,8 @@ class ExecutorTest
     extends AnyFlatSpec
     with ChiselScalatestTester
     with GivenWhenThen {
+  override def autoResetEnabled: Boolean = true
+
   behavior of "Executor"
 
   implicit val defaultParams: b4smt.Parameters =

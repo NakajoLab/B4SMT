@@ -42,12 +42,12 @@ class OutputCollector(implicit params: Parameters) extends Module {
       threadsArbiter(tid).io.in(i) <> executorQueue(i).output
       threadsArbiter(tid).io.in(i).valid :=
         executorQueue(i).output.valid &&
-          executorQueue(i).output.bits.tag.threadId === tid.U
+          executorQueue(i).output.bits.tag.getThreadId === tid.U
     }
     threadsArbiter(tid).io.in(params.executors) <> io.dataMemory
     threadsArbiter(tid).io
       .in(params.executors)
-      .valid := io.dataMemory.valid && io.dataMemory.bits.tag.threadId === tid.U
+      .valid := io.dataMemory.valid && io.dataMemory.bits.tag.getThreadId === tid.U
     threadsArbiter(tid).io.in(params.executors + 1) <> io.csr(tid)
 
     io.outputs(tid).outputs(0).bits := threadsArbiter(tid).io.out.bits
@@ -74,7 +74,7 @@ class OutputCollector(implicit params: Parameters) extends Module {
       .map(tid =>
         threadsArbiter(tid).io
           .in(i)
-          .ready && executorQueue(i).output.bits.tag.threadId === tid.U,
+          .ready && executorQueue(i).output.bits.tag.getThreadId === tid.U,
       )
       .reduce(_ || _)
   }
@@ -82,7 +82,7 @@ class OutputCollector(implicit params: Parameters) extends Module {
     .map(tid =>
       threadsArbiter(tid).io
         .in(params.executors)
-        .ready && io.dataMemory.bits.tag.threadId === tid.U,
+        .ready && io.dataMemory.bits.tag.getThreadId === tid.U,
     )
     .reduce(_ || _)
 }

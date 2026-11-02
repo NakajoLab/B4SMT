@@ -37,7 +37,14 @@ trait SymbiYosysFormal extends TestSuiteMixin {
       gen,
       firtoolOpts = Array(
         "--lowering-options=disallowLocalVariables,disallowPackedArrays,noAlwaysComb,verifLabels",
+        "--default-layer-specialization=enable",
       ),
+    )
+
+    // Yosys accepts immediate assumptions, but not their optional SV else clause.
+    s = s.replaceAll(
+      "(?s)(assume\\([^;]*?\\))\\s+else \\$error\\([^;]*\\);",
+      "$1;",
     )
 
     val rrr =

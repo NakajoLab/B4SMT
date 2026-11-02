@@ -14,6 +14,8 @@ class DataMemoryBufferTestWrapper(implicit params: Parameters)
     extends DataMemoryBuffer {}
 
 class DataMemoryBufferTest extends AnyFlatSpec with ChiselScalatestTester {
+  override def autoResetEnabled: Boolean = true
+
   behavior of "Data Memory Buffer"
 
   implicit val params: b4smt.Parameters =

@@ -158,6 +158,8 @@ class DecoderTest
     extends AnyFlatSpec
     with ChiselScalatestTester
     with SymbiYosysFormal {
+  override def autoResetEnabled: Boolean = true
+
   behavior of "decoder"
   implicit val testParams: b4smt.Parameters =
     Parameters(threads = 1, decoderPerThread = 1)

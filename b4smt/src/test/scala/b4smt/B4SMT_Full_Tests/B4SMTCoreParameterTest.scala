@@ -3,7 +3,6 @@ package b4smt.B4SMT_Full_Tests
 import b4smt.Parameters
 import b4smt.utils.B4SMTCoreWithMemory
 import chiseltest._
-import chiseltest.internal.CachingAnnotation
 import org.scalatest.Tag
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.tagobjects.Slow
@@ -15,6 +14,8 @@ object ParameterTest extends Tag("ParameterTest")
 class z40_B4SMTCoreParameterTest
     extends AnyFlatSpec
     with ChiselScalatestTester {
+  override def autoResetEnabled: Boolean = true
+
   behavior of "B4SMT with many parameters"
   implicit val defaultParams: b4smt.Parameters = Parameters(debug = true)
 
@@ -39,13 +40,7 @@ class z40_B4SMTCoreParameterTest
                     ),
                   ),
                 )
-                  .withAnnotations(
-                    Seq(
-                      WriteFstAnnotation,
-                      VerilatorBackendAnnotation,
-                      CachingAnnotation,
-                    ),
-                  ) { c =>
+                  .withAnnotations(Seq(WriteVcdAnnotation)) { c =>
                     c.initialize64("programs/riscv-sample-programs/fibonacci_c")
                     for (t <- 0 until threads)
                       c.checkForRegisterChange(

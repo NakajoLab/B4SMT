@@ -52,14 +52,20 @@ class ValueSelectorWrapper(implicit params: Parameters) extends ValueSelector {
   }
 
   def expectValue(value: Option[Int]): Unit = {
-    this.io.value.valid.expect(value.isDefined.B, "valueがありませんです")
+    chiseltest
+      .testableData(this.io.value.valid)
+      .expect(value.isDefined.B, "valueがありませんです")
     if (value.isDefined) {
-      this.io.value.bits.expect(value.get.U, "valueの値が間違っています")
+      chiseltest
+        .testableData(this.io.value.bits)
+        .expect(value.get.U, "valueの値が間違っています")
     }
   }
 }
 
 class ValueSelectorTest extends AnyFlatSpec with ChiselScalatestTester {
+  override def autoResetEnabled: Boolean = true
+
   behavior of "ValueSelector1"
 
   implicit val defaultParams: b4smt.Parameters =

@@ -7,6 +7,8 @@ import org.scalatest.flatspec.AnyFlatSpec
 import chisel3._
 
 class RegisterFileTest extends AnyFlatSpec with ChiselScalatestTester {
+  override def autoResetEnabled: Boolean = true
+
   behavior of "register file"
 
   implicit val detfaultParams: b4smt.Parameters =

@@ -969,7 +969,7 @@ object Operations {
 }
 
 class DecodingMod(implicit params: Parameters) extends Module {
-  val input = IO(Input(UInt(32.W)))
+  val input = IO(Input(UInt(32.W))).suggestName("instruction")
   val pc = IO(Input(UInt(64.W)))
   val out = IO(Output(new Operations()))
   out := Operations.genDecoder(input, pc)

@@ -70,6 +70,8 @@ class ReservationStationWrapper(implicit params: Parameters)
 }
 
 class ReservationStationTest extends AnyFlatSpec with ChiselScalatestTester {
+  override def autoResetEnabled: Boolean = true
+
   behavior of "Reservation Station"
   implicit val params: b4smt.Parameters =
     Parameters(threads = 1, decoderPerThread = 1, tagWidth = 4)

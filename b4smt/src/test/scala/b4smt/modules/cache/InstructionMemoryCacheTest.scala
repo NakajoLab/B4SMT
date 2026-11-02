@@ -40,6 +40,8 @@ class InstructionMemoryCacheWrapper()(implicit params: Parameters)
 class InstructionMemoryCacheTest
     extends AnyFlatSpec
     with ChiselScalatestTester {
+  override def autoResetEnabled: Boolean = true
+
   behavior of "Instruction Cache"
   implicit val defaultParams: Parameters = Parameters(fetchWidth = 2)
 

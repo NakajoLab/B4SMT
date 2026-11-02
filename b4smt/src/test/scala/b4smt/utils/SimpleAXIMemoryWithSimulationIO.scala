@@ -44,7 +44,9 @@ class SimpleAXIMemoryWithSimulationIO(sizeBytes: Long = 1024 * 1024 * 16)(
     simulationIO.output.valid := false.B
   }
 
-  val mem = SyncReadMem(sizeBytes / 8, Vec(8, UInt(8.W)))
+  // Keep byte enables explicit: firtool 1.161.0's default aggregate-memory
+  // lowering drops write masks (unlike --lower-memories).
+  val mem = Seq.fill(8)(SyncReadMem(sizeBytes / 8, UInt(8.W)))
 
   val sourceReady = RegInit(false.B)
   val gotSize = RegInit(false.B)
@@ -60,10 +62,12 @@ class SimpleAXIMemoryWithSimulationIO(sizeBytes: Long = 1024 * 1024 * 16)(
       }
     }.otherwise {
       when(simulationSource.input.valid) {
-        mem.write(
-          sourceWriteIndex,
-          simulationSource.input.bits.asTypeOf(Vec(8, UInt(8.W))),
-        )
+        for (i <- 0 until 8) {
+          mem(i).write(
+            sourceWriteIndex,
+            simulationSource.input.bits(8 * i + 7, 8 * i),
+          )
+        }
         sourceWriteIndex := sourceWriteIndex + 1.U
       }
     }
@@ -106,11 +110,14 @@ class SimpleAXIMemoryWithSimulationIO(sizeBytes: Long = 1024 * 1024 * 16)(
       ) {
         axi.write.ready := true.B
         when(axi.write.valid) {
-          mem.write(
-            writeState.output.bits.address(63, 3) + burstLen,
-            axi.write.bits.DATA.asTypeOf(Vec(8, UInt(8.W))),
-            axi.write.bits.STRB.asBools,
-          )
+          for (i <- 0 until 8) {
+            when(axi.write.bits.STRB(i)) {
+              mem(i).write(
+                writeState.output.bits.address(63, 3) + burstLen,
+                axi.write.bits.DATA(8 * i + 7, 8 * i),
+              )
+            }
+          }
           burstLen := burstLen + 1.U
           when(burstLen === writeState.output.bits.burstLength) {
             burstLen := 0.U
@@ -159,7 +166,9 @@ class SimpleAXIMemoryWithSimulationIO(sizeBytes: Long = 1024 * 1024 * 16)(
   val readDone = RegInit(false.B)
 
   val readAddr = WireDefault(0.U)
-  axi.read.bits.DATA := mem.read(readAddr, !readState.empty).asUInt
+  axi.read.bits.DATA := VecInit(
+    mem.map(_.read(readAddr, !readState.empty)),
+  ).asUInt
   when(sourceReady) {
     when(!readState.full) {
       axi.readAddress.ready := true.B

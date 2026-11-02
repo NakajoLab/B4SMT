@@ -151,7 +151,7 @@ class FetchWrapper()(implicit params: Parameters) extends Module {
   def setExecutorBranchResult(results: Option[Int] = None): Unit = {
     io.collectedBranchAddresses.addresses.valid.poke(results.isDefined)
     io.collectedBranchAddresses.addresses.bits.programCounterOffset
-      .poke(results.getOrElse(0))
+      .poke(results.getOrElse(0).S)
   }
 }
 
@@ -159,6 +159,8 @@ class FetchTest
     extends AnyFlatSpec
     with ChiselScalatestTester
     with SymbiYosysFormal {
+  override def autoResetEnabled: Boolean = true
+
   behavior of "Fetch"
   implicit val defaultParams: b4smt.Parameters =
     Parameters(

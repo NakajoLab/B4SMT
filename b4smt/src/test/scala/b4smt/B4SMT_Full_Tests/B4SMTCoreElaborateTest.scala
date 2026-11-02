@@ -7,6 +7,7 @@ import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 
 class B4SMTCoreElaborateTest extends AnyFlatSpec with ChiselScalatestTester {
+  override def autoResetEnabled: Boolean = true
 
   // デバッグに時間がかかりすぎるのでパラメータを少し下げる。
   implicit val defaultParams: b4smt.Parameters = Parameters(debug = true)

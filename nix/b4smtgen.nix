@@ -1,52 +1,65 @@
-{ mkSbtDerivation, nix-filter, ripgrep, circt, callPackage, riscv-programs, lib }:
+{ stdenv, nix-filter, ripgrep, circt, callPackage, riscv-programs, lib, mill, jdk }:
 { hash }:
 let
-  mkDerivation = attrs: mkSbtDerivation ({
+  src = nix-filter {
+    root = ../.;
+    include = [ "b4smt" "pext" "chisel-formal" "build.mill" ".scalafmt.conf" ];
+  };
+  dependencies = stdenv.mkDerivation {
+    pname = "b4smt-mill-dependencies";
+    version = "0.1.0";
+    inherit src;
+    nativeBuildInputs = [ mill jdk ];
+    outputHashMode = "recursive";
+    outputHashAlgo = "sha256";
+    outputHash = hash;
+    buildPhase = ''
+      export HOME="$TMPDIR/home" COURSIER_CACHE="$TMPDIR/coursier"
+      mkdir -p "$HOME" "$COURSIER_CACHE"
+      mill --no-daemon mill.javalib.OfflineSupport/prepareOffline '__:OfflineSupportModule.prepareOffline'
+      mill --no-daemon b4smt.test.compile
+      mill --no-daemon mill.javalib.JvmWorkerModule/scalalibClasspath
+      # Scalafmt resolves its configured version dynamically, outside prepareOffline.
+      mill --no-daemon mill.scalalib.scalafmt/reformatAll
+    '';
+    installPhase = ''
+      mkdir -p "$out"
+      cp -R "$COURSIER_CACHE"/. "$out"/
+      find "$out" -type f \( -name '*.lock' -o -name '*.checked' \) -delete
+    '';
+  };
+  mkDerivation = attrs: stdenv.mkDerivation ({
     pname = "b4smt";
     version = "0.1.0";
-    src = nix-filter {
-      root = ../.;
-      include = [
-        "b4smt"
-        "pext"
-        "chisel-formal"
-        "project"
-        "build.sbt"
-        ".scalafmt.conf"
-      ];
-    };
-    nativeBuildInputs = [ circt ripgrep ];
-    depsSha256 = hash;
-    buildPhase = ''
-      echo no buildPhase set. Failing.
-      false
+    inherit src;
+    nativeBuildInputs = [ mill jdk circt ripgrep ];
+    preBuild = ''
+      export HOME="$TMPDIR/home" COURSIER_CACHE="$TMPDIR/coursier"
+      mkdir -p "$HOME" "$COURSIER_CACHE"
+      cp -R ${dependencies}/. "$COURSIER_CACHE"/
+      chmod -R u+w "$COURSIER_CACHE"
     '';
-
-    depsWarmupCommand = ''
-      sbt "compile;scalafmtCheck" || true
-    '';
-
-    fixupPhase = "";
     CHISEL_FIRTOOL_PATH = "${circt}/bin";
+    dontFixup = true;
   } // attrs);
 in
 lib.fix (b4smt: mkDerivation {
   buildPhase = ''
-    sbt "b4smt/runMain b4smt.B4SMTCore"
+    runHook preBuild
+    mill --no-daemon --offline b4smt.runMain b4smt.B4SMTCore
     cat B4SMTCore.sv | rg -U '(?s)module B4SMTCore\(.*endmodule' > B4SMTCore.wrapper.v
     sed -i 's/module B4SMTCore(/module B4SMTCoreUnused(/g' B4SMTCore.sv
+    runHook postBuild
   '';
-
   installPhase = ''
     mkdir $out
-    cp B4SMTCore.* $out
+    while IFS= read -r file; do
+      cp --parents "$file" "$out"
+    done < filelist.f
+    cp filelist.f B4SMTCore.wrapper.v $out/
   '';
-
   passthru = {
-    inherit riscv-programs mkDerivation;
-    sbtTest = callPackage ./b4smt_sbt_test.nix {
-      inherit b4smt;
-    };
+    inherit dependencies riscv-programs mkDerivation;
+    millTest = callPackage ./b4smt_mill_test.nix { inherit b4smt; };
   };
 })
-

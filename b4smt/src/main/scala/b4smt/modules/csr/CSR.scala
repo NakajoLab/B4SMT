@@ -187,13 +187,13 @@ class CSR(implicit params: Parameters) extends Module with FormalTools {
   when(io.reorderBuffer.mepc.valid) {
     mepc := io.reorderBuffer.mepc.bits
   }
-  io.CSROutput.bits.tag.threadId := io.threadId
+  io.CSROutput.bits.tag.threadId.foreach(_ := io.threadId)
 
   when(io.decoderInput.valid) {
-    assume(io.decoderInput.bits.destinationTag.threadId === io.threadId)
+    assume(io.decoderInput.bits.destinationTag.getThreadId === io.threadId)
   }
   when(io.CSROutput.valid) {
-    assert(io.CSROutput.bits.tag.threadId === io.threadId)
+    assert(io.CSROutput.bits.tag.getThreadId === io.threadId)
   }
   takesEveryValue(io.CSROutput.valid)
 }

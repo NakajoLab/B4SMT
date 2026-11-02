@@ -2,9 +2,8 @@ package b4smt.B4SMT_Full_Tests
 
 import b4smt.Parameters
 import b4smt.utils.B4SMTCoreWithMemory
+import chisel3._
 import chiseltest._
-import chiseltest.internal.CachingAnnotation
-import firrtl2.annotations.Annotation
 import org.scalatest.Tag
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.tagobjects.Slow
@@ -24,15 +23,17 @@ class B4SMTCoreRISCVTestWrapper()(implicit params: Parameters)
         .zipWithIndex
         .map { case (n, i) => f"x$i%-2d = ($n%016X) $n" }
         .reduce(_ + "\n" + _)
-    this.io.registerFileContents
-      .get(0)(3)
-      .expect(1, error_message)
+    chiseltest
+      .testableData(this.io.registerFileContents.get(0)(3))
+      .expect(1.U, error_message)
   }
 }
 
 abstract class RiscvTest(val testPrefix: String)
     extends AnyFlatSpec
     with ChiselScalatestTester {
+  override def autoResetEnabled: Boolean = true
+
   var params = Parameters(
     debug = true,
     threads = 1,
@@ -44,25 +45,19 @@ abstract class RiscvTest(val testPrefix: String)
 //    enablePExt = true
   )
 
-  val annotation = IcarusBackendAnnotation
-  val writeWaveform = WriteFstAnnotation
+  // ChiselTest compatibility runs on Verilator; Icarus and FST are unavailable.
+  val writeWaveform = WriteVcdAnnotation
 
   object RISCVTest extends Tag("RISCVTest")
 
-  def riscv_test(
-    test_name: String,
-    timeout: Int = 4000,
-    backendAnnotation: Annotation = annotation,
-  ): Unit = {
+  def riscv_test(test_name: String, timeout: Int = 4000): Unit = {
 
     it should s"run $test_name" taggedAs (RISCVTest, Slow) in {
       test( // FIXME fromFile8bit
         new B4SMTCoreRISCVTestWrapper(
         )(this.params),
       )
-        .withAnnotations(
-          Seq(backendAnnotation, CachingAnnotation, this.writeWaveform),
-        ) { c =>
+        .withAnnotations(Seq(this.writeWaveform)) { c =>
           c.clock.setTimeout(timeout)
           c.initialize(
             s"programs/riscv-tests/share/riscv-tests/isa/rv64u$testPrefix-p-$test_name",
@@ -136,7 +131,7 @@ class RiscvTestC extends RiscvTest("c") {
 class RiscvTestA extends RiscvTest("a") {
   behavior of "riscv_test_a"
 
-  riscv_test("lrsc", timeout = 100000, VerilatorBackendAnnotation)
+  riscv_test("lrsc", timeout = 100000)
 
   riscv_test("amoadd_w")
   riscv_test("amoand_w")

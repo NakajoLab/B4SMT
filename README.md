@@ -25,11 +25,11 @@ $ nix shell "nixpkgs#cachix" -c cachix use b4smt
 開発
 * [intellij IDEA][intellij]
 * java
-* [sbt]
+* [Mill]
 * [LLVM circt] (System Verilog生成用のfirtoolコマンドラインツール)
 
 [intellij]: https://www.jetbrains.com/idea/
-[sbt]: https://www.scala-sbt.org/
+[Mill]: https://mill-build.org/
 [LLVM circt]: https://circt.llvm.org/
 
 テスト
@@ -58,15 +58,21 @@ $ make programs
 ## テスト方法
 いくつかの時間のかかるテストを除いたテストは次のように行います。
 ```shell
-$ sbt "testOnly * -- -l org.scalatest.tags.Slow"
+$ mill b4smt.test.testOnly '*' -- -l org.scalatest.tags.Slow
 ```
 
 すべてのテストを実行するには次のコマンドを実行します。（とても時間がかかります）
 ```shell
-$ sbt test
+$ mill b4smt.test.testOnly '*'
 ```
 
 細かく実行するテストを決めたい場合はIntellij IDEAでプロジェクトを開き、各テストを実行してください。
+
+## フォーマット
+Scala・Millのソース（Mill経由のScalafmt）とNixファイルをまとめて整形します。
+```shell
+$ nix fmt
+```
 
 ## トラブルシューティング
 ### 依存関係周りを編集したらプロセッサが生成できない

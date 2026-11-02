@@ -194,7 +194,7 @@ class AtomicLSU(implicit params: Parameters) extends Module {
     when(!issueQueue.empty) {
       when(issueQueue.output.bits.operation === AMOOperation.Sc) {
         state := write_request
-        io.statusSc := 1.U << issueQueue.output.bits.destinationTag.threadId
+        io.statusSc := 1.U << issueQueue.output.bits.destinationTag.getThreadId
       }.otherwise {
         io.memory.read.request.valid := true.B
         val accessWidth = Mux(
@@ -226,13 +226,13 @@ class AtomicLSU(implicit params: Parameters) extends Module {
         state := write_back
       }.elsewhen(issueQueue.output.bits.operation === AMOOperation.Lr) {
         state := write_back
-        io.statusLr := 1.U << issueQueue.output.bits.destinationTag.threadId
-        val res = reservation(issueQueue.output.bits.destinationTag.threadId)
+        io.statusLr := 1.U << issueQueue.output.bits.destinationTag.getThreadId
+        val res = reservation(issueQueue.output.bits.destinationTag.getThreadId)
         res.valid := true.B
         res.bits := issueQueue.output.bits.addressValue
       }.otherwise {
         state := write_request
-        io.statusAmo := 1.U << issueQueue.output.bits.destinationTag.threadId
+        io.statusAmo := 1.U << issueQueue.output.bits.destinationTag.getThreadId
       }
     }
   }
@@ -241,14 +241,14 @@ class AtomicLSU(implicit params: Parameters) extends Module {
   private val writeRequestDataDone = RegInit(false.B)
 
   when(state === write_request) {
-    val res = reservation(issueQueue.output.bits.destinationTag.threadId)
+    val res = reservation(issueQueue.output.bits.destinationTag.getThreadId)
     val scInvalid =
       issueQueue.output.bits.operation === AMOOperation.Sc && (!res.valid || res.bits =/= issueQueue.output.bits.addressValue)
     when(scInvalid) {
       response := 1.U
       state := write_back
       res.valid := false.B
-      io.statusScFail := 1.U << issueQueue.output.bits.destinationTag.threadId
+      io.statusScFail := 1.U << issueQueue.output.bits.destinationTag.getThreadId
     }.otherwise {
       when(issueQueue.output.bits.operation === AMOOperation.Sc) {
         response := 0.U

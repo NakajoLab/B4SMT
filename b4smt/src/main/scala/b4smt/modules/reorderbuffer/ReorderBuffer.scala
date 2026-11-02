@@ -127,7 +127,7 @@ class ReorderBuffer(implicit params: Parameters) extends Module {
       if (i == 0) when(biVal.operationInorder) {
         lsq.valid := true.B
         lsq.bits.destinationTag.id := index
-        lsq.bits.destinationTag.threadId := io.threadId
+        lsq.bits.destinationTag.threadId.foreach(_ := io.threadId)
         biVal.operationInorder := false.B
       }
 
@@ -146,8 +146,7 @@ class ReorderBuffer(implicit params: Parameters) extends Module {
           when(
             index === registerTagMap(biVal.destinationRegister.inner).tagId,
           ) {
-            registerTagMap(biVal.destinationRegister.inner) :=
-              RegisterTagMapContent.default
+            registerTagMap(biVal.destinationRegister.inner).valid := false.B
           }
         }.otherwise {
           io.csr.mcause.valid := true.B
@@ -258,7 +257,7 @@ class ReorderBuffer(implicit params: Parameters) extends Module {
   // 出力の読み込み
   private val output = io.collectedOutputs.outputs
   for (o <- output) {
-    when(o.valid && (o.bits.tag.threadId === io.threadId)) {
+    when(o.valid && (o.bits.tag.getThreadId === io.threadId)) {
       val writePort = buffer(o.bits.tag.id)
       writePort.value := o.bits.value
       writePort.isError := o.bits.isError
@@ -279,12 +278,12 @@ class ReorderBuffer(implicit params: Parameters) extends Module {
 
   for (d <- io.decoders)
     for (s <- d.sources)
-      s.matchingTag.bits.threadId := io.threadId
+      s.matchingTag.bits.threadId.foreach(_ := io.threadId)
 
   // FORMAL
   for (d <- io.decoders)
     for (s <- d.sources)
-      assert(s.matchingTag.bits.threadId === io.threadId)
+      assert(s.matchingTag.bits.getThreadId === io.threadId)
 }
 
 object ReorderBuffer extends App {

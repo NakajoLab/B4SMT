@@ -5,6 +5,8 @@ import org.scalatest.flatspec.AnyFlatSpec
 import chisel3._
 
 class PassthroughBufferTest extends AnyFlatSpec with ChiselScalatestTester {
+  override def autoResetEnabled: Boolean = true
+
   it should "pass values" in {
     test(new PassthroughBuffer(UInt(4.W))) { c =>
       c.io.output.ready.poke(true)

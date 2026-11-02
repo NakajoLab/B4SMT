@@ -4,10 +4,9 @@
   inputs.nixpkgs.url = "github:nixos/nixpkgs?ref=nixpkgs-unstable";
   inputs.flake-utils.url = "github:numtide/flake-utils";
   inputs.nix-filter.url = "github:numtide/nix-filter";
-  inputs.sbt-derivation = {
-    url = "github:zaninime/sbt-derivation";
+  inputs.treefmt-nix = {
+    url = "github:numtide/treefmt-nix";
     inputs.nixpkgs.follows = "nixpkgs";
-    inputs.flake-utils.follows = "flake-utils";
   };
   inputs.riscv-test-src = {
     url = "https://github.com/riscv-software-src/riscv-tests";
@@ -20,19 +19,15 @@
     inputs.flake-utils.lib.eachDefaultSystem (system:
       let
         overlays = final: prev: {
-          verilator_4 = final.callPackage ./nix/verilator_4.nix { };
-          circt = final.callPackage ./nix/firtool.nix { };
           b4smtGen = final.callPackage ./nix/b4smtgen.nix {
             riscv-programs = self.packages.${system}.default;
           };
-          b4smt = final.b4smtGen { hash = "sha256-ccGHs9H7FntXuaySw/tmFCNGRMuCS/hLukU7Wsz3i3c="; };
-          sbt = prev.sbt.override { jre = final.jre_headless; };
+          b4smt = final.b4smtGen { hash = "sha256-utcJYpKsnVZfsNWksD1oQjI9uGy60iMErngk4TZ14s0="; };
         };
         pkgs = import nixpkgs {
           inherit system;
           overlays = [
             inputs.nix-filter.overlays.default
-            inputs.sbt-derivation.overlays.default
             overlays
           ];
           config.allowUnfreePredicate = pkg: builtins.elem (nixpkgs.lib.getName pkg) [
@@ -40,6 +35,12 @@
           ];
         };
         inherit (nixpkgs) lib;
+        treefmt = inputs.treefmt-nix.lib.evalModule pkgs {
+          imports = [ ./nix/treefmt-mill.nix ];
+          projectRootFile = "flake.nix";
+          programs.nixpkgs-fmt.enable = true;
+          programs.mill.enable = true;
+        };
       in
       {
         packages = rec {
@@ -50,39 +51,46 @@
             { name = "riscv-tests"; path = riscv-tests; }
             { name = "riscv-sample-programs"; path = riscv-sample-programs; }
           ];
-          slowChecks = pkgs.b4smt.sbtTest "slow" ''sbt "testOnly * -- -n org.scalatest.tags.Slow"'';
-          verilator = pkgs.verilator_4;
-          format = pkgs.b4smt.sbtTest "format" ''sbt fmtCheck'';
+          slowChecks = pkgs.b4smt.millTest "slow" ''mill --no-daemon --offline b4smt.test.testOnly '*' -- -n org.scalatest.tags.Slow'';
+          verilator = pkgs.verilator;
+          format = pkgs.b4smt.millTest "format" ''mill --no-daemon --offline mill.scalalib.scalafmt/checkFormatAll'';
         };
 
         checks =
           {
-            quick = pkgs.b4smt.sbtTest "quick" ''sbt "testOnly * -- -l org.scalatest.tags.Slow"'';
-            # programs = sbtTest ''sbt "testOnly *ProgramTest*"'';
+            quick = pkgs.b4smt.millTest "quick" ''mill --no-daemon --offline b4smt.test.testOnly '*' -- -l org.scalatest.tags.Slow'';
           };
 
-        formatter = pkgs.nixpkgs-fmt;
+        formatter = treefmt.config.build.wrapper;
 
-        devShells.default = pkgs.callPackage ./nix/shell.nix {
-          verilator = pkgs.verilator_4;
-        };
+        devShells.default = pkgs.callPackage ./nix/shell.nix { };
 
         apps.update-hash = {
           type = "app";
-          program = let
-            script = pkgs.writeShellScript "update-hash" ''
-              echo updating-hash
-              set -xe
-              export hash=$(nix eval ".#processor.dependencies.outputHash" --json | ${lib.getExe pkgs.jq} -r)
-              sed -i "s|$hash|${lib.fakeHash}|" flake.nix
-              echo this is a temporary file for updating the hash > update-tmp
-              nix build ".#processor.dependencies" --no-link -L |& tee -a update-tmp
-              export new_hash=$(grep "got:" update-tmp | tail -n1 | awk '{print $2}')
-              sed -i "s|${lib.fakeHash}|$new_hash|" flake.nix
-              rm update-tmp
-              echo "changed hash from:$hash to:$new_hash"
-            '';
-          in "${script}";
+          program =
+            let
+              script = pkgs.writeShellScript "update-hash" ''
+                echo updating-hash
+                set -eu
+                old_hash=$(nix eval ".#processor.dependencies.outputHash" --raw)
+                log=$(mktemp)
+                trap 'rm -f "$log"' EXIT
+                sed -i "s|$old_hash|${lib.fakeHash}|" flake.nix
+                if nix build ".#processor.dependencies" --no-link -L >"$log" 2>&1; then
+                  new_hash=${lib.fakeHash}
+                else
+                  new_hash=$(grep 'got:' "$log" | tail -n1 | awk '{print $2}') || true
+                  if [ -z "$new_hash" ]; then
+                    cat "$log" >&2
+                    sed -i "s|${lib.fakeHash}|$old_hash|" flake.nix
+                    exit 1
+                  fi
+                fi
+                sed -i "s|${lib.fakeHash}|$new_hash|" flake.nix
+                echo "changed hash from:$old_hash to:$new_hash"
+              '';
+            in
+            "${script}";
         };
       });
 }

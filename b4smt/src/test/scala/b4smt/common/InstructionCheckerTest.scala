@@ -36,6 +36,8 @@ class InstructionCheckerWrapper extends InstructionChecker {
 }
 
 class InstructionCheckerTest extends AnyFlatSpec with ChiselScalatestTester {
+  override def autoResetEnabled: Boolean = true
+
   behavior of "InstructionChecker"
 
   it should "parse add x1, x2, x3" in {

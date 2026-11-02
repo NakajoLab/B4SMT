@@ -1,7 +1,9 @@
 { mkShell
 , circt
 , pkgsCross
-, sbt
+, mill
+, which
+, jdk
 , iverilog
 , verilator
 , zlib
@@ -19,7 +21,9 @@ mkShell {
   packages = [
     circt
     pkgsCross.riscv64.stdenv.cc
-    sbt
+    mill
+    which
+    jdk
     iverilog
     verilator
     zlib

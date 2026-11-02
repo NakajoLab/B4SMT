@@ -3,11 +3,12 @@ package b4smt.B4SMT_Full_Tests
 import b4smt.Parameters
 import b4smt.utils.B4SMTCoreWithMemory
 import chiseltest._
-import chiseltest.internal.CachingAnnotation
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.tagobjects.Slow
 
 class B4SMTCoreBenchmark extends AnyFlatSpec with ChiselScalatestTester {
+  override def autoResetEnabled: Boolean = true
+
   // デバッグに時間がかかりすぎるのでパラメータを少し下げる。
   implicit val defaultParams: b4smt.Parameters = {
     Parameters(
@@ -20,38 +21,38 @@ class B4SMTCoreBenchmark extends AnyFlatSpec with ChiselScalatestTester {
       instructionStart = 0x8000_0000L,
     )
   }
-  val backendAnnotation = IcarusBackendAnnotation
-  val WriteWaveformAnnotation = WriteFstAnnotation
+  // Compatibility simulation uses Verilator and supports VCD, not FST.
+  val WriteWaveformAnnotation = WriteVcdAnnotation
 
   behavior of s"RISC-V benchmark"
 
   ignore should "run dhrystore" taggedAs Slow in {
-    test(new B4SMTCoreWithMemory).withAnnotations(
-      Seq(
-        WriteWaveformAnnotation,
-        CachingAnnotation,
-        VerilatorBackendAnnotation,
-      ),
-    ) { c =>
-      c.initialize(
-        "programs/riscv-tests/share/riscv-tests/benchmarks/dhrystone",
-      )
-      c.clock.setTimeout(1000000)
-      fork(while (true) {
-        if (
-          c.io.accessMemoryAddress.writeAddress.valid.peekBoolean() &&
-          c.io.accessMemoryAddress.writeAddress.bits.peekInt() == 0x80001000L
-        ) {
-          while (!c.io.accessMemoryAddress.writeData.valid.peekBoolean()) {
-            c.clock.step()
+    test(new B4SMTCoreWithMemory)
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
+        c.initialize(
+          "programs/riscv-tests/share/riscv-tests/benchmarks/dhrystone",
+        )
+        c.clock.setTimeout(1000000)
+        // The compatibility fork runs synchronously, so monitor in the stepping loop.
+        var waitingForData = false
+        for (_ <- 0 until 1000000) {
+          if (
+            !waitingForData &&
+            c.io.accessMemoryAddress.writeAddress.valid.peekBoolean() &&
+            c.io.accessMemoryAddress.writeAddress.bits.peekInt() == 0x80001000L
+          ) {
+            waitingForData = true
           }
-          val ch = c.io.accessMemoryAddress.writeData.bits.peekInt()
-          print(ch.toChar)
+          if (
+            waitingForData && c.io.accessMemoryAddress.writeData.valid
+              .peekBoolean()
+          ) {
+            print(c.io.accessMemoryAddress.writeData.bits.peekInt().toChar)
+            waitingForData = false
+          }
+          c.clock.step()
         }
-        c.clock.step()
-      })
-      c.clock.step(1000000)
-    }
+      }
   }
 
   for (
@@ -75,13 +76,7 @@ class B4SMTCoreBenchmark extends AnyFlatSpec with ChiselScalatestTester {
           ),
         ),
       )
-        .withAnnotations(
-          Seq(
-            WriteWaveformAnnotation,
-            CachingAnnotation,
-            VerilatorBackendAnnotation,
-          ),
-        ) { c =>
+        .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
           c.initialize(
             s"programs/riscv-tests/share/riscv-tests/benchmarks/$filename",
           )

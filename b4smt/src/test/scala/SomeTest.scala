@@ -1,8 +1,6 @@
 import chisel3._
 import chiselformal.SymbiYosysFormal
 import chiseltest._
-import chiseltest.formal.{BoundedCheck, Formal, changed, past}
-import chiseltest.simulator.SimulatorDebugAnnotation
 import circt.stage.ChiselStage
 import org.scalatest.flatspec._
 
@@ -28,15 +26,15 @@ class SomeTest
     with ChiselScalatestTester
     with SymbiYosysFormal {
 
+  override def autoResetEnabled: Boolean = true
+
   behavior of "some test"
 
   it should "10-3=7" in {
-    test(new Adder).withAnnotations(
-      Seq(WriteFstAnnotation, VerilatorBackendAnnotation),
-    ) { c =>
-      c.a.poke(10)
-      c.b.poke(-3)
-      c.out.expect(7)
+    test(new Adder).withAnnotations(Seq(WriteVcdAnnotation)) { c =>
+      c.a.poke(10.S)
+      c.b.poke((-3).S)
+      c.out.expect(7.S)
       c.clock.step()
     }
   }

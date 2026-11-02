@@ -124,13 +124,13 @@ class ReservationStation2(implicit params: Parameters)
     when(decoder.entry.valid) {
       resNext := decoder.entry
       when(resNext.sources(0).isTag) {
-        assert(resNext.sources(0).tag.threadId === io.threadId)
+        assert(resNext.sources(0).tag.getThreadId === io.threadId)
       }
       when(resNext.sources(1).isTag) {
-        assert(resNext.sources(1).tag.threadId === io.threadId)
+        assert(resNext.sources(1).tag.getThreadId === io.threadId)
       }
       when(resNext.sources(2).isTag) {
-        assert(resNext.sources(2).tag.threadId === io.threadId)
+        assert(resNext.sources(2).tag.getThreadId === io.threadId)
       }
       head := head + 1.U
     }
@@ -147,10 +147,10 @@ class ReservationStation2(implicit params: Parameters)
             for (source <- entry.sources) {
               when(source.isTag) {
                 assert(
-                  source.tag.threadId === io.threadId,
-                  p"tid was ${source.tag.threadId} should be ${io.threadId} on $ei on ${c}",
+                  source.tag.getThreadId === io.threadId,
+                  p"tid was ${source.tag.getThreadId} should be ${io.threadId} on $ei on ${c}",
                 )
-                assert(o.bits.tag.threadId === io.threadId)
+                assert(o.bits.tag.getThreadId === io.threadId)
               }
               when(source.isTag && source.tag === o.bits.tag) {
                 source := TagValueBundle.fromValue(o.bits.value)

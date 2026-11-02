@@ -29,7 +29,7 @@ class B4PExtExecutor(implicit params: Parameters) extends Module {
 
   io.status := 0.U
   when(io.output.ready && io.output.valid) {
-    io.status := 1.U << io.output.bits.tag.threadId
+    io.status := 1.U << io.output.bits.tag.getThreadId
   }
 }
 

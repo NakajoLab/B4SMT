@@ -109,7 +109,7 @@ class Executor(implicit params: Parameters) extends Module {
 
   io.fetch.valid := io.reservationStation.valid && io.reservationStation.ready && (isBranch || io.reservationStation.bits.operation === AddJALR)
   io.fetch.bits.programCounterOffset := fetchOffset
-  io.fetch.bits.threadId := io.reservationStation.bits.destinationTag.threadId
+  io.fetch.bits.threadId := io.reservationStation.bits.destinationTag.getThreadId
 
   when(io.reservationStation.valid && io.reservationStation.ready) {
     io.out.valid := io.reservationStation.ready
@@ -118,7 +118,7 @@ class Executor(implicit params: Parameters) extends Module {
   }
 
   when(io.out.valid && io.out.ready) {
-    io.status := 1.U << io.out.bits.tag.threadId
+    io.status := 1.U << io.out.bits.tag.getThreadId
   }
 
   io.out.bits.isError := false.B

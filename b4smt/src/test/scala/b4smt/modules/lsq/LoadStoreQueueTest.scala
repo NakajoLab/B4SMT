@@ -5,19 +5,12 @@ import b4smt.structures.memoryAccess.MemoryAccessInfo
 import b4smt.structures.memoryAccess.MemoryAccessType._
 import b4smt.structures.memoryAccess.MemoryAccessWidth._
 import b4smt.utils.operations.{LoadStoreOperation, LoadStoreWidth}
-import b4smt.utils.{
-  DecodeEnqueue,
-  FormalBackendOption,
-  LSQ2Memory,
-  LSQfromALU,
-  Tag,
-}
+import b4smt.utils.{DecodeEnqueue, LSQ2Memory, LSQfromALU, Tag}
 import chisel3._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chisel3.util.{BitPat, DecoupledIO}
 import chiselformal.SymbiYosysFormal
 import chiseltest._
-import chiseltest.formal._
 import org.scalatest.flatspec.AnyFlatSpec
 
 class LoadStoreQueueWrapper(implicit params: Parameters)
@@ -34,7 +27,8 @@ class LoadStoreQueueWrapper(implicit params: Parameters)
     val value = values
     output(0).valid.poke(value.exists(_.valid))
     output(0).bits.value.poke(value.map(_.value).getOrElse(0))
-    output(0).bits.tag.poke(Tag(0, value.map(_.destinationtag).getOrElse(0)))
+    output(0).bits.tag
+      .poke(Tag(0, value.map(_.destinationtag).getOrElse(0)))
     //      output.programCounter.poke(value.map(_.ProgramCounter).getOrElse(0))
 
   }
@@ -88,6 +82,8 @@ class LoadStoreQueueTest
     extends AnyFlatSpec
     with ChiselScalatestTester
     with SymbiYosysFormal {
+  override def autoResetEnabled: Boolean = true
+
   behavior of "Load Store Queue"
   implicit val defaultParams: b4smt.Parameters = Parameters(
     tagWidth = 4,

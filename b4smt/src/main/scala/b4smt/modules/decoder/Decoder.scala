@@ -60,7 +60,7 @@ class Decoder(implicit params: Parameters) extends Module with FormalTools {
     sourceTags(2).valid := false.B
     sourceTags(2).bits := Tag(io.threadId, 0.U)
   }
-  sourceTags.foreach(s => s.bits.threadId := io.threadId)
+  sourceTags.foreach(s => s.bits.threadId.foreach(_ := io.threadId))
   val destinationTag = io.reorderBuffer.destination.destinationTag
 
   // Valueの選択
@@ -133,9 +133,9 @@ class Decoder(implicit params: Parameters) extends Module with FormalTools {
     }
   }
   // thread ids are constant
-  io.loadStoreQueue.bits.destinationTag.threadId := io.threadId
-  io.loadStoreQueue.bits.storeDataTag.threadId := io.threadId
-  io.loadStoreQueue.bits.addressTag.threadId := io.threadId
+  io.loadStoreQueue.bits.destinationTag.threadId.foreach(_ := io.threadId)
+  io.loadStoreQueue.bits.storeDataTag.threadId.foreach(_ := io.threadId)
+  io.loadStoreQueue.bits.addressTag.threadId.foreach(_ := io.threadId)
 
   io.csr.valid := io.csr.ready && io.instructionFetch.ready && io.instructionFetch.valid & operations.csrOp.isValid
   io.csr.bits := 0.U.asTypeOf(new Decoder2CSRReservationStation)
@@ -154,8 +154,8 @@ class Decoder(implicit params: Parameters) extends Module with FormalTools {
     io.csr.bits.ready := operations.sources(0).valid || values(0).valid
     io.csr.bits.destinationTag := io.reorderBuffer.destination.destinationTag
   }
-  io.csr.bits.sourceTag.threadId := io.threadId
-  io.csr.bits.destinationTag.threadId := io.threadId
+  io.csr.bits.sourceTag.threadId.foreach(_ := io.threadId)
+  io.csr.bits.destinationTag.threadId.foreach(_ := io.threadId)
 
   io.amo.valid := io.amo.ready && io.instructionFetch.ready && io.instructionFetch.valid && operations.amoOp.isValid
   io.amo.bits := 0.U.asTypeOf(new Decoder2AtomicLSU)
@@ -184,9 +184,9 @@ class Decoder(implicit params: Parameters) extends Module with FormalTools {
     io.amo.bits.destinationTag := destinationTag
   }
   // thread ids are const
-  io.amo.bits.srcReg.threadId := io.threadId
-  io.amo.bits.addressReg.threadId := io.threadId
-  io.amo.bits.destinationTag.threadId := io.threadId
+  io.amo.bits.srcReg.threadId.foreach(_ := io.threadId)
+  io.amo.bits.addressReg.threadId.foreach(_ := io.threadId)
+  io.amo.bits.destinationTag.threadId.foreach(_ := io.threadId)
 
   // FORMAL
   takesEveryValue(io.reorderBuffer.valid)
@@ -200,35 +200,35 @@ class Decoder(implicit params: Parameters) extends Module with FormalTools {
 //  rs.sources.zipWithIndex foreach { case (s, i) =>
 //    when(s.isTag) {
 //      assert(
-//        s.getTagUnsafe.threadId === io.threadId,
+//        s.getTagUnsafe.getThreadId === io.threadId,
 //        s"thread id wrong on source($i)",
 //      )
 //    }
 //  }
 //  assert(
-//    io.amo.bits.srcReg.threadId === io.threadId,
+//    io.amo.bits.srcReg.getThreadId === io.threadId,
 //    "amo source thread id wrong",
 //  )
 //  assert(
-//    io.amo.bits.destinationTag.threadId === io.threadId,
+//    io.amo.bits.destinationTag.getThreadId === io.threadId,
 //    "amo destination thread id wrong",
 //  )
-//  assert(io.csr.bits.sourceTag.threadId === io.threadId)
-//  assert(io.csr.bits.destinationTag.threadId === io.threadId)
-//  assert(io.loadStoreQueue.bits.destinationTag.threadId === io.threadId)
-//  assert(io.loadStoreQueue.bits.storeDataTag.threadId === io.threadId)
-//  assert(io.loadStoreQueue.bits.addressTag.threadId === io.threadId)
+//  assert(io.csr.bits.sourceTag.getThreadId === io.threadId)
+//  assert(io.csr.bits.destinationTag.getThreadId === io.threadId)
+//  assert(io.loadStoreQueue.bits.destinationTag.getThreadId === io.threadId)
+//  assert(io.loadStoreQueue.bits.storeDataTag.getThreadId === io.threadId)
+//  assert(io.loadStoreQueue.bits.addressTag.getThreadId === io.threadId)
 
   // assumptions
   assume(stable(io.threadId))
 //  io.reorderBuffer.sources.zipWithIndex foreach { case (s, i) =>
 //    assume(
-//      s.matchingTag.bits.threadId === io.threadId,
+//      s.matchingTag.bits.getThreadId === io.threadId,
 //      s"reorder buffer source $i threadid should be the same as decoder"
 //    )
 //  }
 //  assume(
-//    io.reorderBuffer.destination.destinationTag.threadId === io.threadId,
+//    io.reorderBuffer.destination.destinationTag.getThreadId === io.threadId,
 //    "reorder buffer destination threadid should be the same as decoder"
 //  )
 }

@@ -107,10 +107,20 @@ class B4SMTCoreWithMemory()(implicit params: Parameters) extends Module {
     timeout: Int = 500,
     thread: Int = 0,
   ): Unit = {
-    this.clock.setTimeout(timeout)
-    while (this.io.registerFileContents.get(thread)(regNum).peekInt() != value)
+    var cycles = 0
+    while (
+      this.io.registerFileContents.get(thread)(regNum).peekInt() != value &&
+      cycles < timeout
+    ) {
       this.clock.step()
-    this.io.registerFileContents.get(thread)(regNum).expect(value)
+      cycles += 1
+    }
+    chiseltest
+      .testableData(this.io.registerFileContents.get(thread)(regNum))
+      .expect(
+        value.U,
+        s"thread $thread x$regNum did not reach $value within $timeout cycles",
+      )
   }
 
   def checkForOutput(

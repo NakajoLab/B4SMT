@@ -12,6 +12,8 @@ class DecodingModTest
     extends AnyFlatSpec
     with ChiselScalatestTester
     with SymbiYosysFormal {
+  override def autoResetEnabled: Boolean = true
+
   behavior of "Decodign Module"
 
   implicit val params: b4smt.Parameters = Parameters()

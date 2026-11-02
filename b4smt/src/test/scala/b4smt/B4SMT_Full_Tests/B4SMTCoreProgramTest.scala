@@ -3,11 +3,12 @@ package b4smt.B4SMT_Full_Tests
 import b4smt.Parameters
 import b4smt.utils.B4SMTCoreWithMemory
 import chiseltest._
-import chiseltest.internal.CachingAnnotation
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.tagobjects.Slow
 
 class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
+  override def autoResetEnabled: Boolean = true
+
   behavior of "B4SMT test programs"
   // デバッグに時間がかかりすぎるのでパラメータを少し下げる。
   implicit val defaultParams: b4smt.Parameters =
@@ -18,8 +19,8 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
       decoderPerThread = 1,
 //      enablePExt = true
     )
-  val backendAnnotation = IcarusBackendAnnotation
-  val WriteWaveformAnnotation = WriteFstAnnotation
+  // Compatibility simulation uses Verilator and supports VCD, not FST.
+  val WriteWaveformAnnotation = WriteVcdAnnotation
 
   // branchプログラムが実行できる
   it should "execute branch with no parallel" in {
@@ -28,9 +29,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
         defaultParams.copy(threads = 1, decoderPerThread = 1),
       ),
     )
-      .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/branch")
         c.checkForRegister(13, 20, 200)
       }
@@ -42,9 +41,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
         defaultParams.copy(threads = 2, decoderPerThread = 1),
       ),
     )
-      .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/branch")
         c.checkForRegister(13, 20, 200, 0)
         c.checkForRegister(13, 20, 200, 1)
@@ -58,9 +55,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
         defaultParams.copy(threads = 1, decoderPerThread = 1),
       ),
     )
-      .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/fibonacci")
         c.checkForRegister(6, 55, 400)
       }
@@ -69,9 +64,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
   // フィボナッチ数列の計算が同時発行数2でできる
   it should "execute fibonacci with 2 parallel" in {
     test(new B4SMTCoreWithMemory())
-      .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/fibonacci")
         c.checkForRegister(6, 55, 400)
       }
@@ -84,9 +77,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
         defaultParams.copy(threads = 1, decoderPerThread = 4),
       ),
     )
-      .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/fibonacci")
         c.checkForRegister(6, 55, 200)
       }
@@ -95,9 +86,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
   // call(JALRを使った関数呼び出し)とret(JALRを使った関数からのリターン)がうまく実行できる
   it should "execute call_ret with 2 parallel" in {
     test(new B4SMTCoreWithMemory())
-      .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/call_ret")
         c.checkForRegister(5, 1, 100)
         c.checkForRegister(6, 2, 20)
@@ -112,9 +101,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
         defaultParams.copy(threads = 1, decoderPerThread = 1),
       ),
     )
-      .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/many_add")
         c.checkForRegister(1, 8, 100)
       }
@@ -127,9 +114,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
         defaultParams.copy(threads = 2, decoderPerThread = 1),
       ),
     )
-      .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/many_add")
         c.checkForRegister(1, 8, 200, 0)
         c.checkForRegister(1, 8, 70, 1)
@@ -139,9 +124,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
   // 並列実行できそうな大量のadd命令を同時発行数2で試す
   it should "execute many_add with 2 parallel" in {
     test(new B4SMTCoreWithMemory()(defaultParams.copy(fetchWidth = 8)))
-      .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/many_add")
         c.checkForRegister(1, 8, 100)
       }
@@ -154,9 +137,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
         defaultParams.copy(threads = 1, decoderPerThread = 4, fetchWidth = 8),
       ),
     )
-      .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/many_add")
         c.checkForRegister(1, 8, 70)
       }
@@ -170,9 +151,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
           .copy(threads = 1, decoderPerThread = 4, fetchWidth = 8, tagWidth = 2),
       ),
     )
-      .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/many_add")
         c.checkForRegister(1, 8, 70)
       }
@@ -191,9 +170,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
         ),
       ),
     )
-      .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/many_add")
         c.checkForRegister(1, 8, 70)
       }
@@ -213,9 +190,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
           ),
       ),
     )
-      .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/many_add_out_of_order")
         c.clock.step(60)
         c.io.registerFileContents.get(0)(1).expect(1)
@@ -240,9 +215,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
         defaultParams.copy(threads = 1, decoderPerThread = 2),
       ),
     )
-      .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/load_store")
         c.checkForRegister(3, 10, 200)
         // address could change
@@ -267,9 +240,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
         ),
       ),
     )
-      .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/fibonacci_c")
         c.clock.step(500)
         c.checkForRegisterChange(3, 1298777728820984005L, 10000)
@@ -288,9 +259,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
         ),
       ),
     )
-      .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/fibonacci_c")
         c.checkForRegisterChange(3, 1298777728820984005L, 10000)
       }
@@ -308,9 +277,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
         ),
       ),
     )
-      .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/load_plus_arithmetic")
         c.checkForRegister(2, 20, 50)
         c.checkForRegister(3, 1, 50)
@@ -329,9 +296,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
         ),
       ),
     )
-      .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/load_after_store")
         c.checkForRegister(3, 10, 100)
       }
@@ -348,9 +313,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
         ),
       ),
     )
-      .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/enter_c")
         c.checkForRegister(3, 5, 100)
 
@@ -369,9 +332,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
         ),
       ),
     )
-      .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/calculation_c")
         c.checkForRegister(3, 18, 400)
 
@@ -389,9 +350,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
         ),
       ),
     )
-      .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/loop_c")
         c.checkForRegister(3, 30, 1000)
 
@@ -409,9 +368,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
         ),
       ),
     )
-      .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/loop_c")
         c.checkForRegister(3, 30, 2000)
 
@@ -430,9 +387,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
         ),
       ),
     )
-      .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/many_load_store")
         c.checkForRegister(2, 36)
 
@@ -451,9 +406,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
         ),
       ),
     )
-      .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/many_load_store")
         c.checkForRegister(2, 36, 100)
 
@@ -472,9 +425,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
         ),
       ),
     )
-      .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/load_store_cross")
         c.checkForRegister(2, 101, 200)
         c.checkForRegister(3, 201, 200)
@@ -493,9 +444,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
         ),
       ),
     )
-      .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/load_store_cross")
         c.checkForRegister(2, 101, 200)
         c.checkForRegister(3, 201, 200)
@@ -514,9 +463,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
         ),
       ),
     )
-      .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/csrtest")
         c.checkForRegister(17, 10)
         c.checkForRegister(17, 20)
@@ -537,9 +484,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
         ),
       ),
     )
-      .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/illegal_inst")
         c.checkForRegister(10, 10)
         c.checkForRegister(10, 40)
@@ -559,9 +504,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
         ),
       ),
     )
-      .withAnnotations(
-        Seq(WriteWaveformAnnotation, backendAnnotation, CachingAnnotation),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/io_test")
         for (p <- "ABCDEFGHIJK")
           c.checkForOutput(p)
@@ -583,13 +526,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
       new B4SMTCoreWithMemory(
       )(p),
     )
-      .withAnnotations(
-        Seq(
-          WriteWaveformAnnotation,
-          VerilatorBackendAnnotation,
-          CachingAnnotation,
-        ),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/bench")
         c.io.simulationIO.output.ready.poke(true)
         for (_ <- 0 until p.threads)
@@ -628,13 +565,7 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
         ),
       ),
     )
-      .withAnnotations(
-        Seq(
-          WriteWaveformAnnotation,
-          VerilatorBackendAnnotation,
-          CachingAnnotation,
-        ),
-      ) { c =>
+      .withAnnotations(Seq(WriteWaveformAnnotation)) { c =>
         c.initialize("programs/riscv-sample-programs/pext_test")
         c.clock.step(300)
       }
@@ -660,8 +591,6 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselScalatestTester {
       .withAnnotations(
         Seq(
 //          WriteWaveformAnnotation,
-          VerilatorBackendAnnotation,
-          CachingAnnotation,
         ),
       ) { c =>
         c.initialize("test")

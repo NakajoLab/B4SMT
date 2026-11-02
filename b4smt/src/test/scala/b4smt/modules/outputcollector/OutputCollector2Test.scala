@@ -9,6 +9,8 @@ class OutputCollector2Test
     extends AnyFlatSpec
     with ChiselScalatestTester
     with SymbiYosysFormal {
+  override def autoResetEnabled: Boolean = true
+
   behavior of "output collector 2"
   implicit val params: b4smt.Parameters =
     Parameters(threads = 4, parallelOutput = 4)
