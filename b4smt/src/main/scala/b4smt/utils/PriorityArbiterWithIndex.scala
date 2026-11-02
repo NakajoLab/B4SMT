@@ -1,6 +1,7 @@
 package b4smt.utils
 
 import chisel3._
+import chisel3.connectable._
 import chisel3.util._
 import _root_.circt.stage.ChiselStage
 
@@ -16,8 +17,8 @@ class PriorityArbiterWithIndex[T <: Data](gen: T, n: Int, priorities: Seq[Int])
   private val indexedIn = in.zipWithIndex.map {
     case (input, idx) => {
       val w = Wire(Decoupled(new IndexedData(gen, n)))
-      w.valid <> input.valid
-      w.ready <> input.ready
+      w.valid := input.valid
+      input.ready := w.ready
       w.bits.index := idx.U
       w.bits.data := input.bits
       w
@@ -25,13 +26,13 @@ class PriorityArbiterWithIndex[T <: Data](gen: T, n: Int, priorities: Seq[Int])
   }
 
   if (n == 1) {
-    out <> indexedIn(0)
+    out :<>= indexedIn(0)
   } else {
     val priority_set_sorted = priorities.toSet.toSeq.sorted
     if (priority_set_sorted.size == 1) {
       val rr_arb = Module(new B4RRArbiter(new IndexedData(gen, n), n))
-      rr_arb.io.in zip indexedIn foreach { case (a, i) => a <> i }
-      out <> rr_arb.io.out
+      rr_arb.io.in zip indexedIn foreach { case (a, i) => a :<>= i }
+      out :<>= rr_arb.io.out
     } else {
       val final_arb = Module(
         new Arbiter(new IndexedData(gen, n), priority_set_sorted.size),
@@ -40,7 +41,7 @@ class PriorityArbiterWithIndex[T <: Data](gen: T, n: Int, priorities: Seq[Int])
         if (priorities.count(v => v == p) == 1) {
           val in_index =
             priorities.zipWithIndex.filter(v => v._1 == p).map(v => v._2).head
-          a <> indexedIn(in_index)
+          a :<>= indexedIn(in_index)
         } else {
           val rr_arb = Module(
             new B4RRArbiter(
@@ -51,12 +52,12 @@ class PriorityArbiterWithIndex[T <: Data](gen: T, n: Int, priorities: Seq[Int])
           val in_indexes =
             priorities.zipWithIndex.filter(v => v._1 == p).map(v => v._2)
           for ((inIdx, ra) <- in_indexes zip rr_arb.io.in) {
-            ra <> indexedIn(inIdx)
+            ra :<>= indexedIn(inIdx)
           }
-          a <> rr_arb.io.out
+          a :<>= rr_arb.io.out
         }
       }
-      out <> final_arb.io.out
+      out :<>= final_arb.io.out
 
     }
   }

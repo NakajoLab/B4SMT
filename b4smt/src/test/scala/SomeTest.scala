@@ -22,7 +22,6 @@ object Adder extends App {
 }
 
 class SomeTest extends AnyFlatSpec with ChiselSim with SymbiYosysFormal {
-  override def configMap = super.configMap + ("emitVcd" -> "1")
 
   behavior of "some test"
 

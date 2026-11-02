@@ -158,7 +158,6 @@ class DecoderWrapper(implicit params: Parameters)
 /** デコーダのテスト
   */
 class DecoderTest extends AnyFlatSpec with ChiselSim with SymbiYosysFormal {
-  override def configMap = super.configMap + ("emitVcd" -> "1")
 
   behavior of "decoder"
   implicit val testParams: b4smt.Parameters =

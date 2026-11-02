@@ -7,7 +7,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.tagobjects.Slow
 
 class B4SMTCoreBenchmark extends AnyFlatSpec with ChiselSim {
-  override def configMap = super.configMap + ("emitVcd" -> "1")
 
   // デバッグに時間がかかりすぎるのでパラメータを少し下げる。
   implicit val defaultParams: b4smt.Parameters = {
@@ -21,8 +20,6 @@ class B4SMTCoreBenchmark extends AnyFlatSpec with ChiselSim {
       instructionStart = 0x8000_0000L,
     )
   }
-
-  // Preserve waveform tracing through ChiselSim's native emitVcd configuration.
 
   behavior of s"RISC-V benchmark"
 

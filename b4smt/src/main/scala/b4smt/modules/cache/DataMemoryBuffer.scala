@@ -13,6 +13,7 @@ import b4smt.structures.memoryAccess.MemoryAccessWidth
 import b4smt.utils.operations.{LoadStoreOperation, LoadStoreWidth}
 import b4smt.utils.{B4RRArbiter, FIFO}
 import chisel3._
+import chisel3.connectable._
 import chisel3.util._
 import chiselformal.FormalTools
 
@@ -35,12 +36,13 @@ class DataMemoryBuffer(implicit params: Parameters)
     new B4RRArbiter(new DataMemoryBufferEntry, params.threads),
   )
   for (tid <- 0 until params.threads)
-    inputArbiter.io.in(tid) <> io.dataIn(tid)
+    // The payload classes differ, but have identical fields and directions.
+    (inputArbiter.io.in(tid): Data) :<>= (io.dataIn(tid): Data)
 
   private val buffer = Module(
     new FIFO(params.loadStoreQueueIndexWidth)(new DataMemoryBufferEntry),
   )
-  buffer.input <> inputArbiter.io.out
+  buffer.input :<>= inputArbiter.io.out
   buffer.output.ready := false.B
 //  buffer.flush := false.B
 
@@ -157,7 +159,8 @@ class DataMemoryBuffer(implicit params: Parameters)
   }
 
   val outputArbiter = Module(new Arbiter(new OutputValue(), 2))
-  io.output <> outputArbiter.io.out
+  (io.output: ReadyValidIO[OutputValue]) :<>=
+    (outputArbiter.io.out: ReadyValidIO[OutputValue])
   outputArbiter.io.in foreach (v => {
     v.bits := 0.U.asTypeOf(new OutputValue())
     v.valid := false.B

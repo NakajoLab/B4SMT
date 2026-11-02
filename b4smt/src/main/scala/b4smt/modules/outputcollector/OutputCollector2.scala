@@ -11,6 +11,7 @@ import b4smt.utils.{
   SignalSplitWith,
 }
 import chisel3._
+import chisel3.connectable._
 import chisel3.experimental.prefix
 import chisel3.util._
 import chiselformal.FormalTools
@@ -49,15 +50,12 @@ class OutputCollector2(implicit params: Parameters)
 //  )
 
   val splittedTransposed = Wire(
-    Vec(
-      splitted(0).length,
-      Vec(splitted.length, Decoupled(new OutputValue()).cloneType),
-    ),
+    Vec(splitted(0).length, Vec(splitted.length, Decoupled(new OutputValue()))),
   )
 
   for (s <- splitted.indices) {
     for (i <- splitted(s).indices) {
-      splittedTransposed(i)(s) <> splitted(s)(i)
+      splittedTransposed(i)(s) :<>= splitted(s)(i)
     }
   }
 

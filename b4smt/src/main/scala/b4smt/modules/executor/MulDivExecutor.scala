@@ -17,13 +17,20 @@ class MulDivExecutor(implicit params: Parameters) extends Module {
   val mul = Module(new Multiplyer(32))
   val div = Module(new DivRem(32))
 
-  mul.io <> DontCare
-  div.io <> DontCare
+  mul.io.in.bits := DontCare
+  mul.io.in.valid := DontCare
+  mul.io.out.ready := DontCare
+  div.io.in.bits := DontCare
+  div.io.in.valid := DontCare
+  div.io.out.ready := DontCare
   io.out.valid := false.B
-  io.out.bits <> DontCare
+  io.out.bits := DontCare
   io.reservationStation.ready := false.B
 
-  val waitingInput :: executing :: waitingOutput :: Nil = Enum(3)
+  object State extends ChiselEnum {
+    val waitingInput, executing, waitingOutput = Value
+  }
+  import State._
   val state = RegInit(waitingInput)
 
   val operationReg = Reg(new MulDivOperation.Type())
@@ -109,8 +116,11 @@ class DivRem(inputWidth: Int) extends DivRemBaseModule(inputWidth) {
   io.out.valid := false.B
   io.in.ready := false.B
 
-  private val waitingInput :: changeSignIn :: executing :: changeSignOut :: waitingOutput :: Nil =
-    Enum(5)
+  private object State extends ChiselEnum {
+    val waitingInput, changeSignIn, executing, changeSignOut, waitingOutput =
+      Value
+  }
+  import State._
   private val state = RegInit(waitingInput)
 
   private val dividend = Reg(UInt((inputWidth * 2).W))

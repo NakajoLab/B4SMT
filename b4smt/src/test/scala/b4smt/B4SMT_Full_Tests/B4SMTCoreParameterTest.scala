@@ -12,7 +12,6 @@ import java.io.FileWriter
 object ParameterTest extends Tag("ParameterTest")
 
 class z40_B4SMTCoreParameterTest extends AnyFlatSpec with ChiselSim {
-  override def configMap = super.configMap + ("emitVcd" -> "1")
 
   behavior of "B4SMT with many parameters"
   implicit val defaultParams: b4smt.Parameters = Parameters(debug = true)

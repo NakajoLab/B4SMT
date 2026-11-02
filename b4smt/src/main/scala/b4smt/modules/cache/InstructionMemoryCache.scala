@@ -109,8 +109,10 @@ class InstructionMemoryCache(implicit params: Parameters) extends Module {
 
   val hit = hitVec.reduce(_ || _)
 
-  private val idle :: requesting :: waitingResponse :: writeReadDataBuf :: Nil =
-    Enum(4)
+  private object MemoryState extends ChiselEnum {
+    val idle, requesting, waitingResponse, writeReadDataBuf = Value
+  }
+  import MemoryState._
   private val memory_state = RegInit(idle)
 
   when(memory_state === idle) {

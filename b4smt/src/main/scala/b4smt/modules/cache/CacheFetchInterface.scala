@@ -56,9 +56,9 @@ class CacheFetchInterface(implicit params: Parameters) extends Module {
   val isEdge = requestingAddress(3, 0) === BitPat("b111?")
   val isRequesting = RegInit(false.B)
 
-  when(io.cache.request.valid && io.cache.request.ready) {
+  when(io.cache.request.fire) {
     isRequesting := true.B
-  }.elsewhen(io.cache.response.valid && io.cache.response.ready) {
+  }.elsewhen(io.cache.response.fire) {
     isRequesting := false.B
   }
 

@@ -28,7 +28,7 @@ class B4PExtExecutor(implicit params: Parameters) extends Module {
   io.input.ready := io.output.ready
 
   io.status := 0.U
-  when(io.output.ready && io.output.valid) {
+  when(io.output.fire) {
     io.status := 1.U << io.output.bits.tag.getThreadId
   }
 }

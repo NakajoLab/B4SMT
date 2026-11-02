@@ -40,7 +40,6 @@ class InstructionMemoryCacheWrapper()(implicit params: Parameters)
 }
 
 class InstructionMemoryCacheTest extends AnyFlatSpec with ChiselSim {
-  override def configMap = super.configMap + ("emitVcd" -> "1")
 
   behavior of "Instruction Cache"
   implicit val defaultParams: Parameters = Parameters(fetchWidth = 2)

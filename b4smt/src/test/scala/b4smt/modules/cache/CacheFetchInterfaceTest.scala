@@ -7,7 +7,6 @@ import chisel3._
 import chisel3.util._
 
 class CacheFetchInterfaceTest extends AnyFlatSpec with ChiselSim {
-  override def configMap = super.configMap + ("emitVcd" -> "1")
 
   behavior of "cache fetch interface"
   implicit val params: Parameters = Parameters()

@@ -5,6 +5,7 @@ import b4smt.connections.OutputValue
 import b4smt.structures.memoryAccess.MemoryAccessWidth
 import b4smt.utils.{B4RRArbiter, FIFO, PriorityArbiterWithIndex, Tag}
 import chisel3._
+import chisel3.connectable._
 import chisel3.util._
 import _root_.circt.stage.ChiselStage
 import b4smt.utils.axi.{BurstSize, BurstType, ChiselAXI, Lock, Response}
@@ -84,7 +85,7 @@ class ExternalMemoryInterface(implicit params: Parameters) extends Module {
       Seq.fill(io.instruction.length)(0) ++ Seq(1) ++ Seq(1),
     ),
   )
-  readPriorityArb.in zip all_inputs foreach { case (a, i) => a <> i.request }
+  readPriorityArb.in zip all_inputs foreach { case (a, i) => a :<>= i.request }
 
   val transactionQueue = Queue(readPriorityArb.out, 8, useSyncReadMem = true)
   transactionQueue.ready := false.B
@@ -219,7 +220,7 @@ class ExternalMemoryInterface(implicit params: Parameters) extends Module {
   val writePriorityArb = Module(
     new PriorityArbiterWithIndex(new MemoryWriteRequest(), 2, Seq(0, 0)),
   )
-  writePriorityArb.in zip all_writes foreach { case (a, w) => a <> w.request }
+  writePriorityArb.in zip all_writes foreach { case (a, w) => a :<>= w.request }
 
   val writeTransactionQueue = {
     Queue(writePriorityArb.out, 8, useSyncReadMem = true)

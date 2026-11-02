@@ -71,7 +71,6 @@ class ReorderBufferTest
     extends AnyFlatSpec
     with ChiselSim
     with SymbiYosysFormal {
-  override def configMap = super.configMap + ("emitVcd" -> "1")
 
   behavior of "Reorder Buffer"
   implicit val defaultParams: b4smt.Parameters = Parameters(

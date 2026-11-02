@@ -4,6 +4,7 @@ import b4smt.Parameters
 import b4smt.connections.{BranchOutput, CollectedOutput, OutputValue}
 import b4smt.utils.FIFO
 import chisel3._
+import chisel3.connectable._
 import chisel3.util._
 
 class BranchOutputCollector(implicit params: Parameters) extends Module {
@@ -18,12 +19,14 @@ class BranchOutputCollector(implicit params: Parameters) extends Module {
     Module(new Arbiter(new BranchOutput, params.executors)),
   )
   for (i <- 0 until params.executors) {
-    executorQueue(i).input <> io.executor(i)
+    (executorQueue(i).input: ReadyValidIO[BranchOutput]) :<>=
+      (io.executor(i): ReadyValidIO[BranchOutput])
 //    executorQueue(i).flush := false.B
   }
   for (tid <- 0 until params.threads) {
     for (e <- 0 until params.executors) {
-      executorArbiters(tid).io.in(e) <> executorQueue(e).output
+      (executorArbiters(tid).io.in(e): ReadyValidIO[BranchOutput]) :<=
+        (executorQueue(e).output: ReadyValidIO[BranchOutput])
       executorArbiters(tid).io.in(e).valid :=
         executorQueue(e).output.valid &&
           executorQueue(e).output.bits.threadId === tid.U

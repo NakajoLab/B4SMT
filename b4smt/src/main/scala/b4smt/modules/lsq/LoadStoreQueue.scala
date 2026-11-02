@@ -64,7 +64,7 @@ class LoadStoreQueue(implicit params: Parameters)
   for (i <- 0 until params.decoderPerThread) {
     val decoder = io.decoders(i)
     decoder.ready := tail =/= insertIndex + 1.U
-    val entryValid = decoder.ready && decoder.valid
+    val entryValid = decoder.fire
 
     /** 現状，(LSQの最大エントリ数 = リオーダバッファの最大エントリ数)であり，
       * プロセッサで同時実行可能な最大命令数がリオーダバッファのエントリ番号数(dtag数)であることから，
@@ -206,7 +206,7 @@ class LoadStoreQueue(implicit params: Parameters)
 
   io.statusStore := false.B
   io.statusLoad := false.B
-  when(io.memory.ready && io.memory.valid) {
+  when(io.memory.fire) {
     when(io.memory.bits.operation === LoadStoreOperation.Store) {
       io.statusStore := true.B
     }.otherwise {

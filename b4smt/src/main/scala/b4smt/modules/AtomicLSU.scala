@@ -7,6 +7,7 @@ import b4smt.connections.{
   OutputValue,
 }
 import chisel3._
+import chisel3.connectable._
 import chisel3.util._
 import _root_.circt.stage.ChiselStage
 import b4smt.modules.memory.{
@@ -181,10 +182,13 @@ class AtomicLSU(implicit params: Parameters) extends Module {
     }
   }
 
-  issueQueue.input <> issueArbiter.io.out
+  issueQueue.input :<>= issueArbiter.io.out
 
-  private val load_request :: load_wait_response :: write_request :: write_wait_response :: write_back :: Nil =
-    Enum(5)
+  private object State extends ChiselEnum {
+    val load_request, load_wait_response, write_request, write_wait_response,
+      write_back = Value
+  }
+  import State._
   private val state = RegInit(load_request)
   val response = Reg(UInt(64.W))
   val isError = Reg(Bool())

@@ -7,7 +7,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.tagobjects.Slow
 
 class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselSim {
-  override def configMap = super.configMap + ("emitVcd" -> "1")
 
   behavior of "B4SMT test programs"
   // デバッグに時間がかかりすぎるのでパラメータを少し下げる。
@@ -19,8 +18,6 @@ class B4SMTCoreProgramTest extends AnyFlatSpec with ChiselSim {
       decoderPerThread = 1,
 //      enablePExt = true
     )
-
-  // Preserve waveform tracing through ChiselSim's native emitVcd configuration.
 
   // branchプログラムが実行できる
   it should "execute branch with no parallel" in {

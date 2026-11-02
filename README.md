@@ -67,7 +67,8 @@ $ mill b4smt.test.testOnly '*'
 ```
 
 シミュレーションテストはChiselSimを直接使用し、形式検証はSymbiYosysで実行します。
-VCD波形を出力する場合はScalaTestに`-DemitVcd=1`を渡します。
+通常はコンパイル時間とディスク使用量を抑えるため、VCD波形を出力しません。
+必要な場合だけScalaTestに`-DemitVcd=1`を渡します（Mill/JVMのオプションではなく、`--`の後に指定）。
 ```shell
 $ mill b4smt.test.testOnly '*' -- -l org.scalatest.tags.Slow -DemitVcd=1
 ```

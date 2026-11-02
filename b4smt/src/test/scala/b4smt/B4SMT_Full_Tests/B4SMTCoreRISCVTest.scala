@@ -30,7 +30,6 @@ class B4SMTCoreRISCVTestWrapper()(implicit params: Parameters)
 abstract class RiscvTest(val testPrefix: String)
     extends AnyFlatSpec
     with ChiselSim {
-  override def configMap = super.configMap + ("emitVcd" -> "1")
 
   var params = Parameters(
     debug = true,
@@ -42,8 +41,6 @@ abstract class RiscvTest(val testPrefix: String)
     instructionStart = 0x8000_0000L,
 //    enablePExt = true
   )
-
-  // Preserve waveform tracing through ChiselSim's native emitVcd configuration.
 
   object RISCVTest extends Tag("RISCVTest")
 

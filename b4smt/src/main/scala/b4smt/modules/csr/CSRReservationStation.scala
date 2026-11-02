@@ -44,7 +44,7 @@ class CSRReservationStation(implicit params: Parameters) extends Module {
   var insertIndex = head
   for (d <- io.decoderInput) {
     d.ready := tail =/= insertIndex + 1.U
-    when(d.ready && d.valid) {
+    when(d.fire) {
       buf(insertIndex) := {
         val w = Wire(new CSRReservationStationEntry)
         w.valid := true.B
@@ -58,7 +58,7 @@ class CSRReservationStation(implicit params: Parameters) extends Module {
         w
       }
     }
-    insertIndex = Mux(d.ready && d.valid, insertIndex + 1.U, insertIndex)
+    insertIndex = Mux(d.fire, insertIndex + 1.U, insertIndex)
   }
   head := insertIndex
 

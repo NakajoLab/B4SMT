@@ -75,14 +75,12 @@ class Decoder(implicit params: Parameters) extends Module with FormalTools {
   // 命令をデコードするのはリオーダバッファにエントリの空きがあり、リザベーションステーションにも空きがあるとき
   io.instructionFetch.ready := io.reservationStation.ready && io.reorderBuffer.ready && io.loadStoreQueue.ready && io.csr.ready && io.amo.ready
   // リオーダバッファやリザベーションステーションに新しいエントリを追加するのは命令がある時
-  io.reorderBuffer.valid := io.instructionFetch.ready &&
-    io.instructionFetch.valid
+  io.reorderBuffer.valid := io.instructionFetch.fire
 
   // RSへの出力を埋める
   val rs = io.reservationStation.entry
   rs := 0.U.asTypeOf(new ReservationStationEntry)
-  rs.valid := io.instructionFetch.ready &&
-    io.instructionFetch.valid &&
+  rs.valid := io.instructionFetch.fire &&
     (operations.aluOp.isValid || operations.pextOp.isValid)
   when(rs.valid) {
     rs.operation := operations.aluOp.validDataOrZero
@@ -110,7 +108,7 @@ class Decoder(implicit params: Parameters) extends Module with FormalTools {
 
   // load or store命令の場合，LSQへ発送
   io.loadStoreQueue.bits := 0.U.asTypeOf(new Decoder2LoadStoreQueue)
-  io.loadStoreQueue.valid := io.loadStoreQueue.ready && io.instructionFetch.ready && io.instructionFetch.valid && operations.loadStoreOp.isValid
+  io.loadStoreQueue.valid := io.loadStoreQueue.ready && io.instructionFetch.fire && operations.loadStoreOp.isValid
   when(io.loadStoreQueue.valid) {
     io.loadStoreQueue.bits.operation := operations.loadStoreOp.validDataOrZero
     io.loadStoreQueue.bits.operationWidth := operations.loadStoreWidth
@@ -137,7 +135,7 @@ class Decoder(implicit params: Parameters) extends Module with FormalTools {
   io.loadStoreQueue.bits.storeDataTag.threadId.foreach(_ := io.threadId)
   io.loadStoreQueue.bits.addressTag.threadId.foreach(_ := io.threadId)
 
-  io.csr.valid := io.csr.ready && io.instructionFetch.ready && io.instructionFetch.valid & operations.csrOp.isValid
+  io.csr.valid := io.csr.ready && io.instructionFetch.fire & operations.csrOp.isValid
   io.csr.bits := 0.U.asTypeOf(new Decoder2CSRReservationStation)
   when(io.csr.valid) {
     io.csr.bits.operation := operations.csrOp.validDataOrZero
@@ -157,7 +155,7 @@ class Decoder(implicit params: Parameters) extends Module with FormalTools {
   io.csr.bits.sourceTag.threadId.foreach(_ := io.threadId)
   io.csr.bits.destinationTag.threadId.foreach(_ := io.threadId)
 
-  io.amo.valid := io.amo.ready && io.instructionFetch.ready && io.instructionFetch.valid && operations.amoOp.isValid
+  io.amo.valid := io.amo.ready && io.instructionFetch.fire && operations.amoOp.isValid
   io.amo.bits := 0.U.asTypeOf(new Decoder2AtomicLSU)
   when(io.amo.valid) {
     io.amo.bits.valid := true.B

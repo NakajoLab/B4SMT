@@ -16,7 +16,10 @@ class MExtExecutor(implicit params: Parameters) extends Module {
     val output = Decoupled(new OutputValue())
   })
 
-  val waitingInput :: executing :: waitingOutput :: Nil = Enum(3)
+  object State extends ChiselEnum {
+    val waitingInput, executing, waitingOutput = Value
+  }
+  import State._
   val state = RegInit(waitingInput)
 
   val rs1Reg = Reg(UInt(64.W))

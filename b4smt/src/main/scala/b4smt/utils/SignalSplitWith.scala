@@ -1,6 +1,7 @@
 package b4smt.utils
 
 import chisel3._
+import chisel3.connectable._
 import chisel3.util._
 import _root_.circt.stage.ChiselStage
 import chisel3.experimental.prefix
@@ -17,7 +18,7 @@ class SignalSplitWith[T <: Data](
     val output = Vec(outputs, Decoupled(gen))
   })
 
-  io.output <> SignalSplitWith(outputs, io.input)(splittingLogic)
+  io.output :<>= SignalSplitWith(outputs, io.input)(splittingLogic)
 }
 
 object SignalSplitWith extends App with FormalTools {
@@ -25,7 +26,7 @@ object SignalSplitWith extends App with FormalTools {
   def apply[T <: Data](outputs: Int, input: ReadyValidIO[T])(
     splittingLogic: T => UInt,
   ): Vec[DecoupledIO[T]] = {
-    val t: T = input.bits.cloneType
+    val t: T = chiselTypeOf(input.bits)
     val out = Wire(Vec(outputs, Decoupled(t)))
 
     val index = splittingLogic(input.bits)

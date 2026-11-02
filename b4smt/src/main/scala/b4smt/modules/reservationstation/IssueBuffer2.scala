@@ -5,6 +5,7 @@ import b4smt.Parameters
 import b4smt.connections.ReservationStation2PExtExecutor
 import b4smt.utils.MMArbiter
 import chisel3._
+import chisel3.connectable._
 import chisel3.experimental.prefix
 import chisel3.util._
 
@@ -64,14 +65,14 @@ class IssueBuffer2[T <: Data](outputs: Int, t: T)(implicit params: Parameters)
       val arb = arbiter.io.input(t + b * params.threads)
       arb.bits := buf
       arb.valid := valid
-      when(valid && arb.ready) {
+      when(arb.fire) {
         valid := false.B
       }
     }
   }
 
   for (e <- 0 until outputs) {
-    io.executors(e) <> arbiter.io.output(e)
+    io.executors(e) :<>= arbiter.io.output(e)
   }
 }
 

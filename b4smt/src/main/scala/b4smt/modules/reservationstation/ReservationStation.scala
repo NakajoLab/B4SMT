@@ -10,6 +10,7 @@ import b4smt.connections.{
 }
 import b4smt.utils.{B4RRArbiter, MMArbiter, TagValueBundle}
 import chisel3._
+import chisel3.connectable._
 import chisel3.experimental.prefix
 import chisel3.util._
 
@@ -66,13 +67,16 @@ class ReservationStation(implicit params: Parameters) extends Module {
         r.sources(0).isValue &&
         r.sources(1).isValue &&
         r.exeType === ExecutorType.Regular
-      when(a.valid && a.ready) {
+      when(a.fire) {
         r := ReservationStationEntry.default
       }
     }
-    io.issue(i % params.decoderPerThread) <> outputArbiter.io.output(
-      i % params.decoderPerThread,
-    )
+    (io.issue(i % params.decoderPerThread): ReadyValidIO[
+      ReservationStation2Executor,
+    ]) :<>=
+      (outputArbiter.io.output(i % params.decoderPerThread): ReadyValidIO[
+        ReservationStation2Executor,
+      ])
   }
 
   for (i <- 0 until reservation.length) {
@@ -89,13 +93,16 @@ class ReservationStation(implicit params: Parameters) extends Module {
         r.sources(1).isValue &&
         r.sources(2).isValue &&
         r.exeType === ExecutorType.PExt
-      when(a.valid && a.ready) {
+      when(a.fire) {
         r := ReservationStationEntry.default
       }
     }
-    io.pextIssue(i % params.decoderPerThread) <> pextOutputArbiter.io.output(
-      i % params.decoderPerThread,
-    )
+    (io.pextIssue(i % params.decoderPerThread): ReadyValidIO[
+      ReservationStation2PExtExecutor,
+    ]) :<>=
+      (pextOutputArbiter.io.output(i % params.decoderPerThread): ReadyValidIO[
+        ReservationStation2PExtExecutor,
+      ])
   }
 
   // デコーダから

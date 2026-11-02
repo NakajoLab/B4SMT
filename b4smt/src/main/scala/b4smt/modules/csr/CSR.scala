@@ -100,7 +100,7 @@ class CSR(implicit params: Parameters) extends Module with FormalTools {
 
   def setCSROutput(reg: UInt): Unit = {
     io.CSROutput.bits.value := reg
-    when(io.CSROutput.ready && io.CSROutput.valid) {
+    when(io.CSROutput.fire) {
       reg := MuxLookup(operation, 0.U)(
         Seq(
           CSROperation.ReadWrite -> io.decoderInput.bits.value,
@@ -172,7 +172,7 @@ class CSR(implicit params: Parameters) extends Module with FormalTools {
       io.CSROutput.bits.value := params.threads.U
     }.elsewhen(address === CSRCustom.customInt.U) {
       io.CSROutput.bits.value := 0.U
-      when(io.CSROutput.ready && io.CSROutput.valid) {
+      when(io.CSROutput.fire) {
         io.customInt.valid := true.B
         io.customInt.bits := io.decoderInput.bits.value
       }

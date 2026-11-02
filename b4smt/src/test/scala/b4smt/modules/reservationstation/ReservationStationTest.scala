@@ -72,7 +72,6 @@ class ReservationStationWrapper(implicit params: Parameters)
 }
 
 class ReservationStationTest extends AnyFlatSpec with ChiselSim {
-  override def configMap = super.configMap + ("emitVcd" -> "1")
 
   behavior of "Reservation Station"
   implicit val params: b4smt.Parameters =

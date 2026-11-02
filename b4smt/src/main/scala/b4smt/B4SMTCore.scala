@@ -2,6 +2,7 @@ package b4smt
 
 import b4smt.connections.{
   OutputValue,
+  LoadStoreQueue2Memory,
   ReservationStation2Executor,
   ReservationStation2MulDivExecutor,
   ReservationStation2PExtExecutor,
@@ -32,8 +33,9 @@ import b4smt.modules.reservationstation.{
 }
 import b4smt.utils.axi.{ChiselAXI, VerilogAXI}
 import chisel3._
+import chisel3.connectable._
 import chisel3.experimental.dataview.DataViewable
-import chisel3.util.PopCount
+import chisel3.util.{PopCount, ReadyValidIO}
 
 class B4SMTCore(implicit params: Parameters) extends Module {
   override val desiredName = "B4SMTCoreInternal"
@@ -115,17 +117,19 @@ class B4SMTCore(implicit params: Parameters) extends Module {
       Some(Seq.fill(params.pextExecutors)(Module(new B4PExtExecutor())))
     else None
 
-  axi <> externalMemoryInterface.io.coordinator
+  axi :<>= externalMemoryInterface.io.coordinator
 
   /** レジスタのコンテンツをデバッグ時に接続 */
   if (params.debug)
     for (tid <- 0 until params.threads)
       for (i <- 0 until 32)
-        registerFileContents.get(tid)(i) <> registerFile(tid).io.values.get(i)
+        registerFileContents.get(tid)(i) := registerFile(tid).io.values.get(i)
   if (params.enablePExt)
     for (pe <- 0 until params.pextExecutors) {
-      pextIssueBuffer.get.io.executors(pe) <> pextExecutors.get(pe).io.input
-      outputCollector.io.pextExecutor(pe) <> pextExecutors.get(pe).io.output
+      pextExecutors.get(pe).io.input :<>= pextIssueBuffer.get.io.executors(pe)
+
+      (outputCollector.io.pextExecutor(pe): ReadyValidIO[OutputValue]) :<>=
+        (pextExecutors.get(pe).io.output: ReadyValidIO[OutputValue])
     }
   else
     outputCollector.io.pextExecutor foreach { o =>
@@ -134,30 +138,36 @@ class B4SMTCore(implicit params: Parameters) extends Module {
     }
 
   for (me <- 0 until params.mulDivExecutors) {
-    issueBufferMulDiv.io.executors(me) <>
-      mulDivExecutor(me).io.reservationStation
-    outputCollector.io.mulDivExecutor(me) <>
-      mulDivExecutor(me).io.out
+    mulDivExecutor(me).io.reservationStation :<>=
+      issueBufferMulDiv.io.executors(me)
+
+    (outputCollector.io.mulDivExecutor(me): ReadyValidIO[OutputValue]) :<>=
+      (mulDivExecutor(me).io.out: ReadyValidIO[OutputValue])
   }
 
   for (e <- 0 until params.executors) {
 
     /** リザベーションステーションと実行ユニットを接続 */
-    issueBuffer.io.executors(e) <> executors(e).io.reservationStation
+    (executors(e).io.reservationStation: ReadyValidIO[
+      ReservationStation2Executor,
+    ]) :<>=
+      (issueBuffer.io.executors(e): ReadyValidIO[ReservationStation2Executor])
 
     /** 出力コレクタと実行ユニットの接続 */
-    outputCollector.io.executor(e) <> executors(e).io.out
+    outputCollector.io.executor(e) :<>= executors(e).io.out
 
     /** 分岐結果コレクタと実行ユニットの接続 */
-    branchAddressCollector.io.executor(e) <> executors(e).io.fetch
+    branchAddressCollector.io.executor(e) :<>= executors(e).io.fetch
   }
 
   for (tid <- 0 until params.threads) {
     amo.io.collectedOutput := outputCollector.io.outputs
-    amo.io.output <> outputCollector.io.amo
-    amo.io.reorderBuffer(tid) <> reorderBuffer(tid).io.loadStoreQueue
 
-    csrReservationStation(tid).io.reorderBuffer <>
+    (outputCollector.io.amo: ReadyValidIO[OutputValue]) :<>=
+      (amo.io.output: ReadyValidIO[OutputValue])
+    amo.io.reorderBuffer(tid) := reorderBuffer(tid).io.loadStoreQueue
+
+    csrReservationStation(tid).io.reorderBuffer :=
       reorderBuffer(tid).io.loadStoreQueue
     csrReservationStation(tid).io.isError := reorderBuffer(tid).io.isError
 
@@ -167,23 +177,28 @@ class B4SMTCore(implicit params: Parameters) extends Module {
     registerFile(tid).io.threadId := tid.U
 
     /** 命令キャッシュとフェッチを接続 */
-    instructionCache(tid).io.fetch <> cacheFetchInterface(tid).io.cache
-    cacheFetchInterface(tid).io.fetch <> fetch(tid).io.cache
+    instructionCache(tid).io.fetch.request :<>= cacheFetchInterface(
+      tid,
+    ).io.cache.request
+    cacheFetchInterface(tid).io.cache.response :<>= instructionCache(
+      tid,
+    ).io.fetch.response
+    fetch(tid).io.cache :<>= cacheFetchInterface(tid).io.fetch
 
     /** フェッチとフェッチバッファの接続 */
-    fetch(tid).io.fetchBuffer <> fetchBuffer(tid).io.input
+    fetchBuffer(tid).io.input :<>= fetch(tid).io.fetchBuffer
 
     fetch(tid).io.threadId := tid.U
 
-    csrReservationStation(tid).io.toCSR <> csr(tid).io.decoderInput
+    csr(tid).io.decoderInput :<>= csrReservationStation(tid).io.toCSR
 
-    csr(tid).io.CSROutput <> outputCollector.io.csr(tid)
+    outputCollector.io.csr(tid) :<>= csr(tid).io.CSROutput
 
-    csrReservationStation(tid).io.output <> outputCollector.io.outputs(tid)
+    csrReservationStation(tid).io.output := outputCollector.io.outputs(tid)
 
-    reorderBuffer(tid).io.csr <> csr(tid).io.reorderBuffer
+    csr(tid).io.reorderBuffer := reorderBuffer(tid).io.csr
 
-    fetch(tid).io.csr <> csr(tid).io.fetch
+    fetch(tid).io.csr := csr(tid).io.fetch
 
     fetch(tid).io.csrReservationStationEmpty :=
       csrReservationStation(tid).io.empty
@@ -199,46 +214,59 @@ class B4SMTCore(implicit params: Parameters) extends Module {
       reservationStation(tid)(d).io.threadId := tid.U
 
       fetch(tid).io.interrupt := false.B
-      reservationStation(tid)(d).io.issue <>
-        issueBuffer.io.reservationStations(tid)(d)
+
+      (issueBuffer.io.reservationStations(tid)(d): ReadyValidIO[
+        ReservationStation2Executor,
+      ]) :<>=
+        (reservationStation(tid)(d).io.issue: ReadyValidIO[
+          ReservationStation2Executor,
+        ])
       if (params.enablePExt)
-        reservationStation(tid)(d).io.pextIssue <>
-          pextIssueBuffer.get.io.reservationStations(tid)(d)
+        (pextIssueBuffer.get.io.reservationStations(tid)(d): ReadyValidIO[
+          ReservationStation2PExtExecutor,
+        ]) :<>=
+          (reservationStation(tid)(d).io.pextIssue: ReadyValidIO[
+            ReservationStation2PExtExecutor,
+          ])
       else
         reservationStation(tid)(d).io.pextIssue.ready := false.B
 
-      reservationStation(tid)(d).io.mulDivIssue <>
-        issueBufferMulDiv.io.reservationStations(tid)(d)
+      (issueBufferMulDiv.io.reservationStations(tid)(d): ReadyValidIO[
+        ReservationStation2MulDivExecutor,
+      ]) :<>=
+        (reservationStation(tid)(d).io.mulDivIssue: ReadyValidIO[
+          ReservationStation2MulDivExecutor,
+        ])
 
-      amo.io.decoders(tid)(d) <> decoders(tid)(d).io.amo
+      amo.io.decoders(tid)(d) :<>= decoders(tid)(d).io.amo
 
-      decoders(tid)(d).io.csr <> csrReservationStation(tid).io.decoderInput(d)
+      csrReservationStation(tid).io.decoderInput(d) :<>= decoders(tid)(d).io.csr
 
       decoders(tid)(d).io.threadId := tid.U
 
-      uncompresser(tid)(d).io.fetch <> fetchBuffer(tid).io.output(d)
+      uncompresser(tid)(d).io.fetch :<>= fetchBuffer(tid).io.output(d)
 
       /** デコーダとフェッチバッファ */
-      decoders(tid)(d).io.instructionFetch <> uncompresser(tid)(d).io.decoder
+      decoders(tid)(d).io.instructionFetch :<>= uncompresser(tid)(d).io.decoder
 
       /** デコーダとリオーダバッファを接続 */
-      decoders(tid)(d).io.reorderBuffer <> reorderBuffer(tid).io.decoders(d)
+      reorderBuffer(tid).io.decoders(d) :<>= decoders(tid)(d).io.reorderBuffer
 
       /** デコーダとリザベーションステーションを接続 */
-      reservationStation(tid)(d).io.decoder <>
+      reservationStation(tid)(d).io.decoder :<>=
         decoders(tid)(d).io.reservationStation
 
       /** デコーダとレジスタファイルの接続 */
-      decoders(tid)(d).io.registerFile <> registerFile(tid).io.decoders(d)
+      registerFile(tid).io.decoders(d) :<>= decoders(tid)(d).io.registerFile
 
       /** デコーダとLSQの接続 */
-      decoders(tid)(d).io.loadStoreQueue <> loadStoreQueue(tid).io.decoders(d)
+      loadStoreQueue(tid).io.decoders(d) :<>= decoders(tid)(d).io.loadStoreQueue
 
       /** デコーダと出力コレクタ */
       decoders(tid)(d).io.outputCollector := outputCollector.io.outputs(tid)
 
       /** デコーダとLSQの接続 */
-      loadStoreQueue(tid).io.decoders(d) <> decoders(tid)(d).io.loadStoreQueue
+      loadStoreQueue(tid).io.decoders(d) :<>= decoders(tid)(d).io.loadStoreQueue
     }
 
     /** フェッチと分岐結果の接続 */
@@ -249,7 +277,7 @@ class B4SMTCore(implicit params: Parameters) extends Module {
     loadStoreQueue(tid).io.outputCollector := outputCollector.io.outputs(tid)
 
     /** レジスタファイルとリオーダバッファ */
-    registerFile(tid).io.reorderBuffer <> reorderBuffer(tid).io.registerFile
+    registerFile(tid).io.reorderBuffer := reorderBuffer(tid).io.registerFile
 
     /** フェッチとLSQの接続 */
     fetch(tid).io.loadStoreQueueEmpty := loadStoreQueue(tid).io.empty
@@ -258,16 +286,17 @@ class B4SMTCore(implicit params: Parameters) extends Module {
     fetch(tid).io.reorderBufferEmpty := reorderBuffer(tid).io.isEmpty
 
     /** データメモリバッファとLSQ */
-    dataMemoryBuffer.io.dataIn(tid) <> loadStoreQueue(tid).io.memory
+    (dataMemoryBuffer.io.dataIn(tid): ReadyValidIO[LoadStoreQueue2Memory]) :<>=
+      (loadStoreQueue(tid).io.memory: ReadyValidIO[LoadStoreQueue2Memory])
 
     /** リオーダバッファと出力コレクタ */
     reorderBuffer(tid).io.collectedOutputs := outputCollector.io.outputs(tid)
 
     /** リオーダバッファとLSQ */
-    reorderBuffer(tid).io.loadStoreQueue <> loadStoreQueue(tid).io.reorderBuffer
+    loadStoreQueue(tid).io.reorderBuffer := reorderBuffer(tid).io.loadStoreQueue
 
     /** 命令メモリと命令キャッシュを接続 */
-    externalMemoryInterface.io.instruction(tid) <>
+    externalMemoryInterface.io.instruction(tid) :<>=
       instructionCache(tid).io.memory
 
     csr(tid).io.activeLr := amo.io.statusLr(tid)
@@ -292,16 +321,16 @@ class B4SMTCore(implicit params: Parameters) extends Module {
       reservationStation(tid).map(_.io.full),
     )
 
-    instructionCache(tid).io.flush <> fetch(tid).io.icache_flush
+    instructionCache(tid).io.flush := fetch(tid).io.icache_flush
 
     /** フェッチと分岐予測 TODO */
-    fetch(tid).io.prediction <> DontCare
+    fetch(tid).io.prediction.foreach(_.prediction := DontCare)
   }
 
   /** メモリとデータメモリバッファ */
-  externalMemoryInterface.io.data <> dataMemoryBuffer.io.memory
-  dataMemoryBuffer.io.output <> outputCollector.io.dataMemory
-  externalMemoryInterface.io.amo <> amo.io.memory
+  externalMemoryInterface.io.data :<>= dataMemoryBuffer.io.memory
+  outputCollector.io.dataMemory :<>= dataMemoryBuffer.io.output
+  externalMemoryInterface.io.amo :<>= amo.io.memory
 }
 
 class B4SMTCoreFixedPorts(implicit params: Parameters) extends RawModule {
@@ -314,7 +343,7 @@ class B4SMTCoreFixedPorts(implicit params: Parameters) extends RawModule {
 
   withClockAndReset(aclk.asClock, (!aresetn).asAsyncReset) {
     val core = Module(new B4SMTCore())
-    core.axi <> axi
+    axi :<>= core.axi
   }
 }
 

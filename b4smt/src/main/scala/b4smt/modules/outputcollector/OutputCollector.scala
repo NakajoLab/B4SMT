@@ -4,6 +4,7 @@ import b4smt.Parameters
 import b4smt.connections.{CollectedOutput, OutputValue}
 import b4smt.utils.{B4RRArbiter, FIFO}
 import chisel3._
+import chisel3.connectable._
 import chisel3.util._
 import _root_.circt.stage.ChiselStage
 
@@ -24,7 +25,8 @@ class OutputCollector(implicit params: Parameters) extends Module {
     )
 
   for (i <- 0 until params.executors) {
-    executorQueue(i).input <> io.executor(i)
+    (executorQueue(i).input: ReadyValidIO[OutputValue]) :<>=
+      (io.executor(i): ReadyValidIO[OutputValue])
 //    executorQueue(i).flush := false.B
 
     val out = io.executor(i).bits
@@ -39,16 +41,21 @@ class OutputCollector(implicit params: Parameters) extends Module {
 
   for (tid <- 0 until params.threads) {
     for (i <- 0 until params.executors) {
-      threadsArbiter(tid).io.in(i) <> executorQueue(i).output
+      (threadsArbiter(tid).io.in(i): ReadyValidIO[OutputValue]) :<=
+        (executorQueue(i).output: ReadyValidIO[OutputValue])
       threadsArbiter(tid).io.in(i).valid :=
         executorQueue(i).output.valid &&
           executorQueue(i).output.bits.tag.getThreadId === tid.U
     }
-    threadsArbiter(tid).io.in(params.executors) <> io.dataMemory
+    (threadsArbiter(tid).io.in(params.executors): ReadyValidIO[OutputValue]) :<=
+      (io.dataMemory: ReadyValidIO[OutputValue])
     threadsArbiter(tid).io
       .in(params.executors)
       .valid := io.dataMemory.valid && io.dataMemory.bits.tag.getThreadId === tid.U
-    threadsArbiter(tid).io.in(params.executors + 1) <> io.csr(tid)
+
+    (threadsArbiter(tid).io
+      .in(params.executors + 1): ReadyValidIO[OutputValue]) :<>=
+      (io.csr(tid): ReadyValidIO[OutputValue])
 
     io.outputs(tid).outputs(0).bits := threadsArbiter(tid).io.out.bits
     io.outputs(tid).outputs(0).valid := threadsArbiter(tid).io.out.valid

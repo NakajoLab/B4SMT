@@ -1,6 +1,7 @@
 package b4smt.utils
 
 import chisel3._
+import chisel3.connectable._
 import chisel3.util._
 import _root_.circt.stage.ChiselStage
 
@@ -9,7 +10,7 @@ class MMArbiter[T <: Data](t: T, inputs: Int, outputs: Int) extends Module {
     val input = Vec(inputs, Flipped(Decoupled(t)))
     val output = Vec(outputs, Decoupled(t))
   })
-  io.output <> MMArbiter(outputs, io.input)
+  io.output :<>= MMArbiter(outputs, io.input)
 }
 
 object MMArbiter extends App {
@@ -19,7 +20,7 @@ object MMArbiter extends App {
     outputs: Int,
     inputs: Vec[DecoupledIO[T]],
   ): Vec[DecoupledIO[T]] = {
-    val t: T = inputs(0).bits.cloneType
+    val t: T = chiselTypeOf(inputs(0).bits)
     val inputSize = inputs.length
     val output = Wire(Vec(outputs, DecoupledIO(t)))
     // initialize
@@ -34,11 +35,11 @@ object MMArbiter extends App {
       .map(i => Module(new Arbiter(t, i)))
 
     for ((in, idx) <- inputs.zipWithIndex) {
-      arbiters(idx % outputs).io.in(idx / outputs) <> in
+      arbiters(idx % outputs).io.in(idx / outputs) :<>= in
     }
 
     for ((out, arb) <- output.zip(arbiters)) {
-      out <> arb.io.out
+      out :<>= arb.io.out
     }
 
     output

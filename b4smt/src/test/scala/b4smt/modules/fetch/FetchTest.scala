@@ -159,7 +159,6 @@ class FetchWrapper()(implicit params: Parameters)
 }
 
 class FetchTest extends AnyFlatSpec with ChiselSim with SymbiYosysFormal {
-  override def configMap = super.configMap + ("emitVcd" -> "1")
 
   behavior of "Fetch"
   implicit val defaultParams: b4smt.Parameters =

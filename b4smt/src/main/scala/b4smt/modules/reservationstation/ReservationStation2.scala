@@ -10,6 +10,7 @@ import b4smt.connections.{
 }
 import b4smt.utils.{MMArbiter, TagValueBundle}
 import chisel3._
+import chisel3.connectable._
 import chisel3.experimental.prefix
 import circt.stage.ChiselStage
 import chisel3.util._
@@ -62,13 +63,14 @@ class ReservationStation2(implicit params: Parameters)
         r.sources(0).isValue &&
         r.sources(1).isValue &&
         r.exeType === ExecutorType.Regular
-      when(a.valid && a.ready) {
+      when(a.fire) {
         r := ReservationStationEntry.default
       }
     }
 
   }
-  io.issue <> outputArbiter.io.out
+  (io.issue: ReadyValidIO[ReservationStation2Executor]) :<>=
+    (outputArbiter.io.out: ReadyValidIO[ReservationStation2Executor])
 
   for (i <- 0 until reservation.length) {
     prefix(s"issue${i % params.decoderPerThread}_resv$i") {
@@ -84,13 +86,14 @@ class ReservationStation2(implicit params: Parameters)
         r.sources(1).isValue &&
         r.sources(2).isValue &&
         r.exeType === ExecutorType.PExt
-      when(a.valid && a.ready) {
+      when(a.fire) {
         r := ReservationStationEntry.default
       }
     }
 
   }
-  io.pextIssue <> pextOutputArbiter.io.out
+  (io.pextIssue: ReadyValidIO[ReservationStation2PExtExecutor]) :<>=
+    (pextOutputArbiter.io.out: ReadyValidIO[ReservationStation2PExtExecutor])
 
   for (i <- 0 until reservation.length) {
     prefix(s"issue${i % params.decoderPerThread}_resv$i") {
@@ -104,13 +107,16 @@ class ReservationStation2(implicit params: Parameters)
         r.sources(0).isValue &&
         r.sources(1).isValue &&
         r.exeType === ExecutorType.MulDiv
-      when(a.valid && a.ready) {
+      when(a.fire) {
         r := ReservationStationEntry.default
       }
     }
 
   }
-  io.mulDivIssue <> mulDivOutputArbiter.io.out
+  (io.mulDivIssue: ReadyValidIO[ReservationStation2MulDivExecutor]) :<>=
+    (mulDivOutputArbiter.io.out: ReadyValidIO[
+      ReservationStation2MulDivExecutor,
+    ])
 
   // デコーダから
   private val head = RegInit(0.U(rsWidth.W))

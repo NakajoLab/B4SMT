@@ -1,6 +1,7 @@
 package b4smt.utils
 
 import chisel3._
+import chisel3.connectable._
 import chisel3.util._
 import _root_.circt.stage.ChiselStage
 
@@ -10,7 +11,7 @@ class PassthroughBuffer[T <: Data](t: T) extends Module {
     val output = Irrevocable(t)
   })
 
-  io.output <> PassthroughBuffer(io.input)
+  io.output :<>= PassthroughBuffer(io.input)
 }
 
 object PassthroughBuffer extends App {
@@ -25,7 +26,7 @@ object PassthroughBuffer extends App {
   )
 
   def apply[T <: Data](input: ReadyValidIO[T]): IrrevocableIO[T] = {
-    val t: T = input.bits.cloneType
+    val t: T = chiselTypeOf(input.bits)
     val output = Wire(new IrrevocableIO[T](t))
 
     val buf = Reg(t)
