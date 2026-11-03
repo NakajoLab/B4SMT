@@ -23,7 +23,7 @@ trait ChiselModule extends SbtModule {
 
 object b4smt_formal extends ChiselModule {
   override def moduleDir = super.moduleDir / os.up / "chisel-formal"
-  override def mvnDeps = super.mvnDeps() ++ Seq(mvn"org.scalatest::scalatest:3.2.18")
+  override def mvnDeps = super.mvnDeps() ++ Seq(mvn"org.scalatest::scalatest:3.2.20")
 }
 
 object b4smt_pext extends ChiselModule {
@@ -38,6 +38,6 @@ object b4smt extends ChiselModule {
   object test extends SbtTests with TestModule.ScalaTest {
     override def testParallelism = Task { false }
     override def testSandboxWorkingDir = false
-    override def mvnDeps = Seq(mvn"org.scalatest::scalatest:3.2.18")
+    override def mvnDeps = Seq(mvn"org.scalatest::scalatest:3.2.20")
   }
 }
