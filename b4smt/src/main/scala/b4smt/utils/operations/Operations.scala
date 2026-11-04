@@ -905,17 +905,19 @@ object Operations {
     params: Parameters,
   ): Seq[(BitPat, (UInt, UInt) => Operations)] = {
     val output =
-      Seq(BaseDecodingList, AextDecodingList, MextDecodingList) ++ (if (
-                                                                      params.enablePExt
-                                                                    )
-                                                                      Seq(
-                                                                        ZPN32ExtDecodingList,
-                                                                        ZPN64ExtDecodingList,
-                                                                        ZPSFExtDecodingList,
-                                                                        ZBBExtDecodingList,
-                                                                        ZBTExtDecodingList,
-                                                                      )
-                                                                    else Seq())
+      Seq(
+        BaseDecodingList,
+        AextDecodingList,
+        MextDecodingList,
+      ) ++ (if (params.enablePExt)
+              Seq(
+                ZPN32ExtDecodingList,
+                ZPN64ExtDecodingList,
+                ZPSFExtDecodingList,
+                ZBBExtDecodingList,
+                ZBTExtDecodingList,
+              )
+            else Seq())
     output.flatten
   }
 

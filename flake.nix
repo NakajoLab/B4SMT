@@ -22,7 +22,7 @@
           b4smtGen = final.callPackage ./nix/b4smtgen.nix {
             riscv-programs = self.packages.${system}.default;
           };
-          b4smt = final.b4smtGen { hash = "sha256-utcJYpKsnVZfsNWksD1oQjI9uGy60iMErngk4TZ14s0="; };
+          b4smt = final.b4smtGen { hash = "sha256-D7t10eep7HNEX6F5wSn4Lv4mZysqIcSfNb0l1TOGzUU="; };
         };
         pkgs = import nixpkgs {
           inherit system;
