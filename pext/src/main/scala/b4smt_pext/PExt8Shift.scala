@@ -61,7 +61,7 @@ object PExt8Shift {
           case RightLogical         => (rs1.B(x) >> amt).asUInt
           case RightLogicalRound => RoundingShiftRightUnsigned8(rs1.B(x), amt)
           case Left              => (rs1.B(x) << amt).asUInt
-          case LeftSaturating => {
+          case LeftSaturating    => {
             val out_t = SaturatingShiftLeft8(rs1.B(x), amt)
             overflow = overflow | out_t._2
             out_t._1

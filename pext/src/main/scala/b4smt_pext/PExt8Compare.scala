@@ -39,12 +39,12 @@ object PExt8Compare {
         import CmpProcess._
         val t = Wire(UInt(8.W))
         t := (ptype match {
-          case Equal => Mux(rs1.B(x) === rs2.B(x), "xff".U, 0.U)
+          case Equal          => Mux(rs1.B(x) === rs2.B(x), "xff".U, 0.U)
           case SignedLessThan =>
             Mux(rs1.B(x).asSInt < rs2.B(x).asSInt, "xff".U, 0.U)
           case SignedLessThanEqual =>
             Mux(rs1.B(x).asSInt <= rs2.B(x).asSInt, "xff".U, 0.U)
-          case UnsignedLessThan => Mux(rs1.B(x) < rs2.B(x), "xff".U, 0.U)
+          case UnsignedLessThan      => Mux(rs1.B(x) < rs2.B(x), "xff".U, 0.U)
           case UnsignedLessThanEqual =>
             Mux(rs1.B(x) <= rs2.B(x), "xff".U, 0.U)
 
