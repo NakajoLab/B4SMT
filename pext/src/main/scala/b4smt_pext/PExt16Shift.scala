@@ -78,7 +78,7 @@ object PExt16Shift {
           case RightLogical         => (rs1.H(x) >> amt).asUInt
           case RightLogicalRound => RoundingShiftRightUnsigned16(rs1.H(x), amt)
           case Left              => (rs1.H(x) << amt).asUInt
-          case LeftSaturating => {
+          case LeftSaturating    => {
             val out_t = SaturatingShiftLeft16(rs1.H(x), amt)
             overflow = overflow | out_t._2
             out_t._1

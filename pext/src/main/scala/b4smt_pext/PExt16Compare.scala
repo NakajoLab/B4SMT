@@ -35,12 +35,12 @@ object PExt16Compare {
         import CmpProcess._
         val t = Wire(UInt(16.W))
         t := (ptype match {
-          case Equal => Mux(rs1.H(x) === rs2.H(x), "xffff".U, 0.U)
+          case Equal          => Mux(rs1.H(x) === rs2.H(x), "xffff".U, 0.U)
           case SignedLessThan =>
             Mux(rs1.H(x).asSInt < rs2.H(x).asSInt, "xffff".U, 0.U)
           case SignedLessThanEqual =>
             Mux(rs1.H(x).asSInt <= rs2.H(x).asSInt, "xffff".U, 0.U)
-          case UnsignedLessThan => Mux(rs1.H(x) < rs2.H(x), "xffff".U, 0.U)
+          case UnsignedLessThan      => Mux(rs1.H(x) < rs2.H(x), "xffff".U, 0.U)
           case UnsignedLessThanEqual =>
             Mux(rs1.H(x) <= rs2.H(x), "xffff".U, 0.U)
 

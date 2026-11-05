@@ -122,11 +122,11 @@ object StandaloneSimulator {
 
   def config(params: Parameters): ujson.Obj =
     ujson.Obj.from(params.productElementNames.zip(params.productIterator).map {
-      case (name, value: Boolean) => name -> ujson.Bool(value)
+      case (name, value: Boolean)            => name -> ujson.Bool(value)
       case ("instructionStart", value: Long) =>
         "instructionStart" -> ujson.Str("0x" + value.toHexString)
       case (name, value: Int) => name -> ujson.Num(value)
-      case (name, value) =>
+      case (name, value)      =>
         throw new IllegalArgumentException(
           s"unsupported parameter $name=$value",
         )

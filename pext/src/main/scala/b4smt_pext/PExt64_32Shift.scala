@@ -78,7 +78,7 @@ object PExt64_32Shift {
           case RightLogical         => (rs1.W(x) >> amt).asUInt
           case RightLogicalRound => RoundingShiftRightUnsigned32(rs1.W(x), amt)
           case Left              => (rs1.W(x) << amt).asUInt
-          case LeftSaturating => {
+          case LeftSaturating    => {
             val out_t = SaturatingShiftLeft32(rs1.W(x), amt)
             overflow = overflow | out_t._2
             out_t._1
