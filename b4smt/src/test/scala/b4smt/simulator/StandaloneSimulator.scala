@@ -55,7 +55,7 @@ object StandaloneSimulator {
     val names = defaults.productElementNames.toSet
     require(
       fields.keySet.subsetOf(names),
-      s"unknown configuration fields: ${(fields.keySet -- names).mkString(", ")}",
+      s"unknown configuration fields: ${(fields.keySet.toSet -- names).mkString(", ")}",
     )
 
     def int(name: String, default: Int): Int = fields.get(name) match {
