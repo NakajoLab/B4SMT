@@ -24,30 +24,11 @@ jobs:
       - name: Check out sources
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Enable unprivileged user namespaces
-        run: |
-          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-          sudo sysctl -w kernel.unprivileged_userns_clone=1
-
-      - name: Free disk space for Nix builds
-        uses: wimpysworld/nothing-but-nix@687c797a730352432950c707ab493fcc951818d7 # v10
-        with:
-          # Finish deleting /opt/hostedtoolcache before niks3 installs its hook there.
-          witness-carnage: true
-
       - name: Install Nix
-        uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # v31.11.3
-        with:
-          extra_nix_config: |
-            fallback = true
-            accept-flake-config = true
-            max-jobs = 1
-            system = x86_64-linux
+        uses: cachix/install-nix-action@bb0495a1086c46893eee56f32fd192dfe4a15bb9 # v32.0.0
 
-      # The action configures cache reads and uploads completed derivations via OIDC.
-      # Fork pull requests can read the cache without receiving upload credentials.
       - name: Configure the niks3 binary cache
-        uses: Mic92/niks3-action@12d3e320b2a99b7938f9634bd337cd9fec104609 # v1.1.0
+        uses: Mic92/niks3-action@53fc4d8be8e7f3693e1a6be91eede40590b0d1d2 # v1.12.0
         with:
           server-url: https://niks3.s.ihavenojob.work
 
